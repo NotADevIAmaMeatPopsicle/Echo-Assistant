@@ -28,12 +28,10 @@ the full UIs. Keep a lock screen on those devices and revoke lost devices.
    and `Self.DNSName` (without its final dot). For each allowed peer, retain its
    `ID` and `TailscaleIPs`. Do not publish that inventory.
 
-Create `tailnet.json` privately using this **example template**. It contains no
-deployment hostname, device identity, network address, credential, or personal
-file path. Replace every uppercase placeholder with your own value; in
-`bind_addresses`, keep only the Tailscale addresses assigned to your host.
-Absolute paths refer to the Docker host, not the client. Begin with an empty
-allowlist to deny everyone.
+Create `tailnet.json` privately using this **example template**. All values below
+are placeholders, sample addresses, or project defaults. Replace every uppercase
+placeholder and both sample addresses with your own values. Absolute paths refer
+to the Docker host, not the client. Begin with an empty allowlist to deny everyone.
 
 ```json
 {
@@ -41,7 +39,7 @@ allowlist to deny everyone.
   "docker": "ABSOLUTE_DOCKER_EXECUTABLE",
   "hostname": "YOUR_HOST.YOUR_TAILNET.ts.net",
   "host_id": "YOUR_HOST_STABLE_ID",
-  "bind_addresses": ["YOUR_HOST_TAILSCALE_IPV4", "YOUR_HOST_TAILSCALE_IPV6"],
+  "bind_addresses": ["100.64.0.1", "fd7a:115c:a1e0::1"],
   "allowed_devices": [],
   "cert": "ABSOLUTE_CERTIFICATE_PATH",
   "key": "ABSOLUTE_CERTIFICATE_KEY_PATH",
