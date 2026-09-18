@@ -1,0 +1,10 @@
+# Apply only after the one-time data transfer is prepared and laptop ownership stops.
+services:
+  api:
+    environment:
+      ECHO_DEPLOYMENT_MODE: device
+      ECHO_VOICE_ENABLED: "1"
+      ECHO_WIFI_BIND: 0.0.0.0
+    ports:
+      - "${ECHO_BIND_ADDRESS:?Set ECHO_BIND_ADDRESS to the Docker host LAN IPv4 address}:8769:8769"
+      - "${ECHO_BIND_ADDRESS:?Set ECHO_BIND_ADDRESS to the Docker host LAN IPv4 address}:18899:18899"

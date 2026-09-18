@@ -1,0 +1,6 @@
+{
+  "ssh_target": "echo-host",
+  "docker_context": "echo-host",
+  "device_host": "192.168.1.50",
+  "lan_subnet": "192.168.1.0/24"
+}

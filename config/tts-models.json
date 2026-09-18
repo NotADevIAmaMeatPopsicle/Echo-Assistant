@@ -1,0 +1,286 @@
+{
+  "reviewed_at": "2026-09-17",
+  "purpose": "Explicit user-requested download of two TTS candidates for later local evaluation; no startup downloads",
+  "models": [
+    {
+      "name": "Kokoro-82M",
+      "directory": "kokoro-82m-official",
+      "source": "hexgrad/Kokoro-82M",
+      "revision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+      "runtime_source": "hexgrad/kokoro",
+      "runtime_revision": "dfb907a02bba8152ca444717ca5d78747ccb4bec",
+      "license": "Apache-2.0",
+      "assets": [
+        {
+          "path": "README.md",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/README.md",
+          "bytes": 6348,
+          "git_blob_sha1": "d6dc124205ad567631d14cd8700f1af77a861c3f"
+        },
+        {
+          "path": "config.json",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/config.json",
+          "bytes": 2351,
+          "git_blob_sha1": "14a726edd3718279eac426630879ff743955b16a"
+        },
+        {
+          "path": "kokoro-v1_0.pth",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/kokoro-v1_0.pth",
+          "bytes": 327212226,
+          "sha256": "496dba118d1a58f5f3db2efc88dbdc216e0483fc89fe6e47ee1f2c53f18ad1e4"
+        },
+        {
+          "path": "voices/af_alloy.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_alloy.pt",
+          "bytes": 523425,
+          "sha256": "6d877149dd8b348fbad12e5845b7e43d975390e9f3b68a811d1d86168bef5aa3"
+        },
+        {
+          "path": "voices/af_aoede.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_aoede.pt",
+          "bytes": 523425,
+          "sha256": "c03bd1a4c3716c2d8eaa3d50022f62d5c31cfbd6e15933a00b17fefe13841cc4"
+        },
+        {
+          "path": "voices/af_bella.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_bella.pt",
+          "bytes": 523425,
+          "sha256": "8cb64e02fcc8de0327a8e13817e49c76c945ecf0052ceac97d3081480e8e48d6"
+        },
+        {
+          "path": "voices/af_heart.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_heart.pt",
+          "bytes": 523425,
+          "sha256": "0ab5709b8ffab19bfd849cd11d98f75b60af7733253ad0d67b12382a102cb4ff"
+        },
+        {
+          "path": "voices/af_jessica.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_jessica.pt",
+          "bytes": 523435,
+          "sha256": "cdfdccb8cc975aa34ee6b89642963b0064237675de0e41a30ae64cc958dd4e87"
+        },
+        {
+          "path": "voices/af_kore.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_kore.pt",
+          "bytes": 523420,
+          "sha256": "8bfbc512321c3db49dff984ac675fa5ac7eaed5a96cc31104d3a9080e179d69d"
+        },
+        {
+          "path": "voices/af_nicole.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_nicole.pt",
+          "bytes": 523430,
+          "sha256": "c5561808bcf5250fe8c5f5de32caf2d94f27e57e95befdb098c5c85991d4c5da"
+        },
+        {
+          "path": "voices/af_nova.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_nova.pt",
+          "bytes": 523420,
+          "sha256": "e0233676ddc21908c37a1f102f6b88a59e4e5c1bd764983616eb9eda629dbcd2"
+        },
+        {
+          "path": "voices/af_river.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_river.pt",
+          "bytes": 523425,
+          "sha256": "e149459bd9c084416b74756b9bd3418256a8b839088abb07d463730c369dab8f"
+        },
+        {
+          "path": "voices/af_sarah.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_sarah.pt",
+          "bytes": 523425,
+          "sha256": "49bd364ea3be9eb3e9685e8f9a15448c4883112a7c0ff7ab139fa4088b08cef9"
+        },
+        {
+          "path": "voices/af_sky.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/af_sky.pt",
+          "bytes": 523351,
+          "sha256": "c799548aed06e0cb0d655a85a01b48e7f10484d71663f9a3045a5b9362e8512c"
+        },
+        {
+          "path": "voices/am_adam.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_adam.pt",
+          "bytes": 523420,
+          "sha256": "ced7e284aba12472891be1da3ab34db84cc05cc02b5889535796dbf2d8b0cb34"
+        },
+        {
+          "path": "voices/am_echo.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_echo.pt",
+          "bytes": 523420,
+          "sha256": "8bcfdc852bc985fb45c396c561e571ffb9183930071f962f1b50df5c97b161e8"
+        },
+        {
+          "path": "voices/am_eric.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_eric.pt",
+          "bytes": 523420,
+          "sha256": "ada66f0eefff34ec921b1d7474d7ac8bec00cd863c170f1c534916e9b8212aae"
+        },
+        {
+          "path": "voices/am_fenrir.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_fenrir.pt",
+          "bytes": 523430,
+          "sha256": "98e507eca1db08230ae3b6232d59c10aec9630022d19accac4f5d12fcec3c37a"
+        },
+        {
+          "path": "voices/am_liam.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_liam.pt",
+          "bytes": 523420,
+          "sha256": "c82550757ddb31308b97f30040dda8c2d609a9e2de6135848d0a948368138518"
+        },
+        {
+          "path": "voices/am_michael.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_michael.pt",
+          "bytes": 523435,
+          "sha256": "9a443b79a4b22489a5b0ab7c651a0bcd1a30bef675c28333f06971abbd47bd37"
+        },
+        {
+          "path": "voices/am_onyx.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_onyx.pt",
+          "bytes": 523420,
+          "sha256": "e8452be16cd0f6da7b4579eaf7b1e4506e92524882053d86d72b96b9a7fed584"
+        },
+        {
+          "path": "voices/am_puck.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_puck.pt",
+          "bytes": 523420,
+          "sha256": "dd1d8973f4ce4b7d8ae407c77a435f485dabc052081b80ea75c4f30b84f36223"
+        },
+        {
+          "path": "voices/am_santa.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/am_santa.pt",
+          "bytes": 523425,
+          "sha256": "7f2f7582fa2b1f160e90aafe6d0b442a685e773608b6667e545d743b073e97a7"
+        },
+        {
+          "path": "voices/bf_alice.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bf_alice.pt",
+          "bytes": 523425,
+          "sha256": "d292651b6af6c0d81705c2580dcb4463fccc0ff7b8d618a471dbb4e45655b3f3"
+        },
+        {
+          "path": "voices/bf_emma.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bf_emma.pt",
+          "bytes": 523420,
+          "sha256": "d0a423deabf4a52b4f49318c51742c54e21bb89bbbe9a12141e7758ddb5da701"
+        },
+        {
+          "path": "voices/bf_isabella.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bf_isabella.pt",
+          "bytes": 523440,
+          "sha256": "cdd4c37003805104d1d08fb1e05855c8fb2c68de24ca6e71f264a30aaa59eefd"
+        },
+        {
+          "path": "voices/bf_lily.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bf_lily.pt",
+          "bytes": 523420,
+          "sha256": "6e09c2e481e2d53004d7e5ae7d3a325369e130a6f45c35a6002de75084be9285"
+        },
+        {
+          "path": "voices/bm_daniel.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bm_daniel.pt",
+          "bytes": 523430,
+          "sha256": "fc3fce4e9c12ed4dbc8fa9680cfe51ee190a96444ce7c3ad647549a30823fc5d"
+        },
+        {
+          "path": "voices/bm_fable.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bm_fable.pt",
+          "bytes": 523425,
+          "sha256": "d44935f3135257a9064df99f007fc1342ff1aa767552b4a4fa4c3b2e6e59079c"
+        },
+        {
+          "path": "voices/bm_george.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bm_george.pt",
+          "bytes": 523430,
+          "sha256": "f1bc812213dc59774769e5c80004b13eeb79bd78130b11b2d7f934542dab811b"
+        },
+        {
+          "path": "voices/bm_lewis.pt",
+          "url": "https://huggingface.co/hexgrad/Kokoro-82M/resolve/f3ff3571791e39611d31c381e3a41a3af07b4987/voices/bm_lewis.pt",
+          "bytes": 523425,
+          "sha256": "b5204750dcba01029d2ac9cec17aec3b20a6d64073c579d694a23cb40effbd0e"
+        },
+        {
+          "path": "RUNTIME-LICENSE",
+          "url": "https://raw.githubusercontent.com/hexgrad/kokoro/dfb907a02bba8152ca444717ca5d78747ccb4bec/LICENSE",
+          "bytes": 11357,
+          "git_blob_sha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64"
+        }
+      ]
+    },
+    {
+      "name": "Pocket TTS English preset voices",
+      "directory": "pocket-tts-english-official",
+      "source": "kyutai/pocket-tts-without-voice-cloning",
+      "revision": "e7205b6ee50e654a5ea19f0e9df2b0813b05e921",
+      "runtime_source": "kyutai-labs/pocket-tts",
+      "runtime_revision": "270aef929046ae00046f2248bc389e217905b02d",
+      "license": "CC-BY-4.0 weights; MIT runtime; voice source attribution applies",
+      "assets": [
+        {
+          "path": "README.md",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/README.md",
+          "bytes": 11187,
+          "git_blob_sha1": "0e9ad24dcd5b6fe6283cb819dd968f8f0da2bd3b"
+        },
+        {
+          "path": "languages/english/embeddings/alba.safetensors",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/languages/english/embeddings/alba.safetensors",
+          "bytes": 6195000,
+          "sha256": "d291428b416d6c36a1de7835e51dbe1e334b75e5af512bb18dd23a1047fe8f3b"
+        },
+        {
+          "path": "languages/english/embeddings/charles.safetensors",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/languages/english/embeddings/charles.safetensors",
+          "bytes": 6195000,
+          "sha256": "f6c03e29e9b17708f24ef3aaab0af92d9c11565c0997ee8c8271cacc72cfe53a"
+        },
+        {
+          "path": "languages/english/embeddings/george.safetensors",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/languages/english/embeddings/george.safetensors",
+          "bytes": 6244152,
+          "sha256": "9cee0daccb0eda1631b73f8b35f6f8cb195885d55d2e1e20fc711f9e4456ceb0"
+        },
+        {
+          "path": "languages/english/embeddings/javert.safetensors",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/languages/english/embeddings/javert.safetensors",
+          "bytes": 6195000,
+          "sha256": "580e4b72d4065e906c14e580f97da478c9707bead74b0ef9c049e0ca8de997d9"
+        },
+        {
+          "path": "languages/english/embeddings/marius.safetensors",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/languages/english/embeddings/marius.safetensors",
+          "bytes": 6195000,
+          "sha256": "b05946f39371f8853902b0486231f2d401c8a9570da9978329120d4ecfd009e9"
+        },
+        {
+          "path": "languages/english/embeddings/michael.safetensors",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/languages/english/embeddings/michael.safetensors",
+          "bytes": 7276344,
+          "sha256": "401711f60394aa6085627f7050c1b3f97b31aa7138784811bc6c6ec7d7eaad0c"
+        },
+        {
+          "path": "languages/english/model.safetensors",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/languages/english/model.safetensors",
+          "bytes": 219029196,
+          "sha256": "916ccd2686e9311cb40054893a3c4284393d658825ffc714a276f3e9b152344f"
+        },
+        {
+          "path": "languages/english/tokenizer.model",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/e7205b6ee50e654a5ea19f0e9df2b0813b05e921/languages/english/tokenizer.model",
+          "bytes": 59339,
+          "sha256": "d461765ae179566678c93091c5fa6f2984c31bbe990bf1aa62d92c64d91bc3f6"
+        },
+        {
+          "path": "RUNTIME-LICENSE",
+          "url": "https://raw.githubusercontent.com/kyutai-labs/pocket-tts/270aef929046ae00046f2248bc389e217905b02d/LICENSE",
+          "bytes": 1023,
+          "git_blob_sha1": "31aa79387f27e730e33d871925e152e35e428031"
+        },
+        {
+          "path": "upstream-english.yaml",
+          "url": "https://raw.githubusercontent.com/kyutai-labs/pocket-tts/270aef929046ae00046f2248bc389e217905b02d/pocket_tts/config/english.yaml",
+          "bytes": 1548,
+          "git_blob_sha1": "df05900404fad9d359682c0ed5a32054d1848262"
+        }
+      ]
+    }
+  ]
+}

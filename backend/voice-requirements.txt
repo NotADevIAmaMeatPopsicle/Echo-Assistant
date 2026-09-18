@@ -1,0 +1,4 @@
+vosk==0.3.45
+soxr==1.0.0
+numpy==2.4.6
+pyserial==3.5

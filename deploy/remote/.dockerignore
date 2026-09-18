@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!bootstrap.py
+!home_tools.py
+!backend/
+!backend/*.py

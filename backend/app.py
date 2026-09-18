@@ -1,0 +1,665 @@
+"""Loopback device API and Echo app. Cloud conversation requires explicit settings."""
+import os
+from pathlib import Path
+import secrets
+from functools import partial
+from threading import Lock, Event
+from typing import Literal
+from contextlib import asynccontextmanager
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field, ConfigDict
+from .core import Assistant, TimerStorageUnavailable
+from .home import HomeBridge, HomeConfig, HomeUnavailable
+from .home_catalog import HomeCatalog
+from .home_lights import RoomLights
+from .home_speakers import HomeSpeakers
+from .home_access import HomeAccessStore, HomeAccessUnavailable
+from .home_policy import apply_policy, validate_policy
+from .home_actions import HomeActions, ActionRequest
+from .home_sync import sync_home_policy
+from .voice_status import voice_status
+from .speech import voices as speech_voices
+from .speech import synthesize_checked
+from .tts_catalog import catalog as tts_catalog, validate_selection, selected_status
+from .settings import EchoSettings, SettingsStore, SettingsUpdate, SettingsUnavailable
+from .agent import EchoAgent, Provider, ProviderUnavailable
+from .conversation_request import run_conversation
+from .conversation_activity import Conversations, ConversationBusy
+from .routines import RoutineStore, Routines, RoutineStep, RoutineUnavailable, RoutineConflict, routine_request
+from .http_headers import BrowserHeadersMiddleware
+from .web_auth import BrowserAuth
+from .speech_restart import SpeechRestart
+from .memory import MemoryStore, MemoryUnavailable, memory_request
+from .lookup import lookup_request
+from .agent_runtime import RuntimeUnavailable
+from .agent_apply import AgentApply
+from .music_commands import request as request_music
+from .speaker_check import SpeakerCheck
+from .research_tasks import ResearchTasks
+from . import __version__
+
+def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | None = None,
+               *, settings_store=None, provider=None, home_catalog=None, home_access_store=None,
+               deployment_mode='device', home_tools_token=None):
+    if deployment_mode not in {'device','validation'}: raise ValueError('Invalid deployment mode')
+    if len(token) < 32:
+        raise ValueError("A local API token of at least 32 characters is required")
+    @asynccontextmanager
+    async def lifespan(app):
+        yield
+        app.state.speech_stop.set()
+        research.close()
+        from .neural_speech import close
+        close()
+    app = FastAPI(title="Round Voice", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app.state.speech_stop = Event()
+    assistant = Assistant(storage=runtime_root/'local/timers.json' if runtime_root else None)
+    home = home or HomeBridge(HomeConfig())
+    store = settings_store or SettingsStore(runtime_root)
+    memory = MemoryStore(runtime_root, store.protector)
+    echo = EchoAgent(store, provider, memory)
+    research = ResearchTasks(store)
+    conversations = Conversations()
+    catalog = home_catalog or HomeCatalog(home)
+    if home_tools_token is not None and len(home_tools_token) < 32: raise ValueError('Invalid home tools credential')
+    access = home_access_store or HomeAccessStore(runtime_root, store.protector,
+        (lambda policy: None) if home_tools_token else sync_home_policy)
+    if home_tools_token: access.ensure_applied()
+    echo.home_access = access
+    room_lights = RoomLights(home,catalog,access)
+    speakers = HomeSpeakers(home,catalog,runtime_root,store.protector)
+    actions = HomeActions(home, access, enabled=deployment_mode=='device')
+    echo.home_actions = actions
+    routines = Routines(RoutineStore(runtime_root,store.protector),actions)
+    echo.routines = routines
+    auth = BrowserAuth(token)
+    speech_restart = SpeechRestart(runtime_root)
+    speaker_check = SpeakerCheck(runtime_root)
+    agent_apply = AgentApply(runtime_root, store)
+    voice_check_lock = Lock()
+    authorize = auth.authorize
+    hosts = ['127.0.0.1', 'localhost', 'testserver'] if runtime_root is None else ['127.0.0.1', 'localhost']
+    if os.environ.get('ECHO_CONTAINER') == '1': hosts += ['api', 'echo-api']
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)
+    web = Path(__file__).resolve().parents[1]/'web'
+    app.mount('/assets', StaticFiles(directory=web), name='assets')
+
+    app.add_middleware(BrowserHeadersMiddleware)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request, error):
+        # FastAPI's default includes submitted input, which may be an API key.
+        return JSONResponse(status_code=422, content={'detail': 'Invalid settings or request. Check field values and limits.'})
+
+    @app.exception_handler(SettingsUnavailable)
+    async def settings_error(request, error):
+        return JSONResponse(status_code=503, content={'detail': str(error)})
+
+    @app.get('/')
+    @app.get('/settings')
+    @app.get('/devices')
+    @app.get('/routines')
+    @app.get('/tasks')
+    def ui(): return FileResponse(web/'index.html')
+
+    @app.post('/v1/ui/ticket', dependencies=[Depends(auth.bearer)])
+    def ticket(): return {'ticket': auth.ticket()}
+
+    class LoginRequest(BaseModel):
+        ticket: str = Field(min_length=32, max_length=64)
+
+    @app.post('/v1/ui/session')
+    def login(body: LoginRequest, request: Request):
+        auth.same_origin(request)
+        session = auth.exchange(body.ticket)
+        response = JSONResponse({'authenticated': True})
+        response.set_cookie('echo_session', session, httponly=True, samesite='strict', max_age=8*3600)
+        return response
+
+    @app.delete('/v1/ui/session', dependencies=[Depends(authorize)])
+    def logout(request: Request):
+        session = request.cookies.get('echo_session', '')
+        conversations.clear(session); research.clear(session); echo.clear(session); auth.logout(session)
+        response = JSONResponse({'authenticated': False})
+        response.delete_cookie('echo_session')
+        return response
+
+    @app.exception_handler(TimerStorageUnavailable)
+    async def timer_storage_error(request, error):
+        return JSONResponse(status_code=503, content={'detail': str(error)})
+
+    class TextRequest(BaseModel):
+        text: str = Field(min_length=1, max_length=1200)
+        lookup: bool = False
+        allow_home_actions: bool = False
+
+    class MemoryRequest(BaseModel):
+        model_config = ConfigDict(extra='forbid')
+        text: str = Field(min_length=1,max_length=600)
+
+    class TimerRequest(BaseModel):
+        seconds: int = Field(strict=True, ge=1, le=86400)
+        label: str = Field(default="Timer", min_length=1, max_length=80)
+
+    class HomeAction(BaseModel):
+        action: str = Field(min_length=1, max_length=40)
+        value: float | bool | str | None = None
+        unit: str | None = None
+
+    class MusicAction(BaseModel):
+        model_config = ConfigDict(extra='forbid')
+        action: Literal['play','pause','toggle','next','previous']
+
+    @app.post('/v1/music/control',dependencies=[Depends(authorize)])
+    def music_control(command:MusicAction):
+        if deployment_mode=='validation':raise HTTPException(409,'Playback is disabled on the validation host')
+        try:return request_music(runtime_root,command.action)
+        except (ValueError,OSError) as error:raise HTTPException(409,str(error)) from None
+
+    class HomeAccessRequest(BaseModel):
+        model_config = ConfigDict(extra='forbid')
+        revision: str = Field(pattern=r'^[a-f0-9]{64}$')
+        policy: dict
+
+    @app.exception_handler(HomeAccessUnavailable)
+    async def home_access_error(request, error):
+        return JSONResponse(status_code=503, content={'detail': str(error)})
+
+    @app.get('/v1/home/devices', dependencies=[Depends(authorize)])
+    def home_devices():
+        saved = access.snapshot()
+        try:
+            raw = catalog.snapshot()
+            result = apply_policy(raw, saved['policy'], management=True)
+            return {**result, **saved, 'ha_areas': raw['areas']}
+        except HomeUnavailable as error:
+            raise HTTPException(503, str(error)) from None
+
+    @app.put('/v1/home/access', dependencies=[Depends(authorize)])
+    def home_access(request: HomeAccessRequest):
+        try:
+            policy = validate_policy(request.policy)
+            # Rules for previously seen devices may be retained when HA removes an
+            # entity; new entries must have a current, actual HA entity binding.
+            known = set(access.snapshot()['policy']['devices'])
+            known.update(d['entity_id'] for d in catalog.snapshot()['devices'])
+            if set(policy['devices']) - known: raise ValueError('Refresh the inventory before assigning a new device.')
+            return access.update(policy, request.revision)
+        except HomeUnavailable as error:
+            raise HTTPException(503, str(error)) from None
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from None
+
+    @app.post('/v1/home/access/retry', dependencies=[Depends(authorize)])
+    def retry_home_access():
+        access.ensure_applied()
+        return access.snapshot()
+
+    @app.get("/health")
+    def health():
+        voice = voice_status(runtime_root) if runtime_root else {"status": "disconnected", "phrases": ["hey echo", "okay echo"]}
+        connected = voice["status"] not in {"disconnected", "connecting"}
+        waiting = voice['status'] == 'connecting'
+        volume = voice.get('device', {}).get('volume')
+        return {"product": "round-voice", "version": __version__, "status": "ready",
+                'deployment_mode':deployment_mode,
+                "speech_to_text": ('local_whisper' if voice.get('engine') == 'whisper-base.en-local' else 'local_vosk') if connected else 'waiting_for_device' if waiting else "not_configured", "text_to_speech": selected_status(store.snapshot()[0],runtime_root),
+                "conversation": echo.status()['status'], "timers": "unavailable" if assistant.storage_error else "ready", "device_transport": (voice.get('transport', 'usb') + "_connected") if connected else (voice.get('transport', 'usb') + '_waiting') if waiting else "not_connected",
+                "wake_word": voice["status"], "wake_phrases": voice["phrases"],
+                "speaker_muted": (str(volume) == '0') if connected and volume is not None else None,
+                "speech_worker": voice.get('speech_worker','unavailable') if connected else 'unavailable',
+                "music_wake": voice.get('music_wake', 'unavailable') if connected else 'unavailable',
+                "home_assistant": "configured" if home.config.enabled else "optional_not_configured",
+                "spotify_connect": voice.get('music', {}).get('status', 'not_connected') if connected else 'not_connected'}
+
+    @app.get("/v1/voice", dependencies=[Depends(authorize)])
+    def voice_state():
+        return voice_status(runtime_root) if runtime_root else {"status": "disconnected", "phrases": ["hey echo", "okay echo"]}
+
+    @app.get("/v1/home", dependencies=[Depends(authorize)])
+    def home_state():
+        result = home.snapshot()
+        try: result['lights'] = room_lights.snapshot()
+        except (HomeUnavailable,HomeAccessUnavailable): result['lights'] = {'status':'unavailable','rooms':[]}
+        try:
+            result['speakers']=speakers.snapshot()
+            result['devices']['soundbar']=result['speakers']['device']
+        except HomeUnavailable:
+            result['speakers']={'status':'unavailable','choices':[]}
+            result['devices']['soundbar']={'status':'unavailable'}
+        return result
+
+    class SpeakerSelection(BaseModel):
+        model_config=ConfigDict(extra='forbid')
+        index: int=Field(ge=0,le=31,strict=True)
+        revision: str=Field(pattern=r'^[a-f0-9]{64}$')
+
+    class SpeakerAction(BaseModel):
+        model_config=ConfigDict(extra='forbid')
+        action: Literal['up','down','mute','unmute','play','pause','on','off']
+        binding: str=Field(pattern=r'^[a-f0-9]{64}$')
+
+    @app.post('/v1/home/speakers/select',dependencies=[Depends(authorize)])
+    def select_speaker(request:SpeakerSelection):
+        try:return speakers.select(request.index,request.revision)
+        except ValueError as error:raise HTTPException(409,str(error)) from None
+        except HomeUnavailable as error:raise HTTPException(503,str(error)) from None
+
+    @app.post('/v1/home/speakers/control',dependencies=[Depends(authorize)])
+    def control_speaker(request:SpeakerAction):
+        try:return speakers.action(request.action,request.binding)
+        except ValueError as error:raise HTTPException(409,str(error)) from None
+        except HomeUnavailable as error:raise HTTPException(503,str(error)) from None
+
+    class RoomAction(BaseModel):
+        model_config = ConfigDict(extra='forbid')
+        action: Literal['turn_on','turn_off']
+        revision: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+    @app.post('/v1/home/lights/{entity}/actions', dependencies=[Depends(authorize)])
+    def light_action(entity: str, request: RoomAction):
+        if deployment_mode=='validation': raise HTTPException(409,'Light controls are disabled on the validation host')
+        try: return room_lights.light_action(entity,request.action,request.revision)
+        except ValueError as error: raise HTTPException(409,str(error)) from None
+        except HomeUnavailable as error: raise HTTPException(503,str(error)) from None
+
+    @app.post('/v1/home/rooms/{room}/actions', dependencies=[Depends(authorize)])
+    def room_action(room: str, request: RoomAction):
+        try: return room_lights.action(room,request.action,request.revision)
+        except ValueError as error: raise HTTPException(409,str(error)) from None
+        except HomeUnavailable as error: raise HTTPException(503,str(error)) from None
+
+    if home_tools_token:
+        def authorize_home_tools(request: Request):
+            if not secrets.compare_digest(request.headers.get('authorization',''),'Bearer '+home_tools_token):
+                raise HTTPException(401,'Home tool credential required')
+
+        @app.get('/internal/home/devices', dependencies=[Depends(authorize_home_tools)])
+        def agent_home_devices(domain: str = '', area: str = ''):
+            try:
+                current=apply_policy(catalog.snapshot(),access.snapshot()['policy'])
+                current['devices']=[d for d in current['devices'] if (not domain or d['domain']==domain)
+                    and (not area or (d['area'] or '').casefold()==area.casefold())]
+                items=current['devices']
+                current['areas']=sorted({d['area'] for d in items if d['area']})
+                current['counts']={'total':len(items),'available':sum(d['available'] for d in items),
+                    'unavailable':sum(not d['available'] for d in items),'without_area':sum(d['area'] is None for d in items)}
+                return current
+            except HomeUnavailable as error: raise HTTPException(503,str(error)) from None
+
+        @app.get('/internal/home/state', dependencies=[Depends(authorize_home_tools)])
+        def agent_home_state(entity_id: str):
+            devices=agent_home_devices()['devices']
+            item=next((d for d in devices if d['entity_id']==entity_id),None)
+            if item is None: raise HTTPException(404,'Home device unavailable')
+            return item
+
+        @app.post('/internal/home/action', dependencies=[Depends(authorize_home_tools)])
+        def agent_home_action(command: ActionRequest):
+            return actions.execute(command)
+
+    @app.post("/v1/home/{device}/actions", dependencies=[Depends(authorize)])
+    def home_action(device: str, request: HomeAction):
+        if deployment_mode == 'validation': raise HTTPException(409,'Device actions are off in this validation instance')
+        try:
+            return home.act(device, request.action, request.value, request.unit)
+        except HomeUnavailable as error:
+            raise HTTPException(503, str(error)) from error
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
+
+    @app.get("/v1/state", dependencies=[Depends(authorize)])
+    def state():
+        return {"timers": assistant.timer_states(), "capabilities": ["clock", "timer"]}
+
+    @app.post("/v1/text")
+    async def text(request: TextRequest, connection: Request, session=Depends(authorize)):
+        try:
+            import re
+            query=request.text.strip().lower().rstrip('.!?')
+            if query in {'what did you find','research status','stop research','cancel research'}:
+                jobs=research.list(session)
+                if jobs:
+                    latest=jobs[0]
+                    if query in {'stop research','cancel research'}:
+                        research.stop(session,latest['id']);answer='I’ve requested a stop for that research.'
+                    elif latest['active']:answer='I’m still researching. You can follow progress on Tasks.'
+                    else:answer=(latest.get('result') or {}).get('text','That research was stopped.')[:900]
+                    return {'status':'complete','capability':'research','text':answer}
+            if re.match(r'\s*(?:please\s+)?(?:research\b|look into\b|compare\b)',request.text,re.I):
+                task=research.start(session,request.text)
+                return {'status':'complete','capability':'research','text':'I’ll look into that. The report and sources will appear on the Tasks page.','task_id':task['id']}
+            if routine_request(request.text):
+                return await run_conversation(connection,app.state.speech_stop,
+                    partial(echo.respond,allow_home_actions=deployment_mode=='device'),request.text,session,request.lookup)
+            if deployment_mode == 'validation' or memory_request(request.text) or request.lookup or lookup_request(request.text):
+                return await run_conversation(connection,app.state.speech_stop,echo.respond,request.text,session,request.lookup)
+            # Home/timer actions already accepted cannot be undone by disconnect.
+            context_token, previous = echo.context(session)
+            timer_context = previous[-1].get('local_result') if previous else None
+            response = await run_in_threadpool(home.answer, request.text)
+            if response is None:
+                response = await run_in_threadpool(assistant.respond, request.text, timer_context=timer_context)
+            if response['capability'] == 'conversation':
+                return await run_conversation(connection, app.state.speech_stop,
+                    partial(echo.respond,allow_home_actions=True), request.text, session,request.lookup)
+            echo.record_local(request.text, response, session, context_token)
+            return response
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
+
+    @app.post('/v1/chat')
+    async def chat(request: TextRequest, connection: Request, session=Depends(authorize)):
+        # Browser actions require an explicit opt-in on this message, plus device grants.
+        try: activity = conversations.begin(session)
+        except ConversationBusy as error: raise HTTPException(409,str(error)) from None
+        return await run_conversation(connection, app.state.speech_stop,
+            partial(echo.respond,allow_home_actions=request.allow_home_actions,progress=activity.progress),
+            request.text, session,request.lookup,activity=activity)
+
+    class RoutineSave(BaseModel):
+        model_config=ConfigDict(extra='forbid')
+        name: str=Field(min_length=1,max_length=60)
+        steps: list[RoutineStep]=Field(min_length=1,max_length=12)
+
+    class RoutineRevision(BaseModel):
+        model_config=ConfigDict(extra='forbid')
+        revision: str=Field(pattern=r'^[a-f0-9]{64}$')
+
+    class RoutineEdit(RoutineSave,RoutineRevision): pass
+
+    @app.exception_handler(RoutineUnavailable)
+    async def routine_unavailable(request,error):
+        return JSONResponse(status_code=503,content={'detail':str(error)})
+
+    @app.exception_handler(RoutineConflict)
+    async def routine_conflict(request,error):
+        return JSONResponse(status_code=409,content={'detail':str(error)})
+
+    @app.get('/v1/routines',dependencies=[Depends(authorize)])
+    def routine_list(): return {'items':routines.store.snapshot(),'limit':32}
+
+    def save_routine(body,identifier=None):
+        try: return {'item':routines.save(body.name,[s.model_dump() for s in body.steps],identifier,getattr(body,'revision',None))}
+        except RoutineConflict: raise
+        except KeyError: raise HTTPException(404,'Routine not found') from None
+        except (ValueError,HomeUnavailable,HomeAccessUnavailable) as error: raise HTTPException(422,str(error)) from None
+
+    @app.post('/v1/routines',dependencies=[Depends(authorize)])
+    def create_routine(body:RoutineSave): return save_routine(body)
+
+    @app.put('/v1/routines/{identifier}',dependencies=[Depends(authorize)])
+    def update_routine(identifier:str,body:RoutineEdit): return save_routine(body,identifier)
+
+    @app.delete('/v1/routines/{identifier}',dependencies=[Depends(authorize)])
+    def delete_routine(identifier:str,body:RoutineRevision):
+        try: routines.store.delete(identifier,body.revision)
+        except KeyError: raise HTTPException(404,'Routine not found') from None
+        return {'deleted':True}
+
+    @app.post('/v1/routines/{identifier}/run')
+    async def run_routine(identifier:str,body:RoutineRevision,connection:Request,session=Depends(authorize)):
+        try:
+            routines.store.get(identifier,body.revision)
+            activity=conversations.begin(session)
+        except KeyError: raise HTTPException(404,'Routine not found') from None
+        except ConversationBusy as error: raise HTTPException(409,str(error)) from None
+        return await run_conversation(connection,app.state.speech_stop,
+            partial(routines.run,progress=activity.progress),identifier,body.revision,activity=activity)
+
+    @app.get('/v1/chat/activity')
+    def chat_activity(session=Depends(authorize)):
+        return conversations.snapshot(session)
+
+    class ResearchRequest(BaseModel):
+        model_config=ConfigDict(extra='forbid')
+        prompt: str=Field(min_length=3,max_length=2400)
+
+    @app.get('/v1/tasks')
+    def list_tasks(session=Depends(authorize)): return {'items':research.list(session)}
+
+    @app.post('/v1/tasks',status_code=202)
+    def start_task(body:ResearchRequest,session=Depends(authorize)):
+        try:return research.start(session,body.prompt)
+        except ValueError as error:raise HTTPException(409,str(error)) from None
+
+    @app.post('/v1/tasks/{identifier}/stop')
+    def stop_task(identifier:str,session=Depends(authorize)):
+        try:return research.stop(session,identifier)
+        except KeyError:raise HTTPException(404,'Task not found') from None
+
+    @app.delete('/v1/tasks/{identifier}')
+    def delete_task(identifier:str,session=Depends(authorize)):
+        try:research.delete(session,identifier)
+        except KeyError:raise HTTPException(404,'Task not found') from None
+        except ValueError as error:raise HTTPException(409,str(error)) from None
+        return {'deleted':True}
+
+    @app.post('/v1/chat/activity/{identifier}/stop')
+    def stop_chat(identifier: str, session=Depends(authorize)):
+        try: return conversations.stop(session,identifier)
+        except KeyError: raise HTTPException(404,'Conversation not found') from None
+
+    @app.get('/memory')
+    def memory_page():return FileResponse(web/'index.html')
+
+    @app.exception_handler(MemoryUnavailable)
+    async def memory_error(request,error):
+        return JSONResponse(status_code=503,content={'detail':str(error)})
+
+    @app.get('/v1/memory',dependencies=[Depends(authorize)])
+    def memories():
+        return {'items':memory.snapshot(),'enabled':store.snapshot()[0].memory_enabled,'limit':200}
+
+    @app.post('/v1/memory',dependencies=[Depends(authorize)])
+    def add_memory(request:MemoryRequest):
+        try:item=memory.save(request.text)
+        except ValueError as error:raise HTTPException(422,str(error)) from None
+        echo.clear();return {'item':item}
+
+    @app.put('/v1/memory/{identifier}',dependencies=[Depends(authorize)])
+    def edit_memory(identifier:str,request:MemoryRequest):
+        try:item=memory.save(request.text,identifier)
+        except KeyError:raise HTTPException(404,'Memory was not found') from None
+        except ValueError as error:raise HTTPException(422,str(error)) from None
+        echo.clear();return {'item':item}
+
+    @app.delete('/v1/memory/{identifier}',dependencies=[Depends(authorize)])
+    def remove_memory(identifier:str):
+        try:memory.delete(identifier)
+        except KeyError:raise HTTPException(404,'Memory was not found') from None
+        echo.clear();return {'status':'deleted'}
+
+    @app.delete('/v1/memory',dependencies=[Depends(authorize)])
+    def clear_memories():
+        memory.clear();echo.clear();return {'status':'cleared'}
+
+    @app.get('/v1/chat')
+    def chat_history(session=Depends(authorize)):
+        return {'messages': echo.messages(session)}
+
+    @app.delete('/v1/chat')
+    def clear_chat(session=Depends(authorize)):
+        conversations.clear(session)
+        echo.clear(session)
+        return {'cleared': True}
+
+    @app.get('/v1/echo', dependencies=[Depends(authorize)])
+    def echo_status(): return echo.status()
+
+    @app.get('/v1/settings', dependencies=[Depends(authorize)])
+    def settings(): return store.public()
+
+    @app.get('/v1/settings/agent', dependencies=[Depends(authorize)])
+    def agent_settings_state():
+        try: return agent_apply.status()
+        except (OSError, ValueError): raise HTTPException(503, 'Agent settings status is unavailable') from None
+
+    @app.post('/v1/settings/apply-agent', dependencies=[Depends(authorize)])
+    def apply_agent_settings():
+        if not echo.lock.acquire(blocking=False):
+            raise HTTPException(409, 'Wait for Echo to finish its current reply before applying')
+        try: return agent_apply.start()
+        except (OSError, ValueError, RuntimeUnavailable) as error: raise HTTPException(409, str(error)) from None
+        finally: echo.lock.release()
+
+    @app.delete('/v1/settings/apply-agent', dependencies=[Depends(authorize)])
+    def cancel_agent_settings():
+        try: return agent_apply.cancel()
+        except (OSError, ValueError) as error: raise HTTPException(409, str(error)) from None
+
+    @app.put('/v1/settings', dependencies=[Depends(authorize)])
+    def save_settings(request: SettingsUpdate):
+        if request.settings.stt_engine == 'whisper' and (not runtime_root or not
+                (runtime_root/'local/stt-python/Scripts/python.exe').is_file() or not
+                (runtime_root/'local/models/faster-whisper-base.en/model.bin').is_file()):
+            raise HTTPException(422, 'The local Whisper runtime and model must be installed first')
+        try:
+            validate_selection(request.settings,runtime_root,speech_voices())
+            return store.save(request)
+        except ValueError as error: raise HTTPException(422, str(error)) from None
+
+    @app.get('/v1/settings/speech', dependencies=[Depends(authorize)])
+    def speech_options():
+        voice = voice_status(runtime_root) if runtime_root else {}
+        voices = speech_voices()
+        return {'voices': voices, 'engines':tts_catalog(runtime_root,voices), 'stt': [
+            {'id': 'vosk', 'name': 'Vosk · low latency', 'available': True},
+            {'id': 'whisper', 'name': 'Whisper base.en · CPU', 'available': bool(runtime_root and
+              (runtime_root/'local/stt-python/Scripts/python.exe').is_file() and
+              (runtime_root/'local/models/faster-whisper-base.en/model.bin').is_file())}],
+            'active_stt': voice.get('engine', 'disconnected'), 'tts': selected_status(store.snapshot()[0],runtime_root), 'apply_status': speech_restart.state}
+
+    class VoiceCheck(BaseModel):
+        model_config = ConfigDict(extra='forbid')
+        tts_engine: Literal['sapi','kokoro','pocket']
+        tts_voice: str = Field(default='',max_length=160)
+        tts_rate: int = Field(default=0,strict=True,ge=-5,le=5)
+
+    @app.post('/v1/settings/check-voice', dependencies=[Depends(authorize)])
+    def check_voice(request: VoiceCheck):
+        settings = EchoSettings(**request.model_dump())
+        try: validate_selection(settings,runtime_root,speech_voices())
+        except ValueError as error: raise HTTPException(422,str(error)) from None
+        if not voice_check_lock.acquire(blocking=False): raise HTTPException(409,'A silent voice check is already running')
+        try:
+            pcm, metrics = synthesize_checked('Hello. I am Echo. Your timer is set for five minutes.',settings=settings,cancel=app.state.speech_stop)
+            del pcm
+            return {'status':'complete','playback':False,**metrics}
+        except (RuntimeError,OSError,TimeoutError,ValueError):
+            raise HTTPException(503,'Local voice check failed. Verify the speech runtime and model files.') from None
+        finally: voice_check_lock.release()
+
+    @app.post('/v1/settings/apply-speech', dependencies=[Depends(authorize)])
+    def apply_speech():
+        try: return speech_restart.start()
+        except ValueError as error: raise HTTPException(409, str(error)) from None
+
+    @app.get('/v1/settings/speaker-check', dependencies=[Depends(authorize)])
+    def speaker_check_state():
+        try:return speaker_check.state()
+        except (ValueError,OSError) as error:raise HTTPException(409,'Speaker check status is unavailable') from None
+
+    @app.post('/v1/settings/speaker-check', dependencies=[Depends(authorize)])
+    def start_speaker_check():
+        if deployment_mode=='validation':raise HTTPException(409,'Speaker playback is disabled on the validation host')
+        try:return speaker_check.request()
+        except ValueError as error:raise HTTPException(409,str(error)) from None
+        except OSError:raise HTTPException(503,'Speaker check could not be queued') from None
+
+    @app.delete('/v1/settings/speaker-check/{identifier}', dependencies=[Depends(authorize)])
+    def stop_speaker_check(identifier:str):
+        try:return speaker_check.cancel(identifier)
+        except (ValueError,OSError):raise HTTPException(409,'Speaker check could not be cancelled; check its status') from None
+
+    @app.post('/v1/settings/models', dependencies=[Depends(authorize)])
+    async def models(connection: Request):
+        settings, keys, _ = store.snapshot()
+        try: return {'models': await run_conversation(connection, app.state.speech_stop, echo.provider.models, settings, keys)}
+        except ProviderUnavailable as error: raise HTTPException(503, str(error)) from None
+
+    @app.post('/v1/settings/test', dependencies=[Depends(authorize)])
+    async def test_provider(connection: Request):
+        settings, keys, _ = store.snapshot()
+        try:
+            if settings.agent_runtime == 'hermes':
+                await run_in_threadpool(access.ensure_applied)
+                answer = await run_conversation(connection, app.state.speech_stop,
+                    partial(echo.runtime.complete, instructions=settings.personality),
+                    settings, keys, [{'role':'user','content':'Say hello in one brief sentence.'}])
+            else:
+                answer = await run_conversation(connection, app.state.speech_stop, echo.provider.complete,
+                    settings, keys, [{'role': 'user', 'content': 'Say hello in one brief sentence.'}])
+            return {'status': 'complete', 'text': answer}
+        except (ProviderUnavailable, RuntimeUnavailable) as error: raise HTTPException(503, str(error)) from None
+        except (KeyError, TypeError, AttributeError, IndexError): raise HTTPException(503, 'Unsupported provider response') from None
+
+    @app.post("/v1/timers", dependencies=[Depends(authorize)])
+    def timer(request: TimerRequest):
+        try:
+            return {"id": assistant.start_timer(request.seconds, request.label)}
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
+
+    @app.delete("/v1/timers/{timer_id}", dependencies=[Depends(authorize)])
+    def dismiss(timer_id: str):
+        if not assistant.dismiss_timer(timer_id):
+            raise HTTPException(404, "Timer not found")
+        return {"dismissed": True}
+
+    @app.post("/v1/timers/{timer_id}/ack", dependencies=[Depends(authorize)])
+    def acknowledge(timer_id: str):
+        if not assistant.acknowledge_timer(timer_id):
+            raise HTTPException(404, 'Finished timer not found')
+        return {'acknowledged': True}
+
+    return app
+
+def main():
+    import argparse
+    from threading import Thread
+    import uvicorn
+    from .lifecycle import Lifecycle, request_stop
+    root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(description='Round Voice loopback service')
+    parser.add_argument('--stop', action='store_true', help='Request graceful shutdown of this checkout\'s API')
+    args = parser.parse_args()
+    if args.stop:
+        print('Stop requested' if request_stop(root, 'api') else 'No running API record', flush=True)
+        return
+    token_path = root / "local" / "api-token"
+    token_path.parent.mkdir(exist_ok=True)
+    token = os.environ.get("ROUND_VOICE_TOKEN")
+    if not token:
+        try:
+            with token_path.open("x", encoding="utf-8") as stream:
+                stream.write(secrets.token_urlsafe(32))
+        except FileExistsError:
+            pass
+        token = token_path.read_text(encoding="utf-8").strip()
+    home = HomeBridge(HomeConfig.load(root))
+    with Lifecycle(root, 'api') as lifecycle:
+        tool_path=os.environ.get('ECHO_HOME_TOOLS_TOKEN_FILE')
+        tool_token=Path(tool_path).read_text().strip() if tool_path else None
+        app = create_app(token,home,root,deployment_mode=os.environ.get('ECHO_DEPLOYMENT_MODE','device'),home_tools_token=tool_token)
+        bind='0.0.0.0' if os.environ.get('ECHO_CONTAINER')=='1' else '127.0.0.1'
+        server = uvicorn.Server(uvicorn.Config(app, host=bind, port=8768, access_log=False))
+        def stop_when_requested():
+            while not lifecycle.stopped() and not server.should_exit:
+                lifecycle.wait(.2)
+            app.state.speech_stop.set()
+            server.should_exit = True
+        monitor = Thread(target=stop_when_requested, name='api-stop', daemon=True)
+        monitor.start()
+        try: server.run()
+        finally:
+            server.should_exit = True
+            monitor.join(timeout=1)
+
+if __name__ == "__main__":
+    main()

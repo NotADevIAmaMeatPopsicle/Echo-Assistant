@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible problem with Echo Assistant
+body:
+  - type: markdown
+    attributes:
+      value: "Do not attach credentials, configuration folders, recordings, session databases or full flash backups. Use Security → Report a vulnerability for sensitive findings."
+  - type: input
+    id: environment
+    attributes:
+      label: Versions and hardware
+      description: Board model/revision, firmware/host version and host OS. Omit serial numbers and network addresses.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Observed behavior
+      description: Include sanitized error messages; do not include raw microphone or conversation data.

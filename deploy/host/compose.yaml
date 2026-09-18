@@ -1,0 +1,37 @@
+name: echo
+services:
+  api:
+    build:
+      context: context
+      dockerfile: Dockerfile
+    image: echo-host:validation-0.1
+    container_name: echo-api
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45s
+    ports:
+      - "127.0.0.1:18668:8768"
+    volumes:
+      - host_data:/opt/echo/local
+      - models:/models:ro
+    tmpfs:
+      - /run/echo:rw,nosuid,nodev,size=16777216,uid=10000,gid=10000,mode=0700
+      - /tmp:rw,nosuid,nodev,size=268435456,mode=1777
+    mem_limit: 3072m
+    memswap_limit: 3072m
+    cpus: 4
+    pids_limit: 256
+    logging:
+      driver: none
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8768/health',timeout=2).read()"]
+      interval: 15s
+      timeout: 4s
+      retries: 3
+      start_period: 120s
+volumes:
+  host_data:
+    name: echo_host_data
+  models:
+    name: echo_models
+    external: true

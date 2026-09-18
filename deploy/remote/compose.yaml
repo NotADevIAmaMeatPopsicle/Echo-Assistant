@@ -1,0 +1,37 @@
+name: echo
+services:
+  agent:
+    build: .
+    image: echo-hermes:trial-0.1
+    container_name: echo-agent
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18642:8642"
+    environment:
+      HERMES_HOME: /opt/data
+      HOME: /opt/data
+      PYTHONDONTWRITEBYTECODE: "1"
+    tmpfs:
+      - /opt/data:rw,nosuid,nodev,size=536870912,uid=10000,gid=10000,mode=0700
+      - /tmp:rw,nosuid,nodev,size=268435456,mode=1777
+    # Package installs/cache must not exhaust the volatile conversation home.
+    volumes:
+      - agent_packages:/opt/data/lazy-packages
+      - agent_uv_cache:/opt/data/home/.cache/uv
+    mem_limit: 2560m
+    memswap_limit: 2560m
+    cpus: 2
+    pids_limit: 256
+    logging:
+      driver: none
+    healthcheck:
+      test: ["CMD", "/opt/hermes/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health',timeout=2).read()"]
+      interval: 15s
+      timeout: 4s
+      retries: 3
+      start_period: 90s
+volumes:
+  agent_packages:
+    name: echo_agent_packages
+  agent_uv_cache:
+    name: echo_agent_uv_cache

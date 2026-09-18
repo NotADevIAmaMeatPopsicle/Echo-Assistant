@@ -1,0 +1,9 @@
+{
+  "enabled": false,
+  "base_url": "http://homeassistant.local:8123",
+  "entities": {
+    "thermostat": "climate.living_room",
+    "soundbar": "media_player.soundbar",
+    "weather": "weather.home"
+  }
+}

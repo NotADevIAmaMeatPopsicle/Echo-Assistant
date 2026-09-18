@@ -1,0 +1,14 @@
+.git
+.env*
+local
+backups
+output
+.venv
+.pio
+.playwright-cli
+__pycache__
+*.log
+*.key
+*.pem
+*.dpapi
+*.echo-backup
