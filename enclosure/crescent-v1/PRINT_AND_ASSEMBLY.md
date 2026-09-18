@@ -1,10 +1,24 @@
 # Crescent v1 · M7 print and assembly guide
 
-Prepared 17 September 2026 for the Waveshare ESP32-S3-Touch-AMOLED-1.75, a salvaged Google Home Mini speaker module, and CS-MSX200SL battery. This is the USB-aligned Crescent concept developed into printable solids. Physical assembly and cured-resin fit remain unverified.
+Prepared 17 September 2026 for the Waveshare ESP32-S3-Touch-AMOLED-1.75, a salvaged Google Home Mini speaker module, and CS-MSX200SL battery. This is the USB-aligned Crescent concept developed into printable solids. The photographs below show an assembled prototype with its display running. Check cured-resin fit for your own print and parts; the photographs do not certify every released part or mounting option.
 
 **Start with the small fit kit. These are STL models; add supports and slice for the Photon Mono M7 before printing. No supports, rafts, exposure settings, or sliced printer job are included.**
 
-![Front and rear of the printed geometry](preview/Crescent-print-model-overview.png)
+## Photographed prototype
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="../../docs/images/prototype-front.jpg"><img src="../../docs/images/prototype-front.jpg" alt="Front of the physical Echo prototype with the display running above the speaker" width="460"></a><br><strong>Powered display and speaker stand</strong></td>
+<td width="50%" valign="top"><a href="../../docs/images/prototype-wiring-rear.jpg"><img src="../../docs/images/prototype-wiring-rear.jpg" alt="Rear prototype showing board access, cable routing and battery cradle" width="460"></a><br><strong>Board access and cable route</strong></td>
+</tr>
+</table>
+
+The translucent print keeps the board, speaker housing, battery and leads visible.
+Temporary restraints are shown during assembly. Use the fitting and strain-relief
+steps below when building your own; these photos show placement, not an electrical
+wiring schematic or completed endurance test.
+
+![CAD front and rear views of the printable geometry](preview/Crescent-print-model-overview.png)
 
 ## Files and quantities
 
@@ -74,6 +88,12 @@ If using the 4 mm speaker spacers, replace the four M3 × 8 post screws with M3 
 
 ![Board, carrier and button fit reference](preview/03-carrier-board-fit.png)
 
+![Photograph of the Waveshare board seated in the printed carrier, showing the speaker and battery sockets, USB plug and button guides](../../docs/images/prototype-board-rear.jpg)
+
+*The physical carrier from behind. The board's SPK and BAT labels, USB connection,
+and access to the two button guides are visible. Follow the
+[hardware guide](../../docs/HARDWARE.md) for electrical connections and polarity.*
+
 ## 5. Fit the speaker
 
 Use the **separate speaker module and its original acoustic housing**, not the full Google Home Mini electronics assembly. The adjustable posts accommodate different mounting positions; check your module before printing the full stand.
@@ -83,7 +103,7 @@ Use the **separate speaker module and its original acoustic housing**, not the f
 3. Set the speaker's mounting holes onto the pins. Move the arms and posts to match the actual hole pattern, then gently tighten. Use the 2.0 mm pin alternative if 2.4 mm is too large. Pins are tapered locating features, not press fits. The wider post shoulders carry the mounting lugs.
 4. Check clearance under the housing and around the cone. Add the spacers if the housing needs extra height. Route the speaker wire into the rear arm channel without touching the cone. Add a removable soft restraint around suitable rigid housing features if the assembly must stay captive when lifted or carried; the pins alone allow the speaker to lift off.
 
-**Speaker fit remains provisional:** public specifications give a 98 mm complete Home Mini and 40 mm driver, not the loose black module's dimensions or hole coordinates. The earlier visual study used an estimated 86 mm housing and 24 mm depth. The adjustable mounts avoid committing to guessed fixed hole centers, but the actual housing, lug thickness, clearance and stability still need a dry fit. Keep the original acoustic enclosure intact; this open stand does not supply a sealed speaker chamber.
+**Dry-fit your speaker module:** the prototype photos show one salvaged housing in the stand. Public specifications give a 98 mm complete Home Mini and 40 mm driver, not the loose black module's dimensions or hole coordinates. The earlier visual study used an estimated 86 mm housing and 24 mm depth. The adjustable mounts avoid committing to guessed fixed hole centers; check your housing, lug thickness, clearance and stability before tightening. The photographs do not verify every post or spacer option. Keep the original acoustic enclosure intact; this open stand does not supply a sealed speaker chamber.
 
 ## 6. Fit the battery and route cables
 
@@ -101,7 +121,7 @@ All 12 STL files were exported and reloaded: each is watertight, consistently wo
 
 See `verification.json`, `parts-manifest.json` and `M7-orientation.json` for details. These checks establish mesh validity and sampled CAD clearance; they do not establish physical resin strength, switch force, acoustic performance or final hardware fit.
 
-The preview images show the exported print geometry. Teal and copper distinguish printed parts; choose any resin colour. The board in the close-up and the metal screw heads are references, not printable parts. The M7 plate preview deliberately shows the orientation without supports.
+The images in `preview/` show the exported print geometry. Teal and copper distinguish printed parts; choose any resin colour. The board in the CAD close-up and the metal screw heads are references, not printable parts. The M7 plate preview deliberately shows the orientation without supports. The separate prototype photographs show physical assembly and a powered screen; resin durability, acoustic performance, battery runtime and repeatable fit across prints still need testing.
 
 The `source/` directory contains the reproducible geometry generator and verification scripts. `STL/` and `M7-oriented/` are the files intended for your slicer. No supports, slicer project, firmware, or electrical components are included in these models.
 

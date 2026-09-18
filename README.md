@@ -13,14 +13,26 @@ conversation, devices, memory, and customization in one place.
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
-**[Web app](#the-web-workspace)** · **[Device screens](#on-the-device)** ·
+**[Prototype](#the-built-prototype)** · **[Web app](#the-web-workspace)** · **[Device screens](#on-the-device)** ·
 **[Build your own](#build-your-own)** · **[Enclosure](#the-crescent-enclosure)** ·
 **[Documentation](#documentation)**
 
-![Echo web app showing a conversation and the round assistant display](docs/images/web-conversation.png)
+## The built prototype
 
-*The working web interface, shown with sample data. Web screenshots come from
-the included app; device galleries use its shared firmware renderer.*
+The Crescent stand, printed and assembled: a working round display above a
+repurposed Google Home Mini speaker, with the board and cable route accessible
+from the back. Click either photo for a closer look.
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="docs/images/prototype-front.jpg"><img src="docs/images/prototype-front.jpg" alt="Assembled Echo prototype with its live ready screen, translucent Crescent stand, speaker and battery" width="460"></a><br><strong>Echo on the desk</strong><br>The actual display running the ready screen.</td>
+<td width="50%" valign="top"><a href="docs/images/prototype-wiring-rear.jpg"><img src="docs/images/prototype-wiring-rear.jpg" alt="Rear of the assembled prototype showing the exposed board, wiring down the arm, speaker housing and battery cradle" width="460"></a><br><strong>Inside the build</strong><br>Open access to the board, wiring and battery cradle.</td>
+</tr>
+</table>
+
+These are photographs of the current prototype, including its temporary cable
+restraints. The [assembly walkthrough](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md)
+pairs close-ups with printable models and fitting instructions.
 
 ## What you can do with Echo
 
@@ -43,6 +55,11 @@ Home Assistant, Spotify, and Hermes are optional additions to the basic setup.
 Talk to Echo quietly, organize its memory, connect devices, and shape its
 personality from a browser. The workspace is available beside the device or
 through [private access from selected Tailscale devices](docs/TAILNET_ACCESS.md).
+
+![Echo web app showing a conversation and the round assistant display](docs/images/web-conversation.png)
+
+*The working web interface, shown with sample data. Web screenshots come from
+the included app; device galleries use its shared firmware renderer.*
 
 ### Conversation and home control
 
@@ -266,19 +283,21 @@ Editable Python geometry and digital verification records accompany the meshes.
 </tr>
 </table>
 
-These images are CAD renders. The design targets a salvaged Google Home Mini
+The enclosure images in this section are CAD renders; the photographs above
+show the assembled prototype. The design targets a salvaged Google Home Mini
 speaker module in its original acoustic housing and a CS-MSX200SL-size battery.
-Speaker mounting is adjustable. Physical resin fit, strength, stability, and
-acoustics remain unverified. Add supports and slice for your printer; no sliced
-print job is supplied.
+Speaker mounting is adjustable. Check fit with your own parts and cured resin;
+long-term strength, stability, and acoustic performance remain unverified.
+Add supports and slice for your printer; no sliced print job is supplied.
 
 ## Build status and boundaries
 
 **Alpha, under active development.** The firmware and host have been exercised
 on the supported board. Touch navigation, core voice flow, home integrations,
 and the companion UI are implemented. Fresh-install coverage, long playback
-sessions, room-distance wake performance, battery operation, and enclosure fit
-remain areas for further testing. [Release status](docs/RELEASE.md) tracks details.
+sessions, room-distance wake performance, battery operation, and repeatable
+enclosure fit remain areas for further testing.
+[Release status](docs/RELEASE.md) tracks details.
 
 Home controls use explicit permissions and report action results. Saved facts
 and provider credentials are encrypted at rest. Keep configuration, keys,

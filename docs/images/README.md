@@ -1,6 +1,13 @@
 # Public illustrations
 
 - `echo.svg` is the original illustrative hero artwork.
+- `prototype-front.jpg`, `prototype-board-rear.jpg`, and
+  `prototype-wiring-rear.jpg` are photographs supplied for publication of the
+  physical Echo prototype. They show the live ready screen, board in its printed
+  carrier, salvaged speaker, battery cradle, and cable route. Publication copies
+  are cropped and re-encoded without EXIF or location metadata; unique QR/serial
+  labels are covered in the rear assembly image. No hardware or screen content
+  has been generated or composited. Original photographs are not distributed.
 - `web-*.png` are browser captures of the production web UI served by
   `tools/preview_web.py` with fixed sample data. Detail images capture real
   panels/fieldsets. See [the web gallery](../WEB_UI.md) for the capture workflow.
@@ -8,7 +15,8 @@
   from the shared firmware C++ renderer with synthetic fixtures. They contain no
   screenshots of a user's network, accounts, keys, conversations, or home state.
 - Enclosure renders live in `enclosure/crescent-v1/preview`. They depict exported
-  geometry and reference electronics, not photographs of a completed print.
+  geometry and reference electronics. They are separate from the prototype
+  photographs above.
 
 To refresh the screen galleries on Windows with MSVC C++ tools and Pillow:
 

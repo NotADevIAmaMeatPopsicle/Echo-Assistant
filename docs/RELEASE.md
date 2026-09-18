@@ -62,3 +62,12 @@ The enclosure's vendor STEP, local configuration, credentials, node allowlist,
 personal screenshots, and live runtime data are excluded. `SHA256SUMS.json` in
 the enclosure folder describes the sanitized public package; the original
 `verification.json` is a digital-check record, not a physical fit certificate.
+
+## Physical prototype gallery
+
+The README and assembly guide now include publication copies of three prototype
+photographs: the powered display and speaker stand, rear board detail, and cable
+route with battery cradle. These document an assembled print and a working
+display. They do not establish battery runtime, acoustic performance, durability,
+or repeatable fit of every released mounting option. Photo metadata is removed
+and unique QR/serial labels are obscured; original photos remain private.
