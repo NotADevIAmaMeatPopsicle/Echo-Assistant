@@ -24,14 +24,19 @@ PATTERNS = {
 
 
 def inspect(staged=True):
-    result = subprocess.run(['git','ls-files','-z'],cwd=ROOT,capture_output=True)
+    command = ['git', 'ls-files', '-z']
+    if not staged:
+        command += ['--cached', '--others', '--exclude-standard']
+    result = subprocess.run(command,cwd=ROOT,capture_output=True)
     indexed = result.returncode == 0 and bool(result.stdout)
-    paths = result.stdout.decode().strip('\0').split('\0') if indexed else [
+    paths = sorted(set(result.stdout.decode().strip('\0').split('\0'))) if indexed else [
         p.relative_to(ROOT).as_posix() for p in ROOT.rglob('*')
         if p.is_file() and not any(part in PRIVATE|{'.git'} for part in p.relative_to(ROOT).parts)]
     findings=[]
     for name in paths:
         p=Path(name)
+        if not staged and not (ROOT/p).exists():
+            continue  # A tracked file removed from the proposed worktree.
         if (set(p.parts)&PRIVATE or p.suffix.lower() in FORBIDDEN_SUFFIXES
             or (p.name.startswith('.env') and p.name!='.env.example')
             or p.name.startswith('secrets.')

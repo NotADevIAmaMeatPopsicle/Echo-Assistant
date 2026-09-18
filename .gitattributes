@@ -6,3 +6,9 @@
 *.ps1 text eol=crlf
 *.cmd text eol=crlf
 *.wav binary
+*.stl binary
+*.png binary
+*.gif binary
+enclosure/**/*.json text eol=lf
+enclosure/**/*.md text eol=lf
+enclosure/**/*.txt text eol=lf

@@ -1,6 +1,6 @@
-"""Open Echo's native Hermes dashboard through an on-demand loopback tunnel.
+"""Open Echo's Hermes WebUI through an on-demand loopback tunnel.
 
-Docker exec carries each TCP stream over the existing authenticated Remote host
+Docker exec carries each TCP stream over the existing authenticated remote host
 connection. No new container ports, passwords, model calls or gateway restart.
 """
 import argparse
@@ -18,40 +18,23 @@ import webbrowser
 import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
-PORT = 18645
+sys.path.insert(0, str(ROOT))
+from backend import deployment
+PORT = 18646
 URL = f'http://127.0.0.1:{PORT}/'
-DOCKER = ['docker', '--context', 'remote', 'exec', '-i', 'echo-agent',
+DOCKER = ['docker', '--context', deployment.docker_context(), 'exec', '-i', 'echo-agent',
           '/opt/hermes/.venv/bin/python', '-u', '-c']
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 
-# All dashboard state/output stays in the container's existing volatile home.
-START = r'''
-import fcntl,socket,subprocess,time
-from pathlib import Path
-def ready():
-    try:
-        with socket.create_connection(('127.0.0.1',9119),timeout=1): return True
-    except OSError: return False
-with open('/opt/data/.echo-dashboard-start.lock','a') as lock:
- fcntl.flock(lock,fcntl.LOCK_EX)
- if not ready():
-    with open('/opt/data/dashboard.log','ab',buffering=0) as log:
-        child=subprocess.Popen(['/opt/hermes/.venv/bin/hermes','dashboard',
-            '--host','127.0.0.1','--port','9119','--skip-build','--no-open'],
-            stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True,
-            cwd='/opt/data')
-    for _ in range(80):
-        if ready(): break
-        time.sleep(.25)
-    else: raise SystemExit('Hermes dashboard did not start; inspect its volatile startup log.')
-'''
+# All WebUI state/output stays in the container's existing volatile home.
+START = "import runpy; runpy.run_path('/opt/echo/start_webui.py', run_name='__main__')\n"
 
-# A browser refresh also recovers a stopped dashboard, without replaying an
+# A browser refresh also recovers a stopped WebUI, without replaying an
 # HTTP request. The container-side lock prevents concurrent browser sockets
-# from launching multiple dashboard processes. START writes no protocol bytes.
+# from launching multiple WebUI processes. START writes no protocol bytes.
 RELAY = START + r'''
 import os,socket,threading
-s=socket.create_connection(('127.0.0.1',9119),timeout=10)
+s=socket.create_connection(('127.0.0.1',8787),timeout=10)
 s.settimeout(None)
 def upstream():
     try:
@@ -122,40 +105,41 @@ class Stream(socketserver.BaseRequestHandler):
             self.server.slots.release()
 
 
-def ensure_dashboard():
+def ensure_webui():
     result = subprocess.run(DOCKER+[START], capture_output=True, timeout=35,
                             creationflags=FLAGS)
     if result.returncode:
-        raise RuntimeError('Could not start the Hermes dashboard inside echo-agent.')
+        raise RuntimeError('Could not start the Hermes WebUI inside echo-agent.')
 
 
 def ready():
     try:
         with httpx.Client(trust_env=False, timeout=15) as client:
             response = client.get(URL)
-            return response.status_code == 200 and 'hermes' in response.text.lower()
+            return response.status_code == 200 and 'Hermes Web' in response.text
     except httpx.HTTPError: return False
 
 
 def launch_url():
-    ensure_dashboard()
+    ensure_webui()
     try:
         with socket.create_connection(('127.0.0.1', PORT), timeout=1): occupied = True
     except OSError: occupied = False
     if occupied:
-        if not ready(): raise RuntimeError('The local dashboard port is occupied by another service.')
+        if not ready(): raise RuntimeError('The local WebUI port is occupied by another service.')
         return URL
-    with open(ROOT/'local/hermes-dashboard-tunnel.log', 'ab') as log:
+    (ROOT / 'local').mkdir(exist_ok=True)
+    with open(ROOT/'local/hermes-webui-tunnel.log', 'ab') as log:
         child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--serve'],
             cwd=ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
             creationflags=FLAGS)
-    (ROOT/'local/hermes-dashboard-tunnel.json').write_text(json.dumps(
+    (ROOT/'local/hermes-webui-tunnel.json').write_text(json.dumps(
         {'pid': child.pid, 'port': PORT, 'container': 'echo-agent'}))
     for _ in range(12):
         if child.poll() is not None: break
         time.sleep(.25)
         if ready(): return URL
-    raise RuntimeError('The private Hermes dashboard tunnel did not become ready.')
+    raise RuntimeError('The private Hermes WebUI tunnel did not become ready.')
 
 
 if __name__ == '__main__':

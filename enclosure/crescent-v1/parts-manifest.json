@@ -1,0 +1,259 @@
+{
+  "units": "mm",
+  "parts": {
+    "01_Crescent_main_stand": {
+      "quantity": 1,
+      "description": "One-piece open stand: base, arm, screen carrier and battery cradle",
+      "volume_ml": 33.635,
+      "triangles": 18940,
+      "bounds_mm": [
+        118.343,
+        125.0,
+        138.672
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "fa17da9f16069a0fa368a255c8d2990bdb958db5247cee7eecebaffa38a4650d"
+    },
+    "02_Screen_snap_ring": {
+      "quantity": 1,
+      "description": "Three long low-deflection circumferential fingers; test cured resin first",
+      "volume_ml": 1.277,
+      "triangles": 7000,
+      "bounds_mm": [
+        55.5,
+        55.5,
+        5.15
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "6d054cc95506f9fa01282a7a48e70d956172ab6403d66af769c9a572edb605f5"
+    },
+    "03_Button_plunger": {
+      "quantity": 2,
+      "description": "Rigid radial plunger; rear-load before installing keepers",
+      "volume_ml": 0.141,
+      "triangles": 308,
+      "bounds_mm": [
+        11.42,
+        6.4,
+        5.6
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "523084642fbecbc987462594e9fdd1b6f6443a8278849164c8aa697a7a1aaafc"
+    },
+    "04_Button_rear_keeper": {
+      "quantity": 2,
+      "description": "M2-bolted rear keeper, two M2 nuts per button",
+      "volume_ml": 0.251,
+      "triangles": 740,
+      "bounds_mm": [
+        8.2,
+        14.6,
+        3.75
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "8380e341b70029184a1494cd86784a8ba95534b9c8a09292e00253382d073e51"
+    },
+    "05_Speaker_adjustable_arm": {
+      "quantity": 4,
+      "description": "M3 angular clamp plus radial slot for locating post",
+      "volume_ml": 1.071,
+      "triangles": 636,
+      "bounds_mm": [
+        30.0,
+        13.0,
+        3.4
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "4a7307384d7a7f5b4a315f24224580995a781fd2624284545949fec8758d86dc"
+    },
+    "06_Speaker_post_2p4mm": {
+      "quantity": 4,
+      "description": "2.4 mm tapered locating pin with side-loaded M3 nut",
+      "volume_ml": 0.525,
+      "triangles": 1284,
+      "bounds_mm": [
+        9.6,
+        9.6,
+        12.5
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "9bd05f958771fb1964a1dd9ee25d1a7f95104d3bfc0742a7f95b0dd65226f05f"
+    },
+    "07_Speaker_post_2p0mm_OPTION": {
+      "quantity": 4,
+      "description": "Use instead of 06 if speaker holes require smaller pins",
+      "volume_ml": 0.52,
+      "triangles": 1284,
+      "bounds_mm": [
+        9.6,
+        9.6,
+        12.5
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "6c7fa1f6f1101efd1f1601264d12c50f4399d29552b42f6b9d6c225c79fe2850"
+    },
+    "08_Speaker_height_spacer_4mm_OPTION": {
+      "quantity": 4,
+      "description": "Optional 4 mm post lift; choose longer M3 screw if used",
+      "volume_ml": 0.249,
+      "triangles": 2048,
+      "bounds_mm": [
+        9.6,
+        9.6,
+        4.0
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "1a6c8dbd7cf3f97d7eb60c9e8f745c61b2bc65517e088b85ddf6f5340e3bafe8"
+    },
+    "09_Screen_carrier_FIT_TEST": {
+      "quantity": 1,
+      "description": "Screen carrier plus upper USB pocket; print with 02-04 first to check board, actual cable, ring and buttons",
+      "volume_ml": 7.599,
+      "triangles": 9188,
+      "bounds_mm": [
+        94.171,
+        54.6,
+        17.672
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "65c3b954fdc2c799adcfd6b0445f69c1248ea916e25faf85e18fb50f1ea73afb"
+    },
+    "GAUGE_49p8mm": {
+      "quantity": 1,
+      "description": "Optional entry-clearance gauge; production carrier uses 50.2 mm bore",
+      "volume_ml": 1.054,
+      "triangles": 3072,
+      "bounds_mm": [
+        55.0,
+        55.0,
+        2.5
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "c525ff33d050d6ac67dcfc84a8d2be450f0cdf53f6869300dbc6996d5550445d"
+    },
+    "GAUGE_50p2mm": {
+      "quantity": 1,
+      "description": "Optional entry-clearance gauge; production carrier uses 50.2 mm bore",
+      "volume_ml": 1.062,
+      "triangles": 3072,
+      "bounds_mm": [
+        55.4,
+        55.4,
+        2.5
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "ef23285269e0eaa49c71fd7df77491a7e740dbc0c0b76af64527d80a7f32006d"
+    },
+    "GAUGE_50p6mm": {
+      "quantity": 1,
+      "description": "Optional entry-clearance gauge; production carrier uses 50.2 mm bore",
+      "volume_ml": 1.071,
+      "triangles": 3072,
+      "bounds_mm": [
+        55.8,
+        55.8,
+        2.5
+      ],
+      "watertight": true,
+      "components": 1,
+      "sha256": "0eafb308cca82f4822232fbef7cb6927d83ffebe79685f6711267b010db6ebc8"
+    }
+  },
+  "assembly": [
+    {
+      "part": "01_Crescent_main_stand",
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "part": "02_Screen_snap_ring",
+      "translation": [
+        0,
+        4,
+        112
+      ],
+      "rotation": [
+        78,
+        0,
+        0
+      ]
+    },
+    {
+      "part": "03_Button_plunger",
+      "translation": [
+        0,
+        4,
+        112
+      ],
+      "rotation": [
+        78,
+        0,
+        0
+      ],
+      "pre_z_rotation": -34
+    },
+    {
+      "part": "03_Button_plunger",
+      "translation": [
+        0,
+        4,
+        112
+      ],
+      "rotation": [
+        78,
+        0,
+        0
+      ],
+      "pre_z_rotation": 34
+    },
+    {
+      "part": "04_Button_rear_keeper",
+      "translation": [
+        0,
+        4,
+        112
+      ],
+      "rotation": [
+        78,
+        0,
+        0
+      ],
+      "pre_z_rotation": -34
+    },
+    {
+      "part": "04_Button_rear_keeper",
+      "translation": [
+        0,
+        4,
+        112
+      ],
+      "rotation": [
+        78,
+        0,
+        0
+      ],
+      "pre_z_rotation": 34
+    }
+  ],
+  "nominal_resin_density_g_ml": 1.1,
+  "provisional_speaker": true
+}

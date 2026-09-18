@@ -1,0 +1,122 @@
+{
+  "01_Crescent_main_stand": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 33.63509413388555,
+    "minimum_z": 0.0
+  },
+  "02_Screen_snap_ring": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 1.2773356293213676,
+    "minimum_z": 0.0
+  },
+  "03_Button_plunger": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 0.14148149124761417,
+    "minimum_z": 0.0
+  },
+  "04_Button_rear_keeper": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 0.25137846944622017,
+    "minimum_z": 0.0
+  },
+  "05_Speaker_adjustable_arm": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 1.070789407560939,
+    "minimum_z": 0.0
+  },
+  "06_Speaker_post_2p4mm": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 0.5249993690769098,
+    "minimum_z": 0.0
+  },
+  "07_Speaker_post_2p0mm_OPTION": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 0.5204984221499322,
+    "minimum_z": 0.0
+  },
+  "08_Speaker_height_spacer_4mm_OPTION": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 0.24878915546629277,
+    "minimum_z": 0.0
+  },
+  "09_Screen_carrier_FIT_TEST": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 7.599191396945484,
+    "minimum_z": 0.0
+  },
+  "GAUGE_49p8mm": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 1.0544441760549241,
+    "minimum_z": 0.0
+  },
+  "GAUGE_50p2mm": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 1.0624878109705054,
+    "minimum_z": 0.0
+  },
+  "GAUGE_50p6mm": {
+    "watertight_after_STL_reload": true,
+    "winding_consistent": true,
+    "components": 1,
+    "volume_ml": 1.0705314547650888,
+    "minimum_z": 0.0
+  },
+  "assembly_intersections_mm3": {
+    "ring_with_carrier": 0.0,
+    "plunger_rest_with_carrier": 0.0,
+    "plunger_fully_pressed_with_carrier": 0.0,
+    "plunger_outward_stop_with_carrier": 0.0,
+    "keeper_with_carrier": 0.0,
+    "keeper_with_plunger": 0.0
+  },
+  "USB_plug_clearance_intersection_mm3": 0.0,
+  "USB_insertion_path_mm3": {
+    "0": 0.0,
+    "2": 0.0,
+    "4": 0.0,
+    "6": 0.0
+  },
+  "arm_with_retainer_intersection_mm3": 0.0,
+  "manufacturer_CAD_check": {
+    "solids_in_STEP": 666,
+    "boundary_solids_checked": 31,
+    "interferences": [],
+    "front_loading_path_interferences": [],
+    "failed_solid_conversions": [],
+    "button_contact_check": [
+      {
+        "solid": 277,
+        "rest_overlap": 0.0,
+        "pressed_overlap": 0.45183304
+      },
+      {
+        "solid": 278,
+        "rest_overlap": 0.0,
+        "pressed_overlap": 0.59533659
+      }
+    ],
+    "method": "Exact source BRep tessellated at 0.015 mm, Manifold volume intersections; interior solids outside enclosure contact region excluded by conservative bounding boxes. Front-loading path sampled every 0.5 mm over 12.5 mm."
+  }
+}

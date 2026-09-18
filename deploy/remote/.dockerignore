@@ -2,5 +2,7 @@
 !Dockerfile
 !bootstrap.py
 !home_tools.py
+!install_webui.py
+!start_webui.py
 !backend/
 !backend/*.py

@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 def worker_python(root, kind):
-    if kind not in {'tts','aec'}: raise ValueError('Unknown worker runtime')
+    if kind not in {'tts','aec','stt'}: raise ValueError('Unknown worker runtime')
     configured = os.environ.get('ECHO_'+kind.upper()+'_PYTHON')
     if configured:
         path = Path(configured)

@@ -40,6 +40,7 @@ from .agent_runtime import RuntimeUnavailable
 from .agent_apply import AgentApply
 from .music_commands import request as request_music
 from .speaker_check import SpeakerCheck
+from .whisper import available as whisper_available
 from .research_tasks import ResearchTasks
 from . import __version__
 
@@ -515,9 +516,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
 
     @app.put('/v1/settings', dependencies=[Depends(authorize)])
     def save_settings(request: SettingsUpdate):
-        if request.settings.stt_engine == 'whisper' and (not runtime_root or not
-                (runtime_root/'local/stt-python/Scripts/python.exe').is_file() or not
-                (runtime_root/'local/models/faster-whisper-base.en/model.bin').is_file()):
+        if request.settings.stt_engine == 'whisper' and not whisper_available(runtime_root):
             raise HTTPException(422, 'The local Whisper runtime and model must be installed first')
         try:
             validate_selection(request.settings,runtime_root,speech_voices())
@@ -530,9 +529,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         voices = speech_voices()
         return {'voices': voices, 'engines':tts_catalog(runtime_root,voices), 'stt': [
             {'id': 'vosk', 'name': 'Vosk · low latency', 'available': True},
-            {'id': 'whisper', 'name': 'Whisper base.en · CPU', 'available': bool(runtime_root and
-              (runtime_root/'local/stt-python/Scripts/python.exe').is_file() and
-              (runtime_root/'local/models/faster-whisper-base.en/model.bin').is_file())}],
+            {'id': 'whisper', 'name': 'Whisper base.en · CPU', 'available': whisper_available(runtime_root)}],
             'active_stt': voice.get('engine', 'disconnected'), 'tts': selected_status(store.snapshot()[0],runtime_root), 'apply_status': speech_restart.state}
 
     class VoiceCheck(BaseModel):

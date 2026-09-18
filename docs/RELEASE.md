@@ -36,3 +36,29 @@ security audit or production hardware certification.
   reviewed; runtime state and the original repository history were excluded.
 
 GitHub CI repeats the host, firmware and secret checks on subsequent changes.
+
+## Public source update, 18 September 2026
+
+- Portable Linux Whisper worker availability, offline execution, and pinned CPU
+  dependencies. Model import adds optional Whisper files without requiring them
+  for Vosk-only installations or recopying complete directories.
+- Room-light requests resolve all controllable room members before acting.
+- Checksum-pinned alternate Hermes WebUI plus the retained native dashboard.
+- Optional exact-device Tailscale HTTPS gateway, access checks, and setup guide.
+- USB Wi-Fi pairing through an explicitly selected remote Windows computer.
+- Crescent v1 printable enclosure package, editable source, fit kit, M7
+  orientations, illustrated assembly guide, and original digital-check records.
+- README galleries of 18 firmware screens generated with synthetic data.
+- Publication guard now includes untracked files in its pre-staging check, with
+  regression coverage for both worktree and staged-byte inspection.
+
+The host suite passed locally (325 tests, seven skips), with five gateway checks
+and two publication-guard checks passing in a separate isolated environment.
+The firmware built successfully and the native scene renderer passed its bounds
+and interaction checks. No board was flashed, audio played, or home device
+operated for this publication. Enclosure physical acceptance remains open.
+
+The enclosure's vendor STEP, local configuration, credentials, node allowlist,
+personal screenshots, and live runtime data are excluded. `SHA256SUMS.json` in
+the enclosure folder describes the sanitized public package; the original
+`verification.json` is a digital-check record, not a physical fit certificate.

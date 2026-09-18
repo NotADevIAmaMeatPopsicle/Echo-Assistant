@@ -1,10 +1,14 @@
 """Isolated offline Whisper worker. Fixed local assets, framed RAM-only PCM, no downloads."""
 import json
+import logging
 from pathlib import Path
+import socket
 import struct
 import sys
-import numpy as np
-from faster_whisper import WhisperModel
+
+
+def block_network(*args, **kwargs):
+    raise RuntimeError('Network is disabled in the local recognition worker')
 
 
 def read_exact(size):
@@ -23,9 +27,13 @@ def send(value):
 
 
 def main():
+    logging.disable(logging.CRITICAL)
+    socket.socket.connect = socket.socket.connect_ex = socket.create_connection = socket.getaddrinfo = block_network
+    import numpy as np
+    from faster_whisper import WhisperModel
     root = Path(__file__).resolve().parents[1]
     model = WhisperModel(str(root/'local/models/faster-whisper-base.en'), device='cpu', compute_type='int8',
-                         cpu_threads=4, num_workers=1, local_files_only=True)
+                         cpu_threads=2, num_workers=1, local_files_only=True)
     send({'ready': True})
     while True:
         header = read_exact(4)

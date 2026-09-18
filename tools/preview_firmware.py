@@ -22,7 +22,7 @@ def main():
     subprocess.run(['cmd','/d','/c',str(build)],cwd=OUT,check=True)
     subprocess.run([str(OUT/'scene.exe'),str(OUT)],check=True)
     preview=ROOT/'preview/firmware'
-    preview.mkdir(exist_ok=True)
+    preview.mkdir(parents=True,exist_ok=True)
     states=['ready','listening','thinking','speaking','muted','offline','reply','notice','music','alarm','recording','playback','chime','mic_unavailable','long-reply']
     controls=['home','thermostat','thermostat-modes','bose','bose-volume','weather','music-controls','settings','connection','timers','new-timer','lights','speakers']
     states+=controls+[s+'-offline' for s in controls]+['thermostat-pending','thermostat-failed','thermostat-unconfirmed','music-muted']

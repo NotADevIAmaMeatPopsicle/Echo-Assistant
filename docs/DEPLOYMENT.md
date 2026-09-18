@@ -54,7 +54,8 @@ restore remains an acceptance item.
 ## Browser access and storage
 
 - `tools/open_ui.py` opens an authenticated Echo UI tunnel at `http://localhost:18669/`.
-- `tools/open_hermes_ui.py` opens the native dashboard at `http://127.0.0.1:18645/`.
+- `tools/open_hermes_ui.py` opens the alternate Hermes WebUI at `http://127.0.0.1:18646/`.
+- `tools/open_hermes_dashboard.py` opens the native dashboard at `http://127.0.0.1:18645/`.
 - Containers expose management endpoints on host loopback. The desktop helpers
   forward them through your authenticated SSH/Docker connection.
 - The board listener is 8769 and Spotify's receiver is 18899 on the explicitly
@@ -66,3 +67,31 @@ disk-backed volumes for Python packages and uv cache. Its memory ceiling is
 Provision sufficient physical RAM for these plus other host applications.
 Native dashboard configuration can be overwritten by Echo's saved configuration
 on recovery. Use Echo Settings for durable model/personality changes.
+
+The alternate WebUI comes from a checksum-pinned upstream source archive during
+the agent image build. Rebuild the agent image to add it to an older deployment.
+Both UIs use the same running Hermes gateway; neither starts another assistant
+on the client laptop. UI session state remains in the container's volatile home.
+
+For HTTPS access from selected phones/computers, see
+[Tailscale access](TAILNET_ACCESS.md). Do not expose either unauthenticated
+container-loopback UI directly to a LAN or the Internet.
+
+## Optional Whisper on the Linux host
+
+The API image includes the CPU-only faster-whisper runtime pinned in
+`config/stt-linux.lock.txt`. Prepare the model using the explicit procedure in
+[local setup](SETUP.md), then run the model importer again. It adds
+`faster-whisper-base.en` when that local directory exists, copies only missing
+model directories, and preserves an existing volume if hashes differ.
+
+Select Whisper in Echo Settings after importing. Availability requires the
+worker interpreter and all four model files: `model.bin`, `config.json`,
+`tokenizer.json`, and `vocabulary.txt`. `ECHO_STT_PYTHON` selects an absolute
+interpreter path; the container sets it automatically. The worker blocks network
+access, uses two CPU threads, and receives audio in memory. Vosk still handles
+wake detection and end-of-utterance detection. No model weights are in Git.
+
+`tools/check_remote_stt.py` is an explicit diagnostic that starts a disposable,
+network-disabled container to transcribe synthetic speech and silence. It does
+not use the microphone, play audio, or contact Home Assistant.

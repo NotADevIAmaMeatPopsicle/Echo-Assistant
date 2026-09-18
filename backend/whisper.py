@@ -1,20 +1,32 @@
 """Whisper command transcription behind the existing Vosk end-of-utterance detector."""
 import json
+import os
 from pathlib import Path
 import queue
 import struct
 import subprocess
 import threading
 from .transcription import accepted_transcription
+from .runtime_paths import worker_python
+
+
+def available(root):
+    return bool(root and worker_python(root, 'stt').is_file() and all(
+        (root/'local/models/faster-whisper-base.en'/name).is_file()
+        for name in ('model.bin', 'config.json', 'tokenizer.json', 'vocabulary.txt')))
 
 
 class WhisperClient:
     def __init__(self, root: Path):
-        executable = root/'local/stt-python/Scripts/python.exe'
-        if not executable.is_file() or not (root/'local/models/faster-whisper-base.en/model.bin').is_file():
+        executable = worker_python(root, 'stt')
+        if not available(root):
             raise RuntimeError('Selected local Whisper runtime is missing')
+        environment = {key: value for key, value in os.environ.items() if key.upper() in {
+            'SYSTEMROOT','WINDIR','PATH','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA','COMSPEC','PATHEXT'}}
+        environment.update(HF_HUB_OFFLINE='1', HF_HUB_DISABLE_TELEMETRY='1', TRANSFORMERS_OFFLINE='1',
+                           DO_NOT_TRACK='1', TOKENIZERS_PARALLELISM='false', OMP_NUM_THREADS='2')
         self.process = subprocess.Popen([str(executable), '-u', str(root/'backend/whisper_worker.py')],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0, env=environment,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         self.replies = queue.Queue(maxsize=2)
         self.thread = threading.Thread(target=self._read, name='whisper-output', daemon=True)

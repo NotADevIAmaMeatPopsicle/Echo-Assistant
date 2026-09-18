@@ -1,0 +1,205 @@
+{
+  "printer": "Anycubic Photon Mono M7",
+  "build_volume_mm": [
+    223.64,
+    126.48,
+    230
+  ],
+  "main_selection": [
+    237.57240198695678,
+    [
+      -50,
+      25,
+      90
+    ],
+    [
+      152.85818437632037,
+      114.29453519028543,
+      143.00978952881107
+    ],
+    36.84866632392351
+  ],
+  "oriented_parts": {
+    "01_Crescent_main_stand": {
+      "rotation_xyz_deg": [
+        -50,
+        25,
+        90
+      ],
+      "bbox_mm": [
+        152.858,
+        114.295,
+        143.01
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 147.0098,
+      "supports_included": false
+    },
+    "02_Screen_snap_ring": {
+      "rotation_xyz_deg": [
+        22,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        55.5,
+        53.185,
+        25.566
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 29.5657,
+      "supports_included": false
+    },
+    "03_Button_plunger": {
+      "rotation_xyz_deg": [
+        25,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        11.42,
+        8.167,
+        7.78
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 11.7801,
+      "supports_included": false
+    },
+    "04_Button_rear_keeper": {
+      "rotation_xyz_deg": [
+        25,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        8.2,
+        13.993,
+        7.802
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 11.8016,
+      "supports_included": false
+    },
+    "05_Speaker_adjustable_arm": {
+      "rotation_xyz_deg": [
+        25,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        30.0,
+        13.219,
+        8.575
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 12.5755,
+      "supports_included": false
+    },
+    "06_Speaker_post_2p4mm": {
+      "rotation_xyz_deg": [
+        15,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        9.6,
+        11.602,
+        13.588
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 17.5882,
+      "supports_included": false
+    },
+    "07_Speaker_post_2p0mm_OPTION": {
+      "rotation_xyz_deg": [
+        15,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        9.6,
+        11.602,
+        13.536
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 17.5364,
+      "supports_included": false
+    },
+    "08_Speaker_height_spacer_4mm_OPTION": {
+      "rotation_xyz_deg": [
+        15,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        9.6,
+        10.308,
+        6.348
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 10.3484,
+      "supports_included": false
+    },
+    "09_Screen_carrier_FIT_TEST": {
+      "rotation_xyz_deg": [
+        22,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        94.171,
+        54.464,
+        34.001
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 38.0014,
+      "supports_included": false
+    },
+    "GAUGE_49p8mm": {
+      "rotation_xyz_deg": [
+        22,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        55.0,
+        51.932,
+        22.921
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 26.9213,
+      "supports_included": false
+    },
+    "GAUGE_50p2mm": {
+      "rotation_xyz_deg": [
+        22,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        55.4,
+        52.303,
+        23.071
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 27.0712,
+      "supports_included": false
+    },
+    "GAUGE_50p6mm": {
+      "rotation_xyz_deg": [
+        22,
+        0,
+        0
+      ],
+      "bbox_mm": [
+        55.8,
+        52.673,
+        23.221
+      ],
+      "bottom_z_mm": 4.0,
+      "top_z_mm": 27.221,
+      "supports_included": false
+    }
+  },
+  "warning": "Oriented STLs are raised 4 mm for slicer-generated supports. They are not sliced printer jobs. Do not print floating unsupported geometry."
+}

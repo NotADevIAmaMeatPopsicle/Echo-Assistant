@@ -79,3 +79,18 @@ own license does not replace the native library's terms. Preserve package notice
 and corresponding-source obligations when distributing a packaged runtime.
 Sources and exact revisions: `config/tts-models.json`, `config/tts-runtime.lock.txt`
 and `docs/SETUP.md`. The 0.10.0 integration adds no third-party audio recording.
+
+## Optional Hermes WebUI and enclosure references
+
+The alternate UI build downloads `nesquena/hermes-webui` (MIT), pinned to commit
+`c3ff9f41c77b674dd3cdfbe407f17169755269da` with an archive SHA-256 check in
+`deploy/remote/install_webui.py`. The installer retains its LICENSE and README.
+Source: https://github.com/nesquena/hermes-webui . It is not vendored in this Git
+repository. The native Hermes dashboard remains available separately.
+
+Crescent enclosure geometry, its generator, and its original renders are included
+under this repository's GPL-3.0-or-later license. Waveshare board CAD was used as
+a dimensional reference and is not redistributed. Google Home Mini and
+CS-MSX200SL names identify reference hardware, not an endorsement or electrical
+compatibility certification. Third-party geometry tools retain their own licenses;
+their versions are pinned in `enclosure/crescent-v1/source/requirements.txt`.

@@ -1,13 +1,16 @@
 """Copy only the existing reviewed model directories to Echo's own Docker volume."""
-from backend import deployment
 import hashlib
 import json
 from pathlib import Path
+import sys
 import subprocess
 import uuid
 
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from backend import deployment
 NAMES=('pocket-tts-english-official','kokoro-82m-official','vosk-model-small-en-us-0.15')
+OPTIONAL=('faster-whisper-base.en',)
 IMAGE='python:3.13-slim-bookworm@sha256:ed86c82274b3c69b52fb5820f358f0bd7df0b603332063cb5c6e32bd220c3e6e'
 
 def docker(*args,**kwargs):
@@ -15,7 +18,8 @@ def docker(*args,**kwargs):
 
 def manifest():
     result={}
-    for name in NAMES:
+    names = NAMES + tuple(name for name in OPTIONAL if (ROOT/'local/models'/name).is_dir())
+    for name in names:
         directory=ROOT/'local/models'/name
         if not directory.is_dir():raise RuntimeError('Prepare the reviewed local models before importing')
         for path in directory.rglob('*'):
@@ -27,13 +31,14 @@ def manifest():
 def check(expected):
     script="""import json,hashlib,sys
 from pathlib import Path
-root=Path('/models'); wanted=json.load(sys.stdin); missing=bad=0
+import sys
+root=Path('/models'); wanted=json.load(sys.stdin); missing=bad=0; missing_dirs=set()
 for name,digest in wanted.items():
  p=root/name
- if not p.is_file():missing+=1;continue
+ if not p.is_file():missing+=1;missing_dirs.add(Path(name).parts[0]);continue
  with p.open('rb') as f:bad+=hashlib.file_digest(f,'sha256').hexdigest()!=digest
 extra=sum(p.is_file() and p.relative_to(root).as_posix() not in wanted for p in root.rglob('*'))
-print(json.dumps({'missing':missing,'different':bad,'extra':extra}))
+print(json.dumps({'missing':missing,'different':bad,'extra':extra,'missing_directories':sorted(missing_dirs)}))
 """
     result=docker('run','--rm','-i','--network','none','--mount','type=volume,src=echo_models,dst=/models,readonly',
         IMAGE,'python','-c',script,input=json.dumps(expected).encode(),capture_output=True)
@@ -54,10 +59,12 @@ def main():
         docker('create','--name',name,'--label','org.echo.owner=round-voice','--user','0',
             '--mount','type=volume,src=echo_models,dst=/models',IMAGE,'python','-c',script,capture_output=True)
         try:
-            for directory in NAMES:docker('cp',str(ROOT/'local/models'/directory),name+':/models/'+directory)
+            for directory in state['missing_directories']:docker('cp',str(ROOT/'local/models'/directory),name+':/models/'+directory)
             docker('start','-a',name,capture_output=True)
         finally:docker('rm',name,capture_output=True)
-        if any(check(expected).values()):raise RuntimeError('Model copy verification failed')
+        verified = check(expected)
+        if any(verified[key] for key in ('missing', 'different', 'extra')):
+            raise RuntimeError('Model copy verification failed')
     print(json.dumps({'verified_files':len(expected),'volume':'echo_models','downloaded_models':False}))
 
 if __name__=='__main__':main()

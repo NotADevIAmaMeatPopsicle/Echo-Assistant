@@ -23,6 +23,8 @@ COPY --from=aec /wheels /tmp/aec-wheels
 RUN python -m pip install --no-deps --no-index /tmp/aec-wheels/*.whl && python -c "from aec_audio_processing import AudioProcessor; AudioProcessor(enable_aec=True)"
 COPY --from=receiver /usr/local/bin/echo-librespot /usr/local/bin/echo-librespot
 COPY --from=speech /usr/local /opt/python312
+COPY config/stt-linux.lock.txt /tmp/stt-linux.lock.txt
+RUN --mount=type=cache,target=/root/.cache/pip python -m pip install --only-binary=:all: -c /tmp/host-linux.lock.txt -r /tmp/stt-linux.lock.txt
 WORKDIR /opt/echo
 COPY backend /opt/echo/backend
 COPY web /opt/echo/web
@@ -38,4 +40,5 @@ COPY --from=aec /build/source/aec_audio_processing-1.0.1/webrtc-audio-processing
 RUN useradd --uid 10000 --create-home echo && mkdir -p local /run/echo && chown -R 10000:10000 local /run/echo
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 ECHO_CONTAINER=1 ECHO_DEPLOYMENT_MODE=validation ECHO_STORAGE_KEY_FILE=/run/echo/storage.key ECHO_HOME_TOOLS_TOKEN_FILE=/run/echo/home-tools-token ECHO_TTS_PYTHON=/opt/python312/bin/python3.12 ECHO_TTS_HOME=/opt/python312 ECHO_AEC_PYTHON=/usr/local/bin/python ECHO_RECEIVER_BINARY=/usr/local/bin/echo-librespot
 USER 10000:10000
+ENV ECHO_STT_PYTHON=/usr/local/bin/python
 CMD ["python", "deploy/host/bootstrap.py"]

@@ -50,6 +50,53 @@ See [hardware and flashing](docs/HARDWARE.md) before connecting or flashing.
 Software microphone mute stops streaming; it does not electrically disconnect
 the microphones. Begin speaker tests at low volume.
 
+## On the display
+
+These are **silent previews from the same C++ renderer and font bitmaps used on
+the board**, with synthetic example data. They are not photographs or live home
+status. Open an image to inspect the screen text at full size.
+
+![Ready, listening, thinking, reply, software-muted, and offline states](docs/images/voice-states.png)
+
+The ring changes shape and colour as Echo listens, thinks, and replies. A muted
+microphone and an unavailable host have distinct states. Touch Stop cancels an
+interaction; the volume control remains within reach.
+
+![Home, room lights, thermostat, speaker controls, speaker selection, and music](docs/images/home-controls.png)
+
+Swipe between pages, tap the speaker name to choose a target, and use the
+physical buttons for that page's volume or thermostat temperature. Room light
+cards use your Home Assistant inventory and explicit room assignments. A request
+for a room's lights resolves the room membership before controlling its bulbs.
+
+![Weather, timers, new timer, settings, connection, and battery status](docs/images/everyday-tools.png)
+
+Weather, timers, brightness, connection details, and battery state have their own
+screens. Battery/charging images are simulated fixtures; see the hardware guide
+for the remaining battery acceptance work.
+
+The web UI adds conversation, provider/model/personality settings, device access
+rules, editable memory, routines, and research tasks. The optional
+[Hermes WebUI](docs/DEPLOYMENT.md#browser-access-and-storage) provides another
+view of the same agent. [Private Tailscale access](docs/TAILNET_ACCESS.md) can be
+restricted to individually selected devices.
+
+## Build the Crescent enclosure
+
+![Crescent printable enclosure, front and rear](enclosure/crescent-v1/preview/Crescent-print-model-overview.png)
+
+The **[Crescent v1 package](enclosure/crescent-v1)** includes the printable stand,
+screen ring, button plungers, adjustable speaker mounts, fit gauges, editable
+geometry source, and Photon Mono M7 orientations. The
+**[print and assembly walkthrough](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md)**
+covers quantities, screws/nuts, supports, display fitting, speaker mounting,
+battery restraint, and cable routing.
+
+Print the small fit kit first. The model was checked digitally; physical resin
+fit, strength, speaker mounting, and stability remain unverified. These are STL
+models requiring supports and slicing, not ready-to-send printer jobs. The open
+stand uses the salvaged speaker's own acoustic housing.
+
 ## Start here
 
 1. Follow [local setup](docs/SETUP.md) for a Windows host and first connection.
@@ -81,6 +128,7 @@ single-use sign-in link. See the deployment guide for remote UI tunnels.
 | `tools` | Setup, model preparation, pairing, backups and explicit diagnostics |
 | `config` | Nonsecret examples and dependency/model pins |
 | `tests` | Offline host tests with synthetic data |
+| `enclosure/crescent-v1` | Printable parts, geometry source, assembly guide and renders |
 | `lib`, `third_party` | Vendored dependencies, attribution and licenses |
 
 Private state belongs in ignored `local/`, `.env` files and `backups/`. Never add
@@ -95,4 +143,4 @@ own terms, including the bundled GNU FreeFont glyphs. See [LICENSE](LICENSE) and
 [third-party notices](THIRD_PARTY_NOTICES.md). Model weights, dependencies and
 vendor services have separate terms; no weights or authenticated binaries are
 included in this repository. This is an independent project, unaffiliated with
-Waveshare, Home Assistant, Spotify, Google, Nous Research or model providers.
+Waveshare, Home Assistant, Spotify, Google, Nous Research, Anycubic or model providers.
