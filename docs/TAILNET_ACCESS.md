@@ -28,9 +28,12 @@ the full UIs. Keep a lock screen on those devices and revoke lost devices.
    and `Self.DNSName` (without its final dot). For each allowed peer, retain its
    `ID` and `TailscaleIPs`. Do not publish that inventory.
 
-Create `tailnet.json` privately using this **schema**, replacing every uppercase
-placeholder and both sample addresses with your own values. Absolute paths refer
-to the Docker host, not the client. Begin with an empty allowlist to deny everyone.
+Create `tailnet.json` privately using this **example template**. It contains no
+deployment hostname, device identity, network address, credential, or personal
+file path. Replace every uppercase placeholder with your own value; in
+`bind_addresses`, keep only the Tailscale addresses assigned to your host.
+Absolute paths refer to the Docker host, not the client. Begin with an empty
+allowlist to deny everyone.
 
 ```json
 {
@@ -38,7 +41,7 @@ to the Docker host, not the client. Begin with an empty allowlist to deny everyo
   "docker": "ABSOLUTE_DOCKER_EXECUTABLE",
   "hostname": "YOUR_HOST.YOUR_TAILNET.ts.net",
   "host_id": "YOUR_HOST_STABLE_ID",
-  "bind_addresses": ["100.64.0.1", "fd7a:115c:a1e0::1"],
+  "bind_addresses": ["YOUR_HOST_TAILSCALE_IPV4", "YOUR_HOST_TAILSCALE_IPV6"],
   "allowed_devices": [],
   "cert": "ABSOLUTE_CERTIFICATE_PATH",
   "key": "ABSOLUTE_CERTIFICATE_KEY_PATH",
@@ -56,7 +59,10 @@ Each allowed-device entry has `name`, `id` and `ips` fields. Supply the complete
 intended set. `name` is informational; `id` and `ips` are checked. The host itself
 needs an entry if you want it to open its own HTTPS address. The `echo_bundle`
 field points to the existing `api-bootstrap.dpapi` created during provisioning.
-Service target ports above match this repository's Compose configuration.
+The `127.0.0.1` targets mean this same host; they are loopback addresses, not
+addresses of a particular user's machine. The port numbers are project defaults
+used by the Compose deployment and gateway. The `cert`, `key`, and `echo_bundle`
+values are placeholders for private file paths, not certificate or key contents.
 
 Start with `python tools/tailnet_gateway.py --config YOUR_PRIVATE_CONFIG_PATH`.
 It binds only the host's Tailscale addresses and a local Hermes relay, renews its
