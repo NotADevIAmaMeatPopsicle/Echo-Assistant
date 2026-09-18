@@ -1,8 +1,8 @@
 # Echo Assistant
 
-### A voice assistant you can build, understand, and make your own.
+### An open-source smart speaker you can build, understand, and make your own.
 
-Echo brings conversation, music, and home control to a round AMOLED touchscreen.
+Echo brings an AI voice assistant, music, and home control to a round AMOLED touchscreen.
 Say **“Hey Echo”** or **“Okay Echo”**, hear a warm activation cue, and watch the
 screen respond as it listens, thinks, and replies. A companion web app puts
 conversation, devices, memory, and customization in one place.
@@ -184,7 +184,7 @@ is available for builds that keep the language model on their own hardware.
 
 ## Build your own
 
-The easiest first build uses **the supported board, a speaker, a USB data cable,
+Start your smart speaker build with **the supported board, a speaker, a USB data cable,
 and a Windows computer**. Get that working on the desk, then add the enclosure,
 battery, and remote hosting as separate steps.
 
