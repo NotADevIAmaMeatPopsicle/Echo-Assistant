@@ -17,15 +17,39 @@ Target: ESP32-S3 with 16 MB flash and 8 MB octal PSRAM, 466 × 466 CO5300 displa
 
 ## Build and flash
 
-Install PlatformIO in an isolated environment, then run `pio run -e round_voice`.
+After the host setup has created `.venv`, install and run PlatformIO there:
+
+```powershell
+./.venv/Scripts/python.exe -m pip install platformio==6.1.18
+./.venv/Scripts/python.exe -m platformio run -e round_voice
+```
+
 The pinned pioarduino platform downloads the required compiler/framework.
 `PLATFORMIO_CORE_DIR` can override PlatformIO's standard cache directory.
 Never commit `.pio/`, full flash dumps or device-specific pairing state.
 
-Before any first flash, use esptool to identify your port/chip/MAC and read the
-complete **16 MiB** flash into `backups/original.bin`. Hash that file with SHA-256
-and retain both the hash and backup privately. esptool command spelling depends
-on its installed version; use its help for `read_mac` and `read_flash`.
+Before the first flash, identify the board and save its complete **16 MiB** flash.
+Close serial monitors and stop any running Echo bridge. List attached ports:
+
+```powershell
+./.venv/Scripts/python.exe -m serial.tools.list_ports -v
+```
+
+Use the ESP32-S3 USB device's port in place of `YOUR_PORT` below. The PlatformIO
+build supplies the esptool version used by the flash helper. These commands
+resolve that same cache rather than assuming a particular user's installation:
+
+```powershell
+$echoPioRoot = if ($env:PLATFORMIO_CORE_DIR) { $env:PLATFORMIO_CORE_DIR } else { Join-Path $env:USERPROFILE '.platformio' }
+$echoEsptool = Join-Path $echoPioRoot 'packages/tool-esptoolpy/esptool.py'
+./.venv/Scripts/python.exe $echoEsptool --chip esp32s3 --port YOUR_PORT read_mac
+New-Item -ItemType Directory -Force backups | Out-Null
+./.venv/Scripts/python.exe $echoEsptool --chip esp32s3 --port YOUR_PORT read_flash 0 0x1000000 backups/original.bin
+Get-FileHash -LiteralPath backups/original.bin -Algorithm SHA256
+```
+
+For an existing build, keep the original backup intact and use a new filename
+for a later backup. Retain the file, SHA-256, and reported MAC privately.
 
 Stop the voice bridge and any other serial owner. This explicit flash command
 requires your own board identity and verified original backup:
@@ -38,6 +62,16 @@ The script checks USB VID/PID, chip identity, backup hash, image hashes and part
 layout before writing. It writes a **DIO / 80 MHz / 16 MB** bootloader header;
 the application retains `qio_opi` for its PSRAM configuration. Do not substitute
 a generic ESP32 upload recipe. `--bundle` selects a previously verified archive.
+
+Before starting the host, set the verified MAC in the same PowerShell session:
+
+```powershell
+$env:ECHO_DEVICE_MAC = 'YOUR_BOARD_MAC'
+```
+
+Use the colon-separated MAC printed by esptool, not the placeholder. Set it again
+in a new terminal session before launching the host. Return to
+[local setup](SETUP.md) for startup and the authenticated web launcher.
 
 The upper button toggles software mic mute on Home/Echo. On speaker pages the
 buttons adjust the selected speaker's volume; on thermostat pages they adjust

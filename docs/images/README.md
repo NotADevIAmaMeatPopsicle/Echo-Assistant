@@ -1,6 +1,9 @@
 # Public illustrations
 
 - `echo.svg` is the original illustrative hero artwork.
+- `web-*.png` are browser captures of the production web UI served by
+  `tools/preview_web.py` with fixed sample data. Detail images capture real
+  panels/fieldsets. See [the web gallery](../WEB_UI.md) for the capture workflow.
 - `voice-states.png`, `home-controls.png`, and `everyday-tools.png` are generated
   from the shared firmware C++ renderer with synthetic fixtures. They contain no
   screenshots of a user's network, accounts, keys, conversations, or home state.
