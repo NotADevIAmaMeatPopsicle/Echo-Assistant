@@ -11,7 +11,8 @@ import sys
 
 from kiosk import inventory
 
-FILES=('bridge.py','connect.py','kiosk.py','audio_once.py')
+CORE_FILES=('bridge.py','connect.py','kiosk.py','audio_once.py')
+FILES=(*CORE_FILES,'spotify.py')
 MARKER='# Managed by Echo display setup'
 
 
@@ -56,7 +57,7 @@ def rollback(home):
     previous=state.get('previous')
     if not previous or not re.fullmatch(r'[a-f0-9]{16}',previous):raise ValueError('No previous display bundle is available')
     release=base/'releases'/previous
-    if release.is_symlink() or not all((release/name).is_file() for name in FILES):raise ValueError('Previous bundle is incomplete')
+    if release.is_symlink() or not all((release/name).is_file() for name in CORE_FILES):raise ValueError('Previous bundle is incomplete')
     state={'active':previous,'previous':state['active']};atomic(path,json.dumps(state));return state
 
 

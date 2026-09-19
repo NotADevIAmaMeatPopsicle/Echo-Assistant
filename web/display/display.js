@@ -59,7 +59,7 @@ async function refreshVoice() {
   try {
     await Promise.allSettled([
       (async()=>{try {data.voice=await api('/v1/voice',undefined,'GET',AbortSignal.timeout(3000));received.voice=Date.now();}catch{delete data.voice;delete received.voice;}})(),
-      (async()=>{if($('page-music').hidden)return;try {data.nowPlaying=await api('/v1/music/now-playing',undefined,'GET',AbortSignal.timeout(3000));received.nowPlaying=Date.now();}catch{delete data.nowPlaying;delete received.nowPlaying;}})()
+      (async()=>{if($('page-music').hidden)return;const path=typeof musicSnapshotPath==='function'?musicSnapshotPath():'/v1/display/music/now-playing';try {const value=await api(path,undefined,'GET',AbortSignal.timeout(5000));if(path!==musicSnapshotPath())return;data.nowPlaying=value;received.nowPlaying=Date.now();}catch{if(path===musicSnapshotPath()){delete data.nowPlaying;delete received.nowPlaying;}}})()
     ]);
   }
   catch { delete data.voice; delete received.voice; }
@@ -92,7 +92,7 @@ function render() {
   renderConnection();
   renderVoice(); renderHome(); renderMusic(); renderTimers(); renderLists(); renderRoutines(); guardButtons();
   extensions.forEach(renderExtension => renderExtension()); guardButtons();
-  $('capability-notes').innerHTML = [['Echo server', fresh('timers') && !signInRequired ? 'connected' : 'unavailable'], ['Optional round speaker', roundSpeakerConnected() ? human(data.voice.status) : 'not connected'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Voice and audio', 'This device’s microphone and speakers'], ['Spotify on this display', 'Not set up yet; the round receiver is separate']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
+  $('capability-notes').innerHTML = [['Echo server', fresh('timers') && !signInRequired ? 'connected' : 'unavailable'], ['Optional round speaker', roundSpeakerConnected() ? human(data.voice.status) : 'not connected'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Voice and audio', 'This device’s microphone and speakers'], ['Spotify on this display', 'Configure the Pi receiver below; other receivers are optional']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
 }
 function roundSpeakerConnected() { return fresh('voice') && ['armed','activation','listening','thinking','speaking','music','alarm','cooldown','muted'].includes(data.voice.status); }
 function renderVoice() {
@@ -161,7 +161,7 @@ document.addEventListener('click', event => {
   if (button.dataset.prompt) { $('chat-text').value = button.dataset.prompt; $('chat-text').focus(); }
 });
 $('speaker').addEventListener('change', event => { if (event.target.id === 'speaker-choice' && fresh('home')) action(() => api('/v1/home/speakers/select', {index:Number(event.target.value),revision:data.home.speakers.revision}), 'Speaker selected.'); });
-for (const [id, command] of [['play-track','toggle'],['previous-track','previous'],['next-track','next']]) $(id).onclick = () => { if (fresh('voice')) action(() => api('/v1/music/control',{action:command})); };
+for (const [id, command] of [['play-track','toggle'],['previous-track','previous'],['next-track','next']]) $(id).onclick = () => { if (typeof sendMusic==='function') sendMusic(command); };
 $('timer-form').onsubmit = event => { event.preventDefault(); if (fresh('timers')) action(() => newTimer(Number($('timer-minutes').value) * 60, $('timer-label').value.trim() || 'Timer'), 'Timer started.'); };
 $('alarm-form').onsubmit = event => {
   event.preventDefault(); if (!fresh('timers')) return;

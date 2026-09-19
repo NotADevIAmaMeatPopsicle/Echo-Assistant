@@ -22,6 +22,7 @@ const assert=require('node:assert/strict');
     });
     await page.goto(base+'/display#music');
     await page.waitForFunction(()=>document.getElementById('connection').textContent==='Display connected');
+    await page.locator('#music-receiver').selectOption('round');await page.waitForFunction(()=>document.getElementById('music-status').textContent==='Round speaker offline');
     assert.equal(await page.locator('#music-status').textContent(),'Round speaker offline');
     assert.ok(await page.locator('#play-track').isDisabled());
     assert.match(await page.locator('#music-output-note').textContent(),/optional round speaker/);

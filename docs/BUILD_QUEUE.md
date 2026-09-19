@@ -31,7 +31,7 @@ Prioritize the Pi audio path before extending round intercom. See
 - [ ] Two-way intercom between room endpoints.
 - [x] Pi push-to-talk/ALSA adapter and request-specific reply routing (software; simulated audio only).
 - [ ] Pi hands-free wake, interruption and physical echo-control acceptance.
-- [ ] Pi Spotify playback and endpoint-specific receiver naming; round receiver optional.
+- [x] Pi Spotify receiver, direct ALSA playback, output attenuation and endpoint-specific naming (software; real Spotify/audio acceptance pending).
 - [ ] Pi alarm/reminder sound routing without a round speaker; visible timers already work.
 - [x] Pi pairing/install/rollback client bundle; installed and OS restart verified.
 - [ ] Integrated software verification and refreshed screenshots/documentation.
@@ -78,7 +78,7 @@ restart-safe duplicate protection, clock changes, permissions and local briefing
 composition; the related source and display-voice checks also pass. Silent browser
 checks cover the form and phone layout. No real calendar events were created.
 
-Next: Pi audio independence: local wake/capture/replies, Spotify playback and alarm
+Next: Pi audio independence: local wake/capture/replies and alarm
 routing, then hardware acceptance when its microphone and speaker are attached.
 The round intercom adapter remains planned as an optional endpoint.
 
@@ -98,5 +98,10 @@ Camera/doorbell software now passes
 checks verify moving frames, source selection and event-to-camera navigation.
 The current Home Assistant installation has no camera entities, so physical
 camera and doorbell acceptance is still open.
+Pi Spotify software now includes a separately named receiver, explicit ALSA output,
+2% initial level, current-track controls and pause-before-microphone coordination.
+The ARM64 binary starts on the Pi; Linux pipe and silent UI checks pass. It is
+installed disabled until an output is chosen. See [Pi Spotify](PI_SPOTIFY.md).
+
 Pi hands-free wake and acoustic acceptance need an identified microphone and
 speaker. No Pi wake-word or physical audio acceptance claim is made.

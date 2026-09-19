@@ -58,6 +58,8 @@ def fixtures():
         'artist':'North Coast','album':'Echo Sessions · sample album','duration_ms':246000,'position_ms':83000,
         'volume':75,'shuffle':False,'repeat':'off','explicit':False,'capabilities':['seek','shuffle','repeat','volume'],
         'artwork':'/v1/music/artwork/'+'a'*64,'open_url':''}
+    data['/v1/display/music/now-playing']={**data['/v1/music/now-playing'],'supported':True,'receiver_name':'Echo Display','output_volume':2,'output_configured':True,'artwork':'/v1/display/music/artwork/'+'a'*64}
+    data['/v1/display/music/settings']={'supported':False}
     home = data['/v1/home']; home['status'] = 'configured'
     home['lights']['revision'] = revision
     for room, identifier in zip(home['lights']['rooms'], ['bedroom','living_room','dining_room','patio']): room['id'] = identifier
@@ -139,6 +141,7 @@ class DisplayPreview(Preview):
                   '/assets/display/photos.js':('display/photos.js','text/javascript'),
                   '/assets/display/media.js':('display/media.js','text/javascript'),
                   '/assets/display/music.js':('display/music.js','text/javascript'),
+                  '/assets/display/pi-audio.js':('display/pi-audio.js','text/javascript'),
                   '/assets/display/music.css':('display/music.css','text/css'),
                   '/assets/display/spotify-phone.png':('display/spotify-phone.png','image/png'),
                   '/assets/display/voice.js':('display/voice.js','text/javascript'),
@@ -147,7 +150,7 @@ class DisplayPreview(Preview):
                   '/assets/icon.svg':('icon.svg','image/svg+xml')}
         if path in assets:
             name, mime = assets[path]; return self.reply(200,(WEB/name).read_bytes(),mime)
-        if path=='/v1/music/artwork/'+'a'*64:
+        if path in {'/v1/music/artwork/'+'a'*64,'/v1/display/music/artwork/'+'a'*64}:
             return self.reply(200,(ROOT/'docs/images/music-sample-cover.svg').read_bytes(),'image/svg+xml')
         with self.lock:
             if path=='/v1/display/briefing':

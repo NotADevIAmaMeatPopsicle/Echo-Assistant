@@ -1,5 +1,8 @@
 /* Current playback only: no browsing history or track metadata in browser storage. */
 'use strict';
+let musicReceiver='display';
+function musicSnapshotPath(){return musicReceiver==='display'?'/v1/display/music/now-playing':'/v1/music/now-playing';}
+$('music-receiver').onchange=()=>{musicReceiver=$('music-receiver').value;delete data.nowPlaying;delete received.nowPlaying;renderMusicPanel();refresh();};
 const musicDrags=new Set();let coverSource='',speakerMusicSignature='';
 const spotifyPhoneDialog=$('spotify-phone-dialog');
 $('spotify-phone-open').onclick=()=>spotifyPhoneDialog.showModal();
@@ -17,19 +20,20 @@ document.querySelectorAll('[data-music-tab]').forEach(button=>{
   };
 });
 function renderMusicPanel(){
-  const state=fresh('nowPlaying')&&data.nowPlaying?.available ? data.nowPlaying : {};
-  const status=state.status||data.voice?.music?.status||'unavailable';
-  const speakerReady=fresh('voice')&&['armed','muted','cooldown','music'].includes(data.voice?.status);
+  const state=fresh('nowPlaying') ? data.nowPlaying : {};
+  const local=musicReceiver==='display',name=local?(state.receiver_name||'Echo Display'):'Round Voice';
+  const status=state.status||(!local&&data.voice?.music?.status)||'unavailable';
+  const speakerReady=local?!!state.available:fresh('voice')&&['armed','muted','cooldown','music'].includes(data.voice?.status);
   const active=speakerReady&&['playing','paused','connected','stopped'].includes(status);
   const trackActive=active&&!!state.title&&['playing','paused'].includes(status);
   const capabilities=state.capabilities||[],has=(name)=>trackActive&&capabilities.includes(name);
   $('track-title').textContent=state.title||'Your next favourite.';
-  $('track-artist').textContent=(state.artist||'Choose Round Voice from Spotify’s device picker.').replaceAll('\n',', ');
+  $('track-artist').textContent=(state.artist||`Choose ${name} from Spotify’s device picker.`).replaceAll('\n',', ');
   $('track-album').textContent=state.album|| (state.title ? 'Spotify' : 'Start something good in Spotify.');
   $('track-explicit').hidden=!state.explicit;
-  $('music-status').textContent=!fresh('timers')?'Host unreachable':!fresh('voice')?'Speaker status unavailable':!roundSpeakerConnected()?'Round speaker offline':!speakerReady?'Speaker busy':human(status);$('music-status').classList.toggle('is-playing',active&&status==='playing');
+  $('music-status').textContent=!fresh('timers')?'Host unreachable':local?human(status):!fresh('voice')?'Speaker status unavailable':!roundSpeakerConnected()?'Round speaker offline':!speakerReady?'Speaker busy':human(status);$('music-status').classList.toggle('is-playing',active&&status==='playing');
   $('play-track').innerHTML=icon(status==='playing'?'pause':'play');$('play-track').setAttribute('aria-label',status==='playing'?'Pause music':'Play music');
-  for(const id of ['play-track','previous-track','next-track']){$(id).dataset.requires='voice';$(id).dataset.unavailable=String(!active);}
+  for(const id of ['play-track','previous-track','next-track']){$(id).dataset.requires=local?'nowPlaying':'voice';$(id).dataset.unavailable=String(!active);}
   for(const [id,command] of [['track-seek','seek'],['shuffle-track','shuffle'],['repeat-track','repeat'],['spotify-volume','volume']]){$(id).dataset.requires='nowPlaying';$(id).dataset.unavailable=String(!has(command));}
   const elapsed=Math.min(state.duration_ms||0,(state.position_ms||0)+(status==='playing'?Math.max(0,Date.now()-(received.nowPlaying||Date.now())):0));
   if(!musicDrags.has('track-seek')){$('track-seek').max=String(state.duration_ms||1);$('track-seek').value=String(elapsed);$('track-elapsed').textContent=musicTime(elapsed);}
@@ -40,8 +44,10 @@ function renderMusicPanel(){
   const repeat=state.repeat||'off';$('repeat-track').setAttribute('aria-label',`Repeat: ${state.repeat||'unknown'}`);$('repeat-track').setAttribute('aria-pressed',String(repeat!=='off'));$('repeat-one').hidden=repeat!=='track';
   if(!musicDrags.has('spotify-volume')){$('spotify-volume').value=String(state.volume??0);$('spotify-volume-label').textContent=state.volume==null?'—':`${state.volume}%`;}
   const deviceVolume=Number(data.voice?.device?.volume);
-  $('music-output-note').textContent='This Spotify receiver plays on the optional round speaker. Spotify playback on this display is not set up yet; radio and files play here.'+(Number.isFinite(deviceVolume)?` Round volume: ${deviceVolume}%.`:'');
-  const art=typeof state.artwork==='string'&&/^\/v1\/music\/artwork\/[a-f0-9]{64}$/.test(state.artwork)?state.artwork:'';
+  $('music-output-note').textContent=local?(state.output_configured?`Audio plays on this Pi. Output level: ${state.output_volume??2}%.`:'Set up this Pi’s Spotify receiver and attached speaker in Settings.'):'Audio plays on the optional round speaker.'+(Number.isFinite(deviceVolume)?` Round volume: ${deviceVolume}%.`:'');
+  $('music-output-name').textContent=local?name:'Echo round speaker';
+  $('spotify-picker-hint').textContent=`Sign in on your phone, then choose ${name} in Spotify.`;$('spotify-picker-title').textContent=`Choose ${name}.`;$('spotify-phone-destination').textContent=local?'Audio plays on this Pi after its receiver is configured.':'Audio plays on the optional round speaker.';
+  const art=typeof state.artwork==='string'&&/^\/v1\/(?:display\/)?music\/artwork\/[a-f0-9]{64}$/.test(state.artwork)?state.artwork:'';
   if(art!==coverSource){coverSource=art;const image=$('track-cover');image.hidden=true;$('cover-placeholder').hidden=false;
     image.onload=()=>{if(image.getAttribute('src')===coverSource){image.hidden=false;$('cover-placeholder').hidden=true;}};
     image.onerror=()=>{image.hidden=true;$('cover-placeholder').hidden=false;};
@@ -50,7 +56,7 @@ function renderMusicPanel(){
   $('open-spotify').href=/^https:\/\/open\.spotify\.com\/(track|episode)\/[A-Za-z0-9]{22}$/.test(state.open_url||'') ? state.open_url : 'https://open.spotify.com/';
   renderMusicSpeakers();
 }
-function sendMusic(actionName,value){if(!fresh('voice')||!fresh('nowPlaying'))return;return action(()=>api('/v1/music/control',{action:actionName,value}),'Sent to Spotify. Waiting for the receiver’s state.');}
+function sendMusic(actionName,value){if(!fresh('nowPlaying')||musicReceiver==='round'&&!fresh('voice'))return;const route=musicReceiver==='display'?'/v1/display/music/control':'/v1/music/control';return action(()=>api(route,{action:actionName,value}),'Sent to Spotify. Waiting for the receiver’s state.');}
 $('shuffle-track').onclick=()=>sendMusic('shuffle',data.nowPlaying?.shuffle!==true);
 $('repeat-track').onclick=()=>{const cycle=['off','context','track'];sendMusic('repeat',cycle[(Math.max(0,cycle.indexOf(data.nowPlaying?.repeat))+1)%3]);};
 for(const [id,command,label] of [['track-seek','seek','track-elapsed'],['spotify-volume','volume','spotify-volume-label']]){

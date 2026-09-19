@@ -313,6 +313,13 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     from .music_now_playing import snapshot as music_snapshot, Artwork
     artwork=Artwork()
 
+    @app.get('/v1/display/music/now-playing',dependencies=[Depends(authorize)])
+    @app.get('/v1/display/music/settings',dependencies=[Depends(authorize)])
+    def display_music_unavailable():
+        # A Pi loopback bridge provides these locally. Never fall back to a
+        # different room's receiver when this browser has no audio adapter.
+        return {'supported':False,'available':False,'status':'not_installed','capabilities':[]}
+
     @app.get('/v1/music/now-playing',dependencies=[Depends(authorize)])
     def music_now_playing():return JSONResponse(music_snapshot(runtime_root),headers={'Cache-Control':'no-store'})
 

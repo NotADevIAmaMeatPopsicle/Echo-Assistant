@@ -3,6 +3,7 @@ import argparse
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import json
 import os
+import re
 from pathlib import Path
 import ssl
 import stat
@@ -12,17 +13,50 @@ from urllib.parse import urlsplit
 
 from kiosk import validate_url
 from connect import NoRedirect
+from spotify import Spotify,Unavailable
 
 
 class Bridge(BaseHTTPRequestHandler):
     configuration=None
     opener=None
+    music=None
+
+    def local_music(self,path,body,base,headers):
+        # Local controls retain the display's enrollment boundary. A revoked
+        # credential cannot edit this receiver through the kiosk.
+        request=urllib.request.Request(base+'/v1/display/session',headers=headers)
+        try:
+            with self.opener.open(request,timeout=5) as response:
+                if response.status!=200:return self.error_reply(403,'Pair this display before using local music')
+        except urllib.error.HTTPError as error:return self.error_reply(error.code,'Pair this display before using local music')
+        except (urllib.error.URLError,TimeoutError):return self.error_reply(503,'Echo host unavailable')
+        try:
+            if self.command in {'GET','HEAD'} and path.endswith('/now-playing'):result=self.music.snapshot()
+            elif self.command in {'GET','HEAD'} and path.endswith('/settings'):result=self.music.settings()
+            elif self.command=='GET' and re.fullmatch(r'/v1/display/music/artwork/[a-f0-9]{64}',path):
+                raw,kind=self.music.artwork(path.rsplit('/',1)[1]);result=None
+            elif self.command in {'POST','PUT'}:
+                if not body or len(body)>2048:raise ValueError('Invalid music request')
+                value=json.loads(body)
+                if self.command=='PUT' and path.endswith('/settings'):result=self.music.configure(value)
+                elif self.command=='POST' and path.endswith('/control') and isinstance(value,dict) and set(value)<={'action','value'}:result=self.music.control(value.get('action'),value.get('value'))
+                elif self.command=='POST' and path.endswith('/focus') and isinstance(value,dict) and set(value)=={'client','busy'}:result=self.music.focus(value['client'],value['busy'])
+                else:raise ValueError('Unsupported music request')
+            else:return self.error_reply(405,'Unsupported music method')
+            if result is not None:raw=json.dumps(result).encode();kind='application/json'
+            self.send_response(200)
+            for key,value in {'Content-Type':kind,'Content-Length':str(len(raw)),'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Echo-Display-Bridge':'1'}.items():self.send_header(key,value)
+            self.end_headers()
+            if self.command!='HEAD':self.wfile.write(raw)
+        except (ValueError,TypeError):return self.error_reply(422,'Invalid music settings or control')
+        except Unavailable as error:return self.error_reply(409,str(error))
+        except (OSError,urllib.error.URLError):return self.error_reply(503,'Pi music is unavailable')
 
     def log_message(self,*args): pass
 
     def error_reply(self,code,message):
         body=json.dumps({'detail':message}).encode()
-        self.send_response(code); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(body))); self.send_header('Cache-Control','no-store'); self.end_headers()
+        self.send_response(code); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(body))); self.send_header('Cache-Control','no-store'); self.send_header('X-Echo-Display-Bridge','1'); self.end_headers()
         if self.command!='HEAD': self.wfile.write(body)
 
     def waiting_page(self):
@@ -62,6 +96,9 @@ a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
         path='/display' if self.path=='/' else self.path
         display_page=requested.path in {'/','/display'} and self.command in {'GET','HEAD'}
         headers={'Authorization':'Display '+self.configuration['credential'],'X-Echo-Request':'1','Origin':base}
+        if self.music is not None and requested.path.startswith('/v1/display/music/'):
+            if not re.fullmatch(r'/v1/display/music/(?:now-playing|settings|control|focus|artwork/[a-f0-9]{64})',requested.path):return self.error_reply(404,'Unknown local music route')
+            return self.local_music(requested.path,body,base,headers)
         for key in ('Content-Type','Range','Accept'):
             if self.headers.get(key): headers[key]=self.headers[key]
         request=urllib.request.Request(base+path,data=body,method=self.command,headers=headers)
@@ -99,10 +136,11 @@ def main():
     Bridge.configuration=config
     Bridge.opener=urllib.request.build_opener(NoRedirect,urllib.request.HTTPSHandler(context=ssl.create_default_context()),urllib.request.ProxyHandler({}))
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Bridge)
+    Bridge.music=Spotify();Bridge.music.start()
     print(f'Echo display bridge listening on loopback port {args.port}. Credentials stay outside the browser.',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass
-    finally:server.server_close()
+    finally:server.server_close();Bridge.music.close()
 
 
 if __name__=='__main__':

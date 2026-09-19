@@ -72,8 +72,7 @@ and its spoken reply returns only to that display.
 
 The home and Echo rings show this display's capture, processing and reply state.
 Another device being offline does not put the Pi into an offline voice state.
-Text entry works without a microphone. Local wake words, Pi Spotify playback and
-Pi alarm delivery still need integration; physical audio acceptance remains open.
+Text entry works without a microphone. Local wake words and Pi alarm delivery still need integration; physical audio acceptance remains open.
 The round speaker retains its separate voice path and existing Spotify receiver.
 
 [Build options](BUILD_OPTIONS.md) explains the Pi, round-speaker, browser/phone
@@ -89,7 +88,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | --- | --- | --- |
 | Home | Clock, date, weather, named rooms, next timer, live voice status | Voice status reflects this display; the round speaker is optional |
 | Rooms | Room lights, individual brightness/colour/white temperature, thermostat mode and temperature range, speaker selection and supported playback actions | Existing Home Assistant permission grants and fresh state are required; choosing a device does not act on it |
-| Music | Spotify cover art, title/artist/album, seek bar, previous/play/pause/next, shuffle, repeat and input level; home-speaker selection; saved HTTPS radio presets and local files | Spotify currently plays through the round speaker; the Pi is its remote. Library, playlists and queue browsing open Spotify. Chromecast/AirPlay receivers are not installed. Radio and local files play through the display's output |
+| Music | Spotify cover art, title/artist/album, seek bar, previous/play/pause/next, shuffle, repeat and input level; home-speaker selection; saved HTTPS radio presets and local files | Spotify can use the separately configured Pi receiver or the explicitly selected round speaker; physical Pi playback acceptance remains open. Library, playlists and queue browsing open Spotify. Chromecast/AirPlay receivers are not installed. Radio and local files play through the display's output |
 | My day | Local daily briefing; selected calendars; timed/all-day event creation with separate write grants; selected camera streams/snapshots; silent doorbell cards | Creation requires a compatible calendar and owner permission. Live MJPEG depends on the camera integration. No recording or camera audio |
 | Timers | Multiple persisted timers and a quick one-off alarm | Delivery still needs a connected audio endpoint |
 | Planner | Recurring alarms/reminders, daily/weekday/custom repeat, IANA zones, snooze, dismiss, missed events, quiet hours | Spring gaps use the first valid minute; autumn duplicates ring once. Events over 15 minutes late remain visible without sounding |

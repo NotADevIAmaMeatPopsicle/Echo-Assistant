@@ -85,6 +85,8 @@ $('voice-start').onclick=async()=>{
   clearVoiceReply();player.pause();micOpening=true;voiceButtons();$('display-voice-status').textContent='Opening the microphone…';
   voiceRequestHome=$('allow-home').checked;$('allow-home').checked=false;
   try{
+    if(typeof prepareLocalAudio==='function')await prepareLocalAudio();
+    if(!micOpening || epoch!==voiceEpoch)return;
     if(!navigator.mediaDevices?.getUserMedia)throw new Error('Microphone access needs HTTPS or the Pi loopback bridge.');
     const stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
     if(!micOpening || epoch!==voiceEpoch){stream.getTracks().forEach(track=>track.stop());return;}

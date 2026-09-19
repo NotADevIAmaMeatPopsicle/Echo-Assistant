@@ -41,6 +41,8 @@ async function icEnd(){
   if(call&&call.status!=='ended')try{await icRequest('end',{},call.id);}catch{$('intercom-status').textContent='Microphone closed. The host could not confirm hang-up; the call expires when its connection drops.';icEnabled=false;}
 }
 async function icPrepareMic(epoch){
+  if(typeof prepareLocalAudio==='function')await prepareLocalAudio();
+  if(epoch!==icEpoch)throw Error('Call cancelled.');
   if(!navigator.mediaDevices?.getUserMedia)throw Error('A microphone and a secure browser connection are required.');
   icContext ||= new AudioContext();await icContext.resume();
   const stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});

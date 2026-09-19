@@ -1,4 +1,5 @@
 """Build pinned librespot with a private stdin control pipe; no extra network API."""
+import argparse
 import hashlib
 import io
 import os
@@ -58,6 +59,9 @@ BRANCH = '''            control = control_rx.recv() => {
 
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--pi',action='store_true',help='Cross-compile for aarch64 Linux with rustls; requires the Pi receiver build container')
+    args=parser.parse_args()
     runtime = ROOT/'local/runtime'
     runtime.mkdir(parents=True, exist_ok=True)
     archive = runtime/f'librespot-{VERSION}.crate'
@@ -111,13 +115,18 @@ def main():
     else:
         cargo = shutil.which('cargo')
         if not cargo: raise SystemExit('Use the pinned Rust container to build the Linux receiver')
+    target=['--target','aarch64-unknown-linux-gnu'] if args.pi else []
+    features='rustls-tls-native-roots,with-libmdns' if args.pi else 'native-tls,with-libmdns'
     subprocess.run([str(cargo), 'build', '--release', '--locked', '--no-default-features',
-        '--features', 'native-tls,with-libmdns', '--manifest-path', str(crate/'Cargo.toml'),
-        '--target-dir', str(runtime/'receiver-target')], env=env, check=True)
-    subprocess.run([str(cargo), 'test', '--release', '--locked', '--no-default-features',
-        '--features', 'native-tls,with-libmdns', '--manifest-path', str(crate/'Cargo.toml'),
-        '--target-dir', str(runtime/'receiver-target'), 'round_voice_tests'], env=env, check=True)
-    binary = runtime/'receiver-target/release'/('librespot.exe' if os.name=='nt' else 'librespot')
+        '--features', features, '--manifest-path', str(crate/'Cargo.toml'),
+        '--target-dir', str(runtime/'receiver-target'), *target], env=env, check=True)
+    if not args.pi:
+        subprocess.run([str(cargo), 'test', '--release', '--locked', '--no-default-features',
+            '--features', features, '--manifest-path', str(crate/'Cargo.toml'),
+            '--target-dir', str(runtime/'receiver-target'), 'round_voice_tests'], env=env, check=True)
+    binary = runtime/'receiver-target'
+    if args.pi:binary /= 'aarch64-unknown-linux-gnu'
+    binary = binary/'release'/('librespot.exe' if os.name=='nt' else 'librespot')
     print('Controlled receiver built; SHA256 '+hashlib.sha256(binary.read_bytes()).hexdigest())
 
 

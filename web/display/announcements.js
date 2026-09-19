@@ -67,6 +67,8 @@ async function receiveAnnouncement(item){
   const epoch=++announceEpoch,controller=new AbortController();announceController=controller;
   const current={id:item.id,claim:null};announceCurrent=current;receiverStatus('Preparing '+item.title+'…');
   try{
+    if(typeof prepareLocalAudio==='function')await prepareLocalAudio();
+    if(epoch!==announceEpoch)return;
     const claim=await api('/v1/audio/inbox/'+item.id+'/claim',{client:audioClient},'POST',AbortSignal.any([controller.signal,AbortSignal.timeout(10000)]));current.claim=claim.claim;
     if(epoch!==announceEpoch){await announcementReceipt(current,'cancelled');return;}
     const response=await fetch('/v1/audio/inbox/'+item.id+'/audio',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Echo-Request':'1'},body:JSON.stringify({claim:current.claim}),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(100000)]),cache:'no-store'});

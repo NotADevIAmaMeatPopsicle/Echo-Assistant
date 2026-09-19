@@ -14,6 +14,7 @@
   <script src="/assets/display/briefing.js" defer></script>
   <script src="/assets/display/photos.js" defer></script>
   <script src="/assets/display/music.js" defer></script>
+  <script src="/assets/display/pi-audio.js" defer></script>
   <script src="/assets/display/media.js" defer></script>
   <script src="/assets/display/voice.js" defer></script>
   <link rel="stylesheet" href="/assets/display/announcements.css">
@@ -77,11 +78,11 @@
         <article class="card spotify-player">
           <div class="album-column">
             <div class="album-art"><img id="track-cover" alt="" hidden><div id="cover-placeholder"><img src="/assets/icon.svg" alt="Echo"><span>A little room for music.</span></div></div>
-            <div class="listening-on"><svg><use href="#i-speaker"/></svg><span>Output <strong>Echo round speaker</strong></span></div>
+            <div class="listening-on"><svg><use href="#i-speaker"/></svg><span>Output <strong id="music-output-name">This display</strong></span></div>
           </div>
           <div class="track-column">
-            <div class="row spread"><span class="eyebrow spotify-label">SPOTIFY CONNECT</span><span id="music-status" class="music-badge">Checking receiver</span></div>
-            <h2 id="track-title">Your next favourite.</h2><p id="track-artist" class="soft">Choose Round Voice from Spotify’s device picker.</p>
+            <div class="row spread"><select id="music-receiver" aria-label="Spotify audio destination"><option value="display">This display</option><option value="round">Round speaker</option></select><span class="eyebrow spotify-label">SPOTIFY</span><span id="music-status" class="music-badge">Checking receiver</span></div>
+            <h2 id="track-title">Your next favourite.</h2><p id="track-artist" class="soft">Choose this display’s receiver from Spotify’s device picker.</p>
             <p class="album-line"><span id="track-explicit" class="explicit-mark" hidden aria-label="Explicit content">E</span><span id="track-album">Make yourself at home.</span></p>
             <div class="track-timeline"><label class="sr-only" for="track-seek">Track position</label><input id="track-seek" type="range" min="0" max="1" value="0" step="1000" disabled><div class="row spread tiny soft"><span id="track-elapsed">0:00</span><span id="track-duration">0:00</span></div></div>
             <div class="transport spotify-transport">
@@ -92,9 +93,9 @@
               <button id="repeat-track" class="icon-button repeat-control" aria-label="Repeat: off" aria-pressed="false"><svg><use href="#i-repeat"/></svg><small id="repeat-one" hidden>1</small></button>
             </div>
             <div class="spotify-volume"><svg><use href="#i-speaker"/></svg><label for="spotify-volume">Spotify level</label><input id="spotify-volume" type="range" min="0" max="100" value="0" disabled><output id="spotify-volume-label" for="spotify-volume">—</output></div>
-            <p id="music-output-note" class="tiny soft">Music plays on the round speaker. This screen is its remote.</p>
+            <p id="music-output-note" class="tiny soft">Choose a receiver to see where audio will play.</p>
           </div>
-          <div class="music-library row spread"><span class="soft">Your music. One scan away.<br><small>Sign in on your phone, then choose Round Voice in Spotify.</small></span><button id="spotify-phone-open" class="pill" type="button" aria-haspopup="dialog">Connect with phone</button></div>
+          <div class="music-library row spread"><span class="soft">Your music. One scan away.<br><small id="spotify-picker-hint">Sign in on your phone, then choose this receiver in Spotify.</small></span><button id="spotify-phone-open" class="pill" type="button" aria-haspopup="dialog">Connect with phone</button></div>
         </article>
         <dialog id="spotify-phone-dialog" aria-labelledby="spotify-phone-title" aria-describedby="spotify-phone-description">
           <div class="row spread"><span class="eyebrow">SPOTIFY CONNECT</span><button id="spotify-phone-close" class="pill" type="button" autofocus>Close</button></div>
@@ -102,7 +103,7 @@
           <p id="spotify-phone-description">Scan with your phone’s camera. No keyboard needed here.</p>
           <div class="spotify-phone-body">
             <figure><img src="/assets/display/spotify-phone.png" width="248" height="248" alt="QR code opening https://open.spotify.com/ on your phone"><figcaption>open.spotify.com</figcaption></figure>
-            <div><ol><li><strong>Open Spotify on your phone.</strong><span>Scan the code, or open the Spotify app. Sign in there if needed.</span></li><li><strong>Play something you love.</strong><span>Use your Premium account and keep your phone on the same home Wi-Fi as Echo for first connection.</span></li><li><strong>Choose Round Voice.</strong><span>Tap Spotify’s device picker, then select Round Voice. Cover art and controls appear here when a track starts.</span></li></ol><p class="tiny soft">The code opens Spotify. It doesn’t link your account or sign this display in. This receiver plays on the optional round speaker. Spotify on this display is not set up yet.</p></div>
+            <div><ol><li><strong>Open Spotify on your phone.</strong><span>Scan the code, or open the Spotify app. Sign in there if needed.</span></li><li><strong>Play something you love.</strong><span>Use your Premium account and keep your phone on the same home Wi-Fi as Echo for first connection.</span></li><li><strong id="spotify-picker-title">Choose Echo Display.</strong><span>Tap Spotify’s device picker and select the receiver named above. Cover art and controls appear here when a track starts.</span></li></ol><p class="tiny soft">The code opens Spotify. It doesn’t link your account or sign this display in. <span id="spotify-phone-destination">Audio uses the selected receiver.</span></p></div>
           </div>
           <div class="spotify-phone-footer"><a id="open-spotify" class="text-button" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open Spotify on this device ↗</a><span class="tiny soft">Use this option if you have a keyboard.</span></div>
         </dialog>
@@ -152,7 +153,7 @@
         </article>
       </div>
     </section>
-    <section id="page-settings" class="page" hidden><div class="two-columns"><article class="card"><h2>Make yourself at home.</h2><label class="check-label"><input type="checkbox" id="clock24">24-hour clock</label><label>Ambient clock after<select id="idle-time"><option value="0">Never automatically</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select></label><label class="check-label"><input type="checkbox" id="night-dim">Dim the ambient view</label><label class="file-button pill">Choose ambient photos<input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden></label><p class="tiny soft">Optional photos stay in this browser session. No upload, account, or cloud library.</p><button class="pill" id="clear-photos">Clear photos</button><div class="divider"></div><a class="pill primary" href="/settings">Open Echo settings ↗</a></article><article class="card"><h2>Your home. Your choices.</h2><p class="soft">Provider, model, personality, speech, saved memory, and device permissions stay in Echo’s existing workspace.</p><div id="capability-notes"></div><div class="divider"></div><h3>Still to connect</h3><p class="soft">Choose calendar and camera sources below. Pi wake words, Pi Spotify playback and grouped audio still need integration. Answered calls between paired displays are in Planner → Room audio.</p><a class="text-button" href="/devices">Manage connected devices ↗</a></article></div></section>
+    <section id="page-settings" class="page" hidden><div class="two-columns"><article class="card"><h2>Make yourself at home.</h2><label class="check-label"><input type="checkbox" id="clock24">24-hour clock</label><label>Ambient clock after<select id="idle-time"><option value="0">Never automatically</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select></label><label class="check-label"><input type="checkbox" id="night-dim">Dim the ambient view</label><label class="file-button pill">Choose ambient photos<input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden></label><p class="tiny soft">Optional photos stay in this browser session. No upload, account, or cloud library.</p><button class="pill" id="clear-photos">Clear photos</button><div class="divider"></div><a class="pill primary" href="/settings">Open Echo settings ↗</a></article><article class="card"><h2>Your home. Your choices.</h2><p class="soft">Provider, model, personality, speech, saved memory, and device permissions stay in Echo’s existing workspace.</p><div id="capability-notes"></div><div class="divider"></div><h3>Still to connect</h3><p class="soft">Choose calendar and camera sources below. Pi wake words and grouped audio still need integration. Answered calls between paired displays are in Planner → Room audio.</p><a class="text-button" href="/devices">Manage connected devices ↗</a></article></div></section>
   </main>
   <template id="planner-template">
     <section id="page-planner" class="page" hidden>

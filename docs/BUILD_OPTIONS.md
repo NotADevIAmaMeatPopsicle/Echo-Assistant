@@ -10,7 +10,7 @@ AMOLED build remains a separate compact smart speaker.
 
 | Build | Audio path | Current implementation and limits |
 | --- | --- | --- |
-| Pi smart display | Microphone and speaker attached to the Pi | Paired kiosk, push-to-talk with replies returned to that Pi, radio/files, announcements and answered display calls are implemented in software. Local wake words, Pi Spotify playback, Pi alarm routing and physical audio verification remain open. |
+| Pi smart display | Microphone and speaker attached to the Pi | Paired kiosk, push-to-talk with replies returned to that Pi, radio/files, announcements and answered display calls are implemented in software. The Pi Spotify adapter adds a separately named ALSA receiver. Local wake words, Pi alarm routing and physical audio verification remain open. |
 | Round AMOLED speaker | Onboard microphone and attached speaker | Existing firmware, host voice transport, wake words, replies and Spotify receiver. Round intercom controls and adapter remain open. |
 | Spare phone, tablet or computer | Its browser, microphone and speakers | Responsive paired display, push-to-talk and answered calls reuse the browser path. Requires a secure connection and explicit microphone permission. Mobile background operation, continuous wake and device-specific audio performance are not verified. |
 | Another Pi or ESP32 audio endpoint | Its configured input/output, with an optional separate screen | Planned adapter path. The current ESP32 firmware targets the documented Waveshare board; other boards are not plug-and-play. |

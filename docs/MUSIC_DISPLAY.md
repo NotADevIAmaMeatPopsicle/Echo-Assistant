@@ -12,18 +12,19 @@ Open **Music** in the display sidebar. The page separates three destinations:
 ![Spotify now-playing layout, with synthetic music and artwork](images/display-music.png)
 
 The Pi build is intended to play music through its **own attached speaker**.
-Radio and local files already use its browser output. Pi Spotify playback is an
-open implementation item, not a reason to require a second Echo device.
+Radio and local files use its browser output. The [Pi Spotify adapter](PI_SPOTIFY.md)
+adds a separately named receiver and an explicit ALSA output. It starts disabled
+until configured in Settings; real Spotify playback still needs physical acceptance.
 
 The existing Spotify Connect receiver currently sends audio to the **optional
-round Echo speaker**. Its controls remain available for that separate build; the
-Pi does not yet have its own Spotify destination. The
+round Echo speaker**. Select **This display** for the Pi or **Round speaker** for that separate build. The
 Spotify level attenuates its incoming stream, independently of the round speaker's
 hardware volume. The page displays both when the hardware reports its volume.
 
 On a touchscreen without a keyboard, tap **Connect with phone**. Scan the QR code
 with your phone's camera, sign in to Spotify there if needed, start music, and
-choose **Round Voice** (the receiver's advertised name) in Spotify's device picker. For the first connection, keep the phone
+choose the name shown on the screen in Spotify's device picker: **Echo Display**
+by default for the Pi, or **Round Voice** for the optional round receiver. For the first connection, keep the phone
 and Echo on the same home network. The code is a static link to
 `https://open.spotify.com/`; it is generated locally, contains no credentials,
 and does not perform device authorization or sign the display into an account.
