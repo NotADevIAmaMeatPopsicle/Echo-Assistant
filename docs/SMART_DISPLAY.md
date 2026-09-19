@@ -373,3 +373,9 @@ Live MJPEG views and encrypted doorbell activity are implemented, with opt-in
 source selection, silent cards and explicit camera opening. See the
 [camera and doorbell setup guide](CAMERAS_AND_DOORBELLS.md) for supported triggers,
 stream limits and remaining physical acceptance.
+
+### Pi alarm sound
+
+[Pi alerts](PI_ALERTS.md) adds a native chime worker with per-display timer and
+reminder routing, quiet hours, and visible snooze/dismiss controls. It is disabled
+until the attached speaker is selected in Settings.

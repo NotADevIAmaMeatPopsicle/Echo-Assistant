@@ -200,18 +200,18 @@ class WebTests(unittest.TestCase):
         self.assertEqual(good.status_code,200); self.assertNotIn('never-reflect-me',good.text)
         self.assertNotIn('never-reflect-me',self.client.get('/v1/settings').text)
 
-    def test_browser_chat_does_not_execute_timer_but_device_text_still_does(self):
+    def test_browser_and_device_timer_commands_use_local_service_without_provider(self):
         self.login()
         self.store.save(SettingsUpdate(settings=EchoSettings(provider='openai',model='test-model'),api_key='fake-key'))
         response = self.client.post('/v1/chat',headers=self.browser,json={'text':'set a timer for five minutes'})
-        self.assertEqual(response.json()['text'],'Just chilling.')
+        self.assertEqual(response.json()['capability'],'timer')
         self.assertEqual(len(self.client.get('/v1/chat').json()['messages']),2)
         self.assertEqual(self.client.get('/v1/chat',headers=self.auth).json()['messages'],[])
-        self.assertEqual(self.client.get('/v1/state').json()['timers'],[])
+        self.assertEqual(len(self.client.get('/v1/state').json()['timers']),1)
         response = self.client.post('/v1/text',headers=self.auth,json={'text':'set a timer for five minutes'})
-        self.assertEqual(response.json()['capability'],'timer'); self.assertEqual(len(self.calls),1)
+        self.assertEqual(response.json()['capability'],'timer'); self.assertEqual(len(self.calls),0)
         response = self.client.post('/v1/text',headers=self.auth,json={'text':'tell me a joke'})
-        self.assertEqual(response.json()['capability'],'conversation'); self.assertEqual(len(self.calls),2)
+        self.assertEqual(response.json()['capability'],'conversation'); self.assertEqual(len(self.calls),1)
 
     def test_real_ui_assets_and_host_boundary(self):
         for path in ['/','/settings','/assets/app.js','/assets/style.css']:

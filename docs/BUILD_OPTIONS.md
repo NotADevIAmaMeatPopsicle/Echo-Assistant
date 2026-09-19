@@ -37,3 +37,6 @@ screen-to-audio pairing UI and general adapter protocol are not implemented yet.
 The [build queue](BUILD_QUEUE.md) tracks implementation and physical acceptance.
 A feature passing a simulated test is not a claim that an untested phone, sound
 card or ESP32 board will work unchanged.
+
+Pi timer and reminder chimes use the attached speaker independently of the round
+board. See [Pi alerts](PI_ALERTS.md) for output setup and delivery behavior.

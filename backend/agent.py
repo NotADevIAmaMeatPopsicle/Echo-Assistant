@@ -173,6 +173,7 @@ class EchoAgent:
         self.routines = None
         self.household = None
         self.briefing = None
+        self.local_assistant = None
         self.home_revision = None
 
     def clear(self, session=None):
@@ -251,6 +252,13 @@ class EchoAgent:
             home_revision = self.home_access.snapshot()['revision'] if self.home_access else None
             check_cancel(cancel)
             context_token, messages = self.context(session)
+            if self.local_assistant and len(text.strip()) <= 1200 and not lookup and not lookup_request(text):
+                from .audio_destination import destination_for
+                previous = messages[-1].get('local_result') if messages else None
+                reply = self.local_assistant.respond(text, timer_context=previous, destination=destination_for(session))
+                if reply['capability'] != 'conversation':
+                    self.record_local(text, reply, session, context_token)
+                    return reply
             from .daily_briefing import briefing_request
             if self.briefing and briefing_request(text):
                 if lookup:return {'status':'unavailable','capability':'briefing','text':'Turn off web lookup to read your private daily briefing.'}

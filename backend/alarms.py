@@ -100,7 +100,7 @@ class Alarms:
         if not self.poll and now >= self.next_poll:
             self.poll = self.worker.submit(self._request, 'GET', '/v1/state'); self.next_poll = now+1
         if not self.delivering and not self.speech and not self.action and not self.messages.playing and not self.messages.job and now >= self.next_alarm:
-            timer = next((timer for timer in self.timers if timer['finished'] and not timer['notified']), None)
+            timer = next((timer for timer in self.timers if timer['finished'] and not timer['notified'] and timer.get('destination','round')=='round'), None)
             if timer:
                 self.delivering = timer['id']
                 self.index = self.timers.index(timer); self.render()

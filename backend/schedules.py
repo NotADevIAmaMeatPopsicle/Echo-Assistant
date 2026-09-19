@@ -13,6 +13,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .audio_destination import validate_destination
+
 UTC = timezone.utc
 
 
@@ -124,12 +126,14 @@ class ScheduleStore:
         for item in saved['items']:
             if not re.fullmatch('[a-f0-9]{32}',item['id']) or item['id'] in ids: raise ValueError()
             ids.add(item['id'])
-            spec={k:v for k,v in item.items() if k not in {'id','next_at'}}
+            item.setdefault('destination','round'); validate_destination(item['destination'])
+            spec={k:v for k,v in item.items() if k not in {'id','next_at','destination'}}
             ScheduleSpec.model_validate(spec)
             if item['next_at'] is not None and (type(item['next_at']) not in (int,float) or not math.isfinite(item['next_at'])): raise ValueError()
         ids=set()
         for e in saved['events']:
-            if set(e)!={'id','schedule_id','title','message','kind','due_at','status','delivered'}: raise ValueError()
+            e.setdefault('destination','round'); validate_destination(e['destination'])
+            if set(e)!={'id','schedule_id','title','message','kind','due_at','status','delivered','destination'}: raise ValueError()
             if not re.fullmatch('[a-f0-9]{32}',e['id']) or e['id'] in ids: raise ValueError()
             ids.add(e['id'])
             if e['status'] not in {'due','snoozed','dismissed','missed','info'} or e['kind'] not in {'alarm','reminder'} or type(e['delivered']) is not bool: raise ValueError()
@@ -159,7 +163,7 @@ class ScheduleStore:
                 stamp=item['next_at']; identifier=hashlib.sha256(f'{item["id"]}:{stamp}'.encode()).hexdigest()[:32]
                 if not any(e['id']==identifier for e in draft['events']):
                     draft['events'].append({'id':identifier,'schedule_id':item['id'],'title':item['title'],'message':item['message'],
-                        'kind':item['kind'],'due_at':stamp,'status':'due' if now-stamp<=900 else 'missed','delivered':False})
+                        'kind':item['kind'],'destination':item['destination'],'due_at':stamp,'status':'due' if now-stamp<=900 else 'missed','delivered':False})
                 item['next_at']=next_occurrence(item,now)
                 if item['next_at'] is None: item['enabled']=False
             for event in draft['events']:
@@ -184,17 +188,18 @@ class ScheduleStore:
         with self.lock:
             return {**deepcopy(self.state),'quiet_active':self.quiet_now(),'server_time':self.clock()}
 
-    def save(self,spec,revision,identifier=None):
+    def save(self,spec,revision,identifier=None,*,destination="round"):
         spec=ScheduleSpec.model_validate(spec).model_dump()
         with self.lock:
             self.require()
             if revision!=self.state['revision']: raise ScheduleConflict('Schedules changed. Refresh and try again.')
             draft=deepcopy(self.state); next_at=next_occurrence(spec,self.clock())
             if spec['enabled'] and next_at is None: raise ValueError('Choose a future alarm or reminder')
-            item={**spec,'id':identifier or uuid4().hex,'next_at':next_at}
+            item={**spec,'id':identifier or uuid4().hex,'next_at':next_at,'destination':validate_destination(destination)}
             if identifier:
                 index=next((i for i,x in enumerate(draft['items']) if x['id']==identifier),None)
                 if index is None: raise KeyError(identifier)
+                item['destination']=draft['items'][index]['destination']
                 draft['items'][index]=item
             else:
                 if len(draft['items'])>=64: raise ValueError('Remove a schedule before adding another')
@@ -218,11 +223,13 @@ class ScheduleStore:
             if revision!=self.state['revision']: raise ScheduleConflict('Schedules changed. Refresh and try again.')
             draft=deepcopy(self.state); draft['quiet']=quiet; draft['revision']+=1; self.commit(draft)
 
-    def event_action(self,identifier,action,minutes=5):
+    def event_action(self,identifier,action,minutes=5,*,occurrence=None,destination=None):
         with self.lock:
             self.require(); draft=deepcopy(self.state)
             event=next((e for e in draft['events'] if e['id']==identifier),None)
             if event is None: return False
+            if occurrence is not None and str(event['due_at']) != occurrence: return False
+            if destination is not None and event['destination'] != destination: return False
             if action=='dismiss': event['status']='dismissed'
             elif action=='ack':
                 if event['status']!='due': return False
@@ -239,10 +246,11 @@ class ScheduleStore:
             quiet=self.quiet_now()
             return [{'id':e['id'],'label':e['title'],'remaining_seconds':max(0,e['due_at']-self.clock()),
                 'finished':e['status']=='due','notified':e['delivered'] or (quiet and not (e['kind']=='alarm' and self.state['quiet']['alarms_override'])),
+                'delivered':e['delivered'],'destination':e['destination'],'occurrence':str(e['due_at']),'late_seconds':max(0,self.clock()-e['due_at']),
                 'kind':e['kind'],'spoken_text':e['message'] or f'{e["title"]}. Your {e["kind"]} is ready.'}
                 for e in self.state['events'] if e['status'] in {'due','snoozed'}]
 
-    def notify(self,title,message,announce=False):
+    def notify(self,title,message,announce=False,*,destination="round"):
         # Visual by default. Speaking is an explicit user action and observes quiet hours.
         title=title.strip();message=message.strip()
         if not 1<=len(title)<=80 or not 1<=len(message)<=400 or type(announce) is not bool:
@@ -256,5 +264,5 @@ class ScheduleStore:
                 draft['events'].pop(inactive)
             identifier=uuid4().hex
             draft['events'].append({'id':identifier,'schedule_id':identifier,'title':title,'message':message,
-                'kind':'reminder','due_at':self.clock(),'status':'due' if announce else 'info','delivered':False})
+                'kind':'reminder','destination':validate_destination(destination),'due_at':self.clock(),'status':'due' if announce else 'info','delivered':False})
             self.commit(draft);return deepcopy(draft['events'][-1])

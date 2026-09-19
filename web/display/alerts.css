@@ -1,0 +1,3 @@
+.pi-alert-banner{position:fixed;z-index:35;bottom:24px;left:max(96px,8vw);right:max(24px,4vw);display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 26px;border-radius:24px;border:1px solid #6ae4cf80;background:#102939;box-shadow:0 16px 60px #0009;color:#edf9ff}
+.pi-alert-banner[hidden]{display:none}.pi-alert-banner strong{display:block;font-size:24px;margin:5px 0}.pi-alert-banner p{margin:4px 0 10px;max-width:48ch}.pi-alert-banner .row{flex-shrink:0}
+@media(max-width:650px){.pi-alert-banner{left:14px;right:14px;bottom:90px;display:block;padding:18px}.pi-alert-banner .row{margin-top:14px}}

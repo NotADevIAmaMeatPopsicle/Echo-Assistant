@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel,ConfigDict,Field
 from typing import Literal
+from .audio_destination import destination_for
 from .schedules import ScheduleSpec,QuietHours,ScheduleUnavailable,ScheduleConflict
 
 
@@ -45,10 +46,10 @@ def install(app,store,authorize):
     def snapshot(): return store.snapshot()
 
     @app.post('/v1/notifications',dependencies=[Depends(authorize)])
-    def notify(body:Notice):return change(lambda:store.notify(body.title,body.message,body.announce))
+    def notify(body:Notice,session=Depends(authorize)):return change(lambda:store.notify(body.title,body.message,body.announce,destination=destination_for(session)))
 
     @app.post('/v1/schedules',dependencies=[Depends(authorize)])
-    def create(body:Save): return change(lambda:store.save(body.schedule.model_dump(),body.revision))
+    def create(body:Save,session=Depends(authorize)): return change(lambda:store.save(body.schedule.model_dump(),body.revision,destination=destination_for(session)))
 
     @app.put('/v1/schedules/{identifier}',dependencies=[Depends(authorize)])
     def update(identifier:str,body:Save): return change(lambda:store.save(body.schedule.model_dump(),body.revision,identifier))

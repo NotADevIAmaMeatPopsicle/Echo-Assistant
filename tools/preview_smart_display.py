@@ -34,6 +34,7 @@ def fixtures():
     revision = hashlib.sha256(b'synthetic display').hexdigest()
     data['/health']['display_demo'] = True
     data['/v1/display/session']={'role':'owner'}
+    data['/v1/display/alert-settings']={'supported':False,'status':'Silent preview'}
     data['/v1/displays']={'items':[]}
     data['/v1/display/voice']={'available':False,'mode':'push_to_talk','message':'Silent preview.'}
     data['/v1/display/sources']={'status':'available','items':[
@@ -123,7 +124,9 @@ class DisplayPreview(Preview):
             return self.reply(200, (WEB/'display/index.html').read_bytes(), 'text/html; charset=utf-8')
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
             return self.camera_sample(path.endswith('/stream'))
-        assets = {'/assets/display/display.js':('display/display.js','text/javascript'),
+        assets = {'/assets/display/alerts.js':('display/alerts.js','text/javascript'),
+                  '/assets/display/alerts.css':('display/alerts.css','text/css'),
+                  '/assets/display/display.js':('display/display.js','text/javascript'),
                   '/assets/display/announcements.js':('display/announcements.js','text/javascript'),
                   '/assets/display/announcements.css':('display/announcements.css','text/css'),
                   '/assets/display/intercom.js':('display/intercom.js','text/javascript'),

@@ -17,6 +17,9 @@ class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if method=='GET' and path in {'/v1/display/alerts','/v1/display/alert-settings'}:return True
+    if method=='POST' and re.fullmatch(r'/v1/display/alerts/[a-f0-9]{32}/(?:claim|check|receipt)',path):return True
+    if method=='POST' and re.fullmatch(r'/v1/timers/[a-f0-9]{32}/snooze',path):return True
     if method=='POST' and (path in {'/v1/intercom/heartbeat','/v1/intercom/calls'} or re.fullmatch(r'/v1/intercom/calls/[a-f0-9]{32}/(?:accept|end|mute|audio)',path)):return True
     if method=='GET' and re.fullmatch(r'/v1/intercom/calls/[a-f0-9]{32}/audio',path):return True
     if method=='GET' and path in {'/v1/audio/rooms','/v1/audio/messages','/v1/audio/inbox'}:return True

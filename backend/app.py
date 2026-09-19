@@ -45,6 +45,8 @@ from .research_tasks import ResearchTasks
 from .household import HouseholdStore, HouseholdUnavailable, HouseholdConflict
 from .schedules import ScheduleStore,ScheduleUnavailable
 from .schedule_api import install as install_schedules
+from .audio_destination import destination_for
+from .display_alerts import DisplayAlerts, install as install_display_alerts
 from .household_commands import parse as household_request
 from .display_auth import Displays,DisplayStorageUnavailable
 from .experiences import SourceStore, Experiences
@@ -103,6 +105,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     memory = MemoryStore(runtime_root, store.protector)
     echo = EchoAgent(store, provider, memory)
     echo.household = household
+    echo.local_assistant = assistant
     research = ResearchTasks(store)
     conversations = Conversations()
     catalog = home_catalog or HomeCatalog(home)
@@ -132,6 +135,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     def owner(request:Request):
         if authorize(request).startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
     install_schedules(app,schedules,authorize)
+    install_display_alerts(app,DisplayAlerts(assistant,schedules),authorize)
     announcements=Announcements(runtime_root,store.protector,displays,schedules,
         lambda:voice_status(runtime_root) if runtime_root else {'status':'disconnected'})
     install_announcements(app,announcements,store,authorize,owner)
@@ -518,6 +522,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     @app.get("/v1/state")
     def state(request:Request,session=Depends(authorize)):
         result={"timers": assistant.timer_states()+schedules.timer_states(), "capabilities": ["clock", "timer", "schedules"]}
+        if session=='device':
+            for timer in result['timers']:
+                if timer['destination']!='round': timer['notified']=True
         if session=='device' and request.headers.get('x-echo-audio-receiver')=='round':
             try:result['audio_inbox']=announcements.inbox('round','round')
             except AnnouncementUnavailable:result['audio_inbox']={'enabled':False,'ready':False,'status':'unavailable','items':[],'active':[]}
@@ -550,7 +557,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             timer_context = previous[-1].get('local_result') if previous else None
             response = await run_in_threadpool(home.answer, request.text)
             if response is None:
-                response = await run_in_threadpool(assistant.respond, request.text, timer_context=timer_context)
+                response = await run_in_threadpool(assistant.respond, request.text, timer_context=timer_context, destination=destination_for(session))
             if response['capability'] == 'conversation':
                 return await run_conversation(connection, app.state.speech_stop,
                     partial(echo.respond,allow_home_actions=True), request.text, session,request.lookup)
@@ -802,9 +809,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         except (KeyError, TypeError, AttributeError, IndexError): raise HTTPException(503, 'Unsupported provider response') from None
 
     @app.post("/v1/timers", dependencies=[Depends(authorize)])
-    def timer(request: TimerRequest):
+    def timer(request: TimerRequest,session=Depends(authorize)):
         try:
-            return {"id": assistant.start_timer(request.seconds, request.label)}
+            return {"id": assistant.start_timer(request.seconds, request.label, destination=destination_for(session))}
         except ValueError as error:
             raise HTTPException(422, str(error)) from error
 
@@ -815,8 +822,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return {"dismissed": True}
 
     @app.post("/v1/timers/{timer_id}/ack", dependencies=[Depends(authorize)])
-    def acknowledge(timer_id: str):
-        if not assistant.acknowledge_timer(timer_id) and not schedules.event_action(timer_id,'ack'):
+    def acknowledge(timer_id: str,session=Depends(authorize)):
+        if not assistant.acknowledge_timer(timer_id,destination=destination_for(session)) and not schedules.event_action(timer_id,'ack',destination=destination_for(session)):
             raise HTTPException(404, 'Finished timer not found')
         return {'acknowledged': True}
 
