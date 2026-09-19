@@ -18,8 +18,8 @@ from backend import deployment
 from backend.settings import WindowsProtector
 from backend.remote_host import _powershell, manage
 
-FILES=('echo-settings.json','echo-memory.json','echo-routines.json','home-access.json',
-       'speaker-selection.json','timers.json','spotify-credentials.json','remote-agent.json',
+FILES=('echo-settings.json','echo-memory.json','echo-routines.json','echo-household.json','echo-schedules.json','echo-displays.json','echo-experiences.json','home-access.json',
+       'echo-media.json','speaker-selection.json','timers.json','spotify-credentials.json','remote-agent.json',
        'host-migration.json')
 
 def docker(*args, data=None):
@@ -34,7 +34,8 @@ def read_archive(path):
     if set(payload['files'])-set(FILES):raise ValueError('Unexpected recovery file')
     for name,item in payload['files'].items():
         raw=base64.b64decode(item['data'],validate=True)
-        if len(raw)>500_000 or hashlib.sha256(raw).hexdigest()!=item['sha256']:raise ValueError('Damaged recovery file')
+        limit=1_500_000 if name=='echo-schedules.json' else 800_000 if name=='echo-household.json' else 500_000
+        if len(raw)>limit or hashlib.sha256(raw).hexdigest()!=item['sha256']:raise ValueError('Damaged recovery file')
         json.loads(raw)
     for name in ('api','agent'):
         if not isinstance(payload['bootstrap'][name],dict):raise ValueError('Invalid recovery bootstrap')
@@ -51,7 +52,8 @@ def read():
     for name in names:
         p=root/name
         if not p.exists(): continue
-        if p.is_symlink() or p.stat().st_size>500000: raise ValueError('Unexpected recovery file')
+        limit=1500000 if name=='echo-schedules.json' else 800000 if name=='echo-household.json' else 500000
+        if p.is_symlink() or p.stat().st_size>limit: raise ValueError('Unexpected recovery file')
         raw=p.read_bytes(); json.loads(raw)
         result[name]={'data':base64.b64encode(raw).decode(),'sha256':hashlib.sha256(raw).hexdigest()}
     return result

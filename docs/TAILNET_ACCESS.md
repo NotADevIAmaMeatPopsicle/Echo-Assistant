@@ -10,8 +10,11 @@ unchanged; those rules must also permit the intended connections.
 This helper currently targets the **Windows Docker host** used by the managed
 deployment. It reads Echo's current-user DPAPI bootstrap to mint browser sessions.
 Run it under the same Windows account that provisioned Echo. It is a trusted
-administration gateway, not a limited guest-access mode: allowed devices can use
-the full UIs. Keep a lock screen on those devices and revoke lost devices.
+administration gateway for peers whose role is `owner` (the default for existing
+entries). Those devices can use the full UIs. Keep a lock screen on them and
+revoke lost devices. A peer explicitly assigned `"role": "display"` can enroll
+and use the limited Echo display with its own credential; it cannot obtain an
+owner browser session or access Hermes through this gateway.
 
 ## Prepare the host
 
@@ -88,3 +91,22 @@ in `local/deployment.json`. It does not grant access to the whole account.
 Node reenrollment or address changes require a fresh allowlist. Identity results
 are cached for up to 15 seconds. Restart the gateway to apply an edited list.
 Keep certificate keys, bootstrap bundles and status/inventory files out of Git.
+
+## Pair a restricted smart display
+
+For a Pi, add its exact Tailscale stable node ID and addresses to the private
+allowlist with `"role": "display"`. Do not omit the role: existing peers default
+to trusted owner access for compatibility. Keep the other owner devices unchanged.
+The gateway still verifies the node through Tailscale; a Display header alone
+does not grant network access.
+
+Deploy the gateway version that supports display credentials before pairing.
+Create a one-use pairing code in the owner workspace and follow
+[the Pi pairing guide](SMART_DISPLAY.md#pi-hardware-and-bring-up). The Pi bridge
+forwards its restricted Display credential on every request. The gateway drops
+owner cookies on that path and never upgrades it to an owner session. Its
+service routes also deny Hermes to display-role peers.
+
+Revoking the display credential in Echo stops its API access. Removing its node
+from the gateway allowlist stops network access after the short identity-cache
+window. Household source selections and display pairing are separate controls.

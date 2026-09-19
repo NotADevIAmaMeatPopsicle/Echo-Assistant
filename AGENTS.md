@@ -1,7 +1,10 @@
 # Echo Assistant
 
 Read README.md and the relevant setup guide before editing hardware or deployment.
-This is the public source distribution. Keep user settings, credentials, hostnames,
+This repository is private while the round speaker and Pi smart-display builds
+are completed together. Do not make it public or publish a new release without
+an explicit request. Preserve its readiness for a sanitized public distribution.
+Keep user settings, credentials, hostnames,
 device identities, recordings, session data, build outputs and backups out of Git.
 Use environment variables, ignored local configuration and synthetic test fixtures.
 Preserve third-party notices. Run the release guard before staging or publishing.

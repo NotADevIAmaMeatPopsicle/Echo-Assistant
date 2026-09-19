@@ -12,6 +12,7 @@ import ipaddress
 import json
 import logging
 import os
+import re
 from pathlib import Path
 import ssl
 import subprocess
@@ -23,7 +24,7 @@ from aiohttp import ClientSession, ClientTimeout, DummyCookieJar, WSMsgType, web
 FLAGS = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 HOP = {'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
        'te', 'trailer', 'transfer-encoding', 'upgrade'}
-HTML_ROUTES = {'/', '/settings', '/devices', '/memory', '/routines', '/tasks'}
+HTML_ROUTES = {'/', '/settings', '/devices', '/memory', '/routines', '/tasks', '/display'}
 
 
 def normalized_ip(value):
@@ -48,7 +49,17 @@ def origin_allowed(method, origin, expected):
     return method in {'GET', 'HEAD', 'OPTIONS'} or origin == expected
 
 
-def forward_headers(headers, target, expected):
+def peer_role(config,peer):
+    try:
+        ip=normalized_ip(peer)
+        devices=[d for d in config.get('allowed_devices',[]) if ip in {normalized_ip(v) for v in d['ips']}]
+        if len(devices)!=1:return 'denied'
+        role=devices[0].get('role','owner')
+        return role if role in {'owner','display'} else 'denied'
+    except (ValueError,KeyError,TypeError,AttributeError):return 'denied'
+
+
+def forward_headers(headers, target, expected, *, allow_display=False):
     dropped = HOP | {'host', 'authorization', 'forwarded'}
     dropped.update(x.strip().lower() for x in headers.get('Connection', '').split(','))
     result = {k: v for k, v in headers.items() if k.lower() not in dropped
@@ -59,6 +70,10 @@ def forward_headers(headers, target, expected):
     if 'Referer' in result:
         # Never forward an arbitrary third-party referer as a trusted one.
         result.pop('Referer')
+    credential=headers.get('Authorization','')
+    if allow_display and re.fullmatch(r'Display [a-f0-9]{32}\.[A-Za-z0-9_-]{40,64}',credential):
+        result={k:v for k,v in result.items() if k.lower()!='cookie'}
+        result['Authorization']=credential
     return result
 
 
@@ -150,6 +165,9 @@ class Gateway:
         if not await self.authorized(request.remote):
             raise web.HTTPForbidden(text='This device is not allowed to access Echo.')
         service = request.app['service']
+        role=peer_role(self.config,request.remote)
+        if role=='denied' or role=='display' and service['kind']!='echo':
+            raise web.HTTPForbidden(text='This device is not permitted to administer Echo or Hermes.')
         authority = self.config['hostname'] + ':' + str(service['port'])
         expected = 'https://' + authority
         if request.host != authority or not origin_allowed(request.method, request.headers.get('Origin'), expected):
@@ -157,9 +175,17 @@ class Gateway:
         if service['kind'] == 'echo' and request.path.startswith('/internal/'):
             raise web.HTTPNotFound()
         target = service['target']
-        headers = forward_headers(request.headers, target, expected)
+        is_display=request.headers.get('Authorization','').startswith('Display ')
+        if is_display and not re.fullmatch(r'Display [a-f0-9]{32}\.[A-Za-z0-9_-]{40,64}',request.headers['Authorization']):
+            raise web.HTTPUnauthorized(text='Invalid display credential.')
+        if role=='display' and not is_display:
+            public=(request.method=='GET' and (request.path in {'/display','/health'} or request.path.startswith('/assets/')))
+            enroll=request.method=='POST' and request.path=='/v1/displays/enroll'
+            if not public and not enroll:raise web.HTTPUnauthorized(text='Pair this device with Echo before using it.')
+        headers = forward_headers(request.headers, target, expected,allow_display=service['kind']=='echo')
+        if role=='display':headers={k:v for k,v in headers.items() if k.lower()!='cookie'}
         cookies = []
-        if service['kind'] == 'echo' and request.method == 'GET' and request.path in HTML_ROUTES:
+        if role=='owner' and not is_display and service['kind'] == 'echo' and request.method == 'GET' and request.path in HTML_ROUTES:
             async with self.client.get(target + '/v1/settings', headers={'Cookie': request.headers.get('Cookie', '')}) as r:
                 if r.status == 401:
                     cookies = await self.echo_cookie(target)

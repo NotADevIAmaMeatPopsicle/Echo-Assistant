@@ -13,6 +13,7 @@ from .lookup import cited_answer, lookup_request
 from .agent_runtime import HermesRuntime, RuntimeUnavailable
 from .home_access import HomeAccessUnavailable
 from .routines import routine_request, RoutineUnavailable, RoutineConflict
+from .household_commands import parse as household_request, respond as household_respond
 
 BOUNDARIES = (
     '\n\nRuntime boundaries: You receive text only. You cannot control appliances, play music, '
@@ -170,6 +171,7 @@ class EchoAgent:
         self.home_access = None
         self.home_actions = None
         self.routines = None
+        self.household = None
         self.home_revision = None
 
     def clear(self, session=None):
@@ -248,6 +250,13 @@ class EchoAgent:
             home_revision = self.home_access.snapshot()['revision'] if self.home_access else None
             check_cancel(cancel)
             context_token, messages = self.context(session)
+            household = household_request(text)
+            if household and self.household:
+                if lookup or lookup_request(text):
+                    return {'status':'unavailable','capability':'household','text':'Turn off web search before changing or reading household lists.'}
+                reply=household_respond(self.household,household)
+                self._append_exchange(session,context_token,text,{'role':'assistant','content':reply['text']})
+                return reply
             routine=routine_request(text)
             if routine and self.routines:
                 if lookup or lookup_request(text):

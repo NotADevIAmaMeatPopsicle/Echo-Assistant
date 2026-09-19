@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Echo smart display
+Comment=Open Echo in the existing desktop session
+Exec=/usr/bin/python3 /opt/echo-assistant/deploy/pi/kiosk.py
+Terminal=false
+X-GNOME-Autostart-enabled=false

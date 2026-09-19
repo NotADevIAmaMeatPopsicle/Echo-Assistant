@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import secrets
 from functools import partial
-from threading import Lock, Event
+from threading import Lock, Event, Thread
 from typing import Literal
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -42,6 +42,16 @@ from .music_commands import request as request_music
 from .speaker_check import SpeakerCheck
 from .whisper import available as whisper_available
 from .research_tasks import ResearchTasks
+from .household import HouseholdStore, HouseholdUnavailable, HouseholdConflict
+from .schedules import ScheduleStore,ScheduleUnavailable
+from .schedule_api import install as install_schedules
+from .household_commands import parse as household_request
+from .display_auth import Displays,DisplayStorageUnavailable
+from .experiences import SourceStore, Experiences
+from .experience_api import install as install_experiences
+from .photos import Photos
+from .photo_api import install as install_photos
+from .media_presets import MediaPresets, install as install_media
 from . import __version__
 
 def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | None = None,
@@ -52,18 +62,31 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         raise ValueError("A local API token of at least 32 characters is required")
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        app.state.speech_stop.set()
-        research.close()
-        from .neural_speech import close
-        close()
+        scheduler_stop=Event()
+        def run_schedules():
+            while not scheduler_stop.is_set():
+                try: schedules.tick(); app.state.schedule_error=False
+                except ScheduleUnavailable: app.state.schedule_error=True
+                scheduler_stop.wait(1)
+        scheduler_thread=Thread(target=run_schedules,name='echo-schedules',daemon=True)
+        scheduler_thread.start()
+        try: yield
+        finally:
+            scheduler_stop.set(); scheduler_thread.join(timeout=3)
+            app.state.speech_stop.set()
+            research.close()
+            from .neural_speech import close
+            close()
     app = FastAPI(title="Round Voice", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.speech_stop = Event()
     assistant = Assistant(storage=runtime_root/'local/timers.json' if runtime_root else None)
     home = home or HomeBridge(HomeConfig())
     store = settings_store or SettingsStore(runtime_root)
+    household = HouseholdStore(runtime_root, store.protector)
+    schedules = ScheduleStore(runtime_root,store.protector)
     memory = MemoryStore(runtime_root, store.protector)
     echo = EchoAgent(store, provider, memory)
+    echo.household = household
     research = ResearchTasks(store)
     conversations = Conversations()
     catalog = home_catalog or HomeCatalog(home)
@@ -79,11 +102,24 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     routines = Routines(RoutineStore(runtime_root,store.protector),actions)
     echo.routines = routines
     auth = BrowserAuth(token)
+    displays = Displays(runtime_root,store.protector)
     speech_restart = SpeechRestart(runtime_root)
     speaker_check = SpeakerCheck(runtime_root)
     agent_apply = AgentApply(runtime_root, store)
     voice_check_lock = Lock()
-    authorize = auth.authorize
+    def authorize(request:Request):
+        header=request.headers.get('authorization','')
+        if header.startswith('Display '): return displays.authorize(request)
+        if header.startswith('Bearer ') or request.cookies.get('echo_session'): return auth.authorize(request)
+        if request.cookies.get('echo_display_session'): return displays.authorize(request)
+        return auth.authorize(request)
+    def owner(request:Request):
+        if authorize(request).startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
+    install_schedules(app,schedules,authorize)
+    experiences = Experiences(home, SourceStore(runtime_root, store.protector))
+    install_experiences(app, experiences, authorize, owner)
+    install_photos(app, Photos(runtime_root, store.protector), authorize, owner)
+    install_media(app, MediaPresets(runtime_root, store.protector), authorize, owner)
     hosts = ['127.0.0.1', 'localhost', 'testserver'] if runtime_root is None else ['127.0.0.1', 'localhost']
     if os.environ.get('ECHO_CONTAINER') == '1': hosts += ['api', 'echo-api']
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)
@@ -107,6 +143,96 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     @app.get('/routines')
     @app.get('/tasks')
     def ui(): return FileResponse(web/'index.html')
+
+    @app.get('/display')
+    def smart_display(): return FileResponse(web/'display/index.html')
+
+    @app.exception_handler(DisplayStorageUnavailable)
+    async def display_storage_error(request,error): return JSONResponse({'detail':str(error)},status_code=503)
+
+    class PairDisplay(BaseModel):
+        model_config=ConfigDict(extra='forbid')
+        name:str=Field(min_length=1,max_length=60)
+
+    class EnrollDisplay(BaseModel):
+        model_config=ConfigDict(extra='forbid')
+        code:str=Field(min_length=32,max_length=64)
+
+    @app.get('/v1/displays',dependencies=[Depends(owner)])
+    def paired_displays(): return {'items':displays.snapshot()}
+
+    @app.post('/v1/displays/pairing',dependencies=[Depends(owner)])
+    def pair_display(body:PairDisplay):
+        try:return displays.pairing(body.name)
+        except ValueError as error:raise HTTPException(422,str(error)) from None
+
+    @app.post('/v1/displays/enroll')
+    def enroll_display(body:EnrollDisplay): return displays.enroll(body.code)
+
+    @app.delete('/v1/displays/{identifier}',dependencies=[Depends(owner)])
+    def revoke_display(identifier:str):
+        if not displays.revoke(identifier): raise HTTPException(404,'Display not found')
+        return {'revoked':True}
+
+    @app.post('/v1/displays/session')
+    def display_session(request:Request):
+        auth.same_origin(request)
+        session=displays.new_session(request.headers.get('authorization',''))
+        response=JSONResponse({'authenticated':True,'role':'display'})
+        response.set_cookie('echo_display_session',session,httponly=True,samesite='strict',max_age=8*3600)
+        response.delete_cookie('echo_session'); return response
+
+    @app.get('/v1/display/session')
+    def current_display_session(session=Depends(authorize)):
+        return {'role':'display' if session.startswith('display:') else 'owner'}
+
+    @app.get('/v1/household', dependencies=[Depends(authorize)])
+    def household_state(): return household.snapshot()
+
+    class HouseholdCreate(BaseModel):
+        model_config = ConfigDict(extra='forbid', strict=True)
+        revision: int = Field(ge=0)
+        kind: Literal['shopping', 'tasks', 'notes']
+        text: str = Field(min_length=1, max_length=500)
+
+    class HouseholdEdit(BaseModel):
+        model_config = ConfigDict(extra='forbid', strict=True)
+        revision: int = Field(ge=0)
+        text: str | None = Field(default=None, min_length=1, max_length=500)
+        done: bool | None = None
+        position: int | None = Field(default=None,ge=0,le=199)
+
+    class HouseholdDelete(BaseModel):
+        model_config = ConfigDict(extra='forbid', strict=True)
+        revision: int = Field(ge=0)
+
+    @app.exception_handler(HouseholdUnavailable)
+    async def household_unavailable(request, error):
+        return JSONResponse(status_code=503, content={'detail': str(error)})
+
+    @app.exception_handler(HouseholdConflict)
+    async def household_conflict(request, error):
+        return JSONResponse(status_code=409, content={'detail': str(error)})
+
+    def household_change(**values):
+        try: return household.change(**values)
+        except HouseholdConflict: raise
+        except KeyError: raise HTTPException(404, 'This item no longer exists') from None
+        except ValueError: raise HTTPException(422, 'Check the item text, category, and list capacity') from None
+
+    @app.post('/v1/household', dependencies=[Depends(authorize)])
+    def household_add(body: HouseholdCreate):
+        return household_change(**body.model_dump())
+
+    @app.patch('/v1/household/{identifier}', dependencies=[Depends(authorize)])
+    def household_edit(identifier: str, body: HouseholdEdit):
+        if body.text is None and body.done is None and body.position is None:
+            raise HTTPException(422, 'Choose a change to make')
+        return household_change(identifier=identifier, **body.model_dump())
+
+    @app.delete('/v1/household/{identifier}', dependencies=[Depends(authorize)])
+    def household_delete(identifier: str, body: HouseholdDelete):
+        return household_change(identifier=identifier, delete=True, revision=body.revision)
 
     @app.post('/v1/ui/ticket', dependencies=[Depends(auth.bearer)])
     def ticket(): return {'ticket': auth.ticket()}
@@ -200,6 +326,33 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     def retry_home_access():
         access.ensure_applied()
         return access.snapshot()
+
+    @app.get('/v1/display/home',dependencies=[Depends(authorize)])
+    def display_home():
+        try:
+            saved=access.snapshot()
+            return {**apply_policy(catalog.snapshot(),saved['policy']),'revision':saved['revision']}
+        except HomeUnavailable as error: raise HTTPException(503,str(error)) from None
+
+    class DisplayHomeAction(BaseModel):
+        model_config=ConfigDict(extra='forbid',strict=True)
+        revision:str=Field(pattern=r'^[a-f0-9]{64}$')
+        entity_id:str
+        action:str
+        value:float|int|bool|str|dict[str,float]|None=None
+        unit:Literal['°C','°F']|None=None
+
+    @app.post('/v1/display/home/control',dependencies=[Depends(authorize)])
+    def display_home_action(body:DisplayHomeAction):
+        if deployment_mode!='device': raise HTTPException(409,'Home actions are disabled in validation mode')
+        if access.snapshot()['revision']!=body.revision: raise HTTPException(409,'Device permissions changed. Refresh before trying again.')
+        try:
+            with actions.scope(True,body.revision) as scope:
+                command=ActionRequest(request_id=scope.id,**body.model_dump(exclude={'revision'}))
+                result=actions.execute(command)
+                if result['status']=='denied': raise HTTPException(403,result.get('error','Device control is not allowed'))
+                return {**result,'text':{'complete':'The device reports the requested state.','accepted':'Command accepted; physical state is not confirmed.','unconfirmed':'The device did not confirm the change. Check its current state before retrying.','unavailable':'The device is unavailable.'}.get(result['status'],'Device request is busy.')}
+        except ValueError as error: raise HTTPException(422,str(error)) from None
 
     @app.get("/health")
     def health():
@@ -316,7 +469,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
 
     @app.get("/v1/state", dependencies=[Depends(authorize)])
     def state():
-        return {"timers": assistant.timer_states(), "capabilities": ["clock", "timer"]}
+        return {"timers": assistant.timer_states()+schedules.timer_states(), "capabilities": ["clock", "timer", "schedules"]}
 
     @app.post("/v1/text")
     async def text(request: TextRequest, connection: Request, session=Depends(authorize)):
@@ -335,7 +488,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             if re.match(r'\s*(?:please\s+)?(?:research\b|look into\b|compare\b)',request.text,re.I):
                 task=research.start(session,request.text)
                 return {'status':'complete','capability':'research','text':'I’ll look into that. The report and sources will appear on the Tasks page.','task_id':task['id']}
-            if routine_request(request.text):
+            if routine_request(request.text) or household_request(request.text):
                 return await run_conversation(connection,app.state.speech_stop,
                     partial(echo.respond,allow_home_actions=deployment_mode=='device'),request.text,session,request.lookup)
             if deployment_mode == 'validation' or memory_request(request.text) or request.lookup or lookup_request(request.text):
@@ -605,13 +758,13 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
 
     @app.delete("/v1/timers/{timer_id}", dependencies=[Depends(authorize)])
     def dismiss(timer_id: str):
-        if not assistant.dismiss_timer(timer_id):
+        if not assistant.dismiss_timer(timer_id) and not schedules.event_action(timer_id,'dismiss'):
             raise HTTPException(404, "Timer not found")
         return {"dismissed": True}
 
     @app.post("/v1/timers/{timer_id}/ack", dependencies=[Depends(authorize)])
     def acknowledge(timer_id: str):
-        if not assistant.acknowledge_timer(timer_id):
+        if not assistant.acknowledge_timer(timer_id) and not schedules.event_action(timer_id,'ack'):
             raise HTTPException(404, 'Finished timer not found')
         return {'acknowledged': True}
 

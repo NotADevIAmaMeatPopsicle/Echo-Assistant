@@ -25,9 +25,9 @@ class RoutineConflict(ValueError):
 class RoutineStep(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True, allow_inf_nan=False, str_max_length=220)
     entity_id: str = Field(pattern=r'^(light|switch|climate|media_player|scene)\.[a-z0-9_]{1,200}$')
-    action: Literal['turn_on','turn_off','brightness','color_temperature','temperature','mode',
+    action: Literal['turn_on','turn_off','brightness','color_temperature','color','temperature','temperature_range','mode',
                     'play','pause','stop','volume','mute','activate']
-    value: float | int | bool | str | None = None
+    value: float | int | bool | str | dict[str,float] | None = None
     unit: Literal['°C','°F'] | None = None
 
 

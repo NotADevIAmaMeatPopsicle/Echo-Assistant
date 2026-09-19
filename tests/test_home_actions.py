@@ -95,6 +95,26 @@ class HomeActionTests(unittest.TestCase):
             result=self.actions.execute(self.command(scope,value=100))
         self.assertEqual(result['status'],'complete');self.assertFalse(result['attempted']);self.assertFalse(self.home.writes)
 
+    def test_color_and_range_target_validation(self):
+        from backend.home_actions import plan
+        with self.scope() as scope:
+            color=self.command(scope,action='color',value='#40a0ff')
+            with self.assertRaises(ValueError): plan(color,self.home.states['light.desk'],self.home)
+            light=copy.deepcopy(self.home.states['light.desk']); light['attributes']['supported_color_modes']=['rgb']
+            domain,service,body,confirmed=plan(color,light,self.home)
+            self.assertEqual(body['rgb_color'],[64,160,255])
+            light['attributes']['rgb_color']=[64,160,255]
+            self.assertTrue(confirmed(light))
+            climate=copy.deepcopy(self.home.states['climate.study']); climate['state']='heat_cool'
+            command=self.command(scope,action='temperature_range',value={'low':65.0,'high':75.0},entity='climate.study',unit='°F')
+            domain,service,body,confirmed=plan(command,climate,self.home)
+            self.assertEqual((body['target_temp_low'],body['target_temp_high']),(65,75))
+            climate['attributes'].update(target_temp_low=65,target_temp_high=75)
+            self.assertTrue(confirmed(climate))
+            for bounds in ({'low':80.0,'high':70.0},{'low':0.0,'high':70.0}):
+                with self.assertRaises(ValueError): plan(command.model_copy(update={'value':bounds}),climate,self.home)
+        self.assertFalse(self.home.writes)
+
     def test_ambiguous_transport_never_retries_writes_and_reconciles(self):
         self.home.fail_post=True
         with self.scope() as scope:

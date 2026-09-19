@@ -7,7 +7,7 @@ except ModuleNotFoundError as error:
     if error.name == 'aiohttp':
         raise unittest.SkipTest('Run in the isolated tailnet proxy environment') from None
     raise
-from tools.tailnet_gateway import Gateway, allowed_node, forward_headers, origin_allowed
+from tools.tailnet_gateway import Gateway, allowed_node, forward_headers, origin_allowed,peer_role
 
 
 class AccessTests(unittest.TestCase):
@@ -36,6 +36,15 @@ class AccessTests(unittest.TestCase):
         self.assertEqual(result, {'Host': '127.0.0.1:18668', 'Cookie': 'echo_session=browser-session',
                                   'Origin': 'http://127.0.0.1:18668'})
 
+    def test_display_headers_remain_scoped_and_cannot_carry_owner_cookie(self):
+        header='Display '+'a'*32+'.'+'b'*43
+        result=forward_headers({'Authorization':header,'Cookie':'echo_session=owner'},'http://127.0.0.1:8768','https://echo.example',allow_display=True)
+        self.assertEqual(result['Authorization'],header);self.assertNotIn('Cookie',result)
+        self.assertNotIn('Authorization',forward_headers({'Authorization':header},'http://127.0.0.1:8768','https://echo.example'))
+        config={'allowed_devices':[{'id':'display-node','ips':['100.64.0.2'],'role':'display'}]}
+        self.assertEqual(peer_role(config,'100.64.0.2'),'display')
+        self.assertEqual(peer_role(config,'100.64.0.3'),'denied')
+
 
 class ProxyTests(unittest.IsolatedAsyncioTestCase):
     async def test_denied_peer_cannot_impersonate_allowed_device(self):
@@ -57,7 +66,7 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
         upstream_app = web.Application()
         upstream_app.router.add_route('*', '/{path:.*}', upstream)
         async with TestServer(upstream_app) as server:
-            gateway = Gateway({'hostname': 'echo.example'})
+            gateway = Gateway({'hostname': 'echo.example','allowed_devices':[{'id':'demo','ips':['127.0.0.1'],'role':'owner'}]})
             async def authorized(peer): return True
             gateway.authorized = authorized
             app = web.Application()
@@ -73,6 +82,28 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(await response.text(), 'upstream')
                 self.assertEqual(received[0]['Cookie'], 'echo_session=private')
                 self.assertNotIn('Authorization', received[0])
+
+    async def test_display_peer_never_receives_owner_bootstrap_or_hermes(self):
+        received=[]
+        async def upstream(request):
+            received.append((request.path,dict(request.headers)));return web.Response(text='display')
+        upstream_app=web.Application();upstream_app.router.add_route('*','/{path:.*}',upstream)
+        async with TestServer(upstream_app) as server:
+            gateway=Gateway({'hostname':'echo.example','allowed_devices':[{'id':'demo','ips':['127.0.0.1'],'role':'display'}]})
+            async def authorized(peer):return True
+            async def must_not_bootstrap(target):raise AssertionError('Display received owner bootstrap')
+            gateway.authorized=authorized;gateway.echo_cookie=must_not_bootstrap
+            app=web.Application();service={'port':18469,'kind':'echo','target':str(server.make_url('')).rstrip('/')}
+            app['service']=service;app.router.add_route('*','/{path:.*}',gateway.proxy)
+            async with ClientSession(cookie_jar=DummyCookieJar()) as connection,TestClient(TestServer(app)) as client:
+                gateway.client=connection
+                headers={'Host':'echo.example:18469','Authorization':'Display '+'a'*32+'.'+'b'*43,'Cookie':'echo_session=owner'}
+                self.assertEqual((await client.get('/display',headers=headers)).status,200)
+                self.assertEqual([p for p,h in received],['/display']);self.assertNotIn('Cookie',received[0][1])
+                self.assertIn('Authorization',received[0][1])
+                self.assertEqual((await client.get('/v1/settings',headers={'Host':'echo.example:18469','Cookie':'echo_session=owner'})).status,401)
+                service['kind']='hermes'
+                self.assertEqual((await client.get('/',headers=headers)).status,403)
 
 
 if __name__ == '__main__': unittest.main()

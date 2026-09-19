@@ -13,5 +13,9 @@ class BrowserHeadersMiddleware:
                 headers['X-Content-Type-Options'] = 'nosniff'
                 headers['Referrer-Policy'] = 'no-referrer'
                 headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+                if scope.get('path') == '/display':
+                    # Optional photos are browser-local object URLs, never uploaded.
+                    headers['Content-Security-Policy'] = headers['Content-Security-Policy'].replace("img-src 'self' data:", "img-src 'self' data: blob:")
+                    headers['Content-Security-Policy'] += '; media-src \'self\' blob: https:'
             await send(message)
         await self.app(scope, receive, add_headers)

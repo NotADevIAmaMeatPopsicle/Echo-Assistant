@@ -25,9 +25,9 @@ class ActionRequest(BaseModel):
     model_config=ConfigDict(extra='forbid',strict=True,str_max_length=220,allow_inf_nan=False)
     request_id:str=Field(pattern=r'^[a-f0-9]{32}$')
     entity_id:str=Field(pattern=r'^(light|switch|climate|media_player|scene)\.[a-z0-9_]{1,200}$')
-    action:Literal['turn_on','turn_off','brightness','color_temperature','temperature','mode',
+    action:Literal['turn_on','turn_off','brightness','color_temperature','color','temperature','temperature_range','mode',
                    'play','pause','stop','volume','mute','next','previous','activate']
-    value:float|int|bool|str|None=None
+    value:float|int|bool|str|dict[str,float]|None=None
     unit:Literal['°C','°F']|None=None
 
 
@@ -67,6 +67,15 @@ def plan(command,state,bridge):
         number(low,1000,20000);number(high,low,20000)
         data['color_temp_kelvin']=number(value,low,high)
         return domain,'turn_on',data,lambda current:current['state']=='on' and equals('color_temp_kelvin',value,100)(current)
+    if domain=='light' and action=='color':
+        import re
+        if not set(modes)&{'hs','xy','rgb','rgbw','rgbww'} or not isinstance(value,str) or not re.fullmatch('#[0-9a-fA-F]{6}',value):
+            raise ValueError('Choose a hex color on a light that reports color support')
+        rgb=[int(value[i:i+2],16) for i in (1,3,5)]; data['rgb_color']=rgb
+        def observed_color(current):
+            actual=current.get('attributes',{}).get('rgb_color')
+            return current['state']=='on' and isinstance(actual,(list,tuple)) and len(actual)==3 and all(type(a) in (int,float) and abs(a-b)<=8 for a,b in zip(actual,rgb))
+        return domain,'turn_on',data,observed_color
     if domain=='climate' and action=='mode':
         modes=attrs.get('hvac_modes')
         if command.unit is not None or not isinstance(modes,list) or not isinstance(value,str) or value not in modes:
@@ -82,6 +91,16 @@ def plan(command,state,bridge):
         step=attrs.get('target_temp_step',.5);number(step,.1,10)
         data['temperature']=value
         return domain,'set_temperature',data,equals('temperature',value,max(.1,step/2))
+    if domain=='climate' and action=='temperature_range':
+        unit=bridge._request('GET','/api/config').get('unit_system',{}).get('temperature')
+        if state['state']!='heat_cool' or unit not in {'°C','°F'} or command.unit!=unit:
+            raise ValueError('Range targets require heat/cool mode and the current temperature unit')
+        if not isinstance(value,dict) or set(value)!={'low','high'}: raise ValueError('Specify both low and high targets')
+        low,high=attrs.get('min_temp'),attrs.get('max_temp'); number(low,-100,300); number(high,low,300)
+        target_low=number(value['low'],low,high); target_high=number(value['high'],target_low,high)
+        if target_low>=target_high: raise ValueError('The low target must be below the high target')
+        data.update(target_temp_low=target_low,target_temp_high=target_high)
+        return domain,'set_temperature',data,lambda current:equals('target_temp_low',target_low,.1)(current) and equals('target_temp_high',target_high,.1)(current)
     if domain=='media_player':
         supported=attrs.get('supported_features',0)
         masks={'pause':1,'volume':4,'mute':8,'previous':16,'next':32,'turn_on':128,'turn_off':256,'play':16384,'stop':4096}

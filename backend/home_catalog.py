@@ -3,7 +3,7 @@ import json
 from .home import HomeBridge, HomeUnavailable
 
 DOMAINS = {'light', 'switch', 'climate', 'media_player', 'cover', 'fan', 'scene', 'weather'}
-FIELDS = {'brightness', 'color_temp_kelvin', 'color_mode', 'supported_color_modes',
+FIELDS = {'brightness', 'color_temp_kelvin', 'color_mode', 'supported_color_modes','rgb_color','target_temp_low','target_temp_high',
           'min_color_temp_kelvin', 'max_color_temp_kelvin', 'min_temp', 'max_temp', 'target_temp_step',
           'current_temperature', 'temperature', 'current_humidity', 'hvac_action',
           'hvac_modes', 'volume_level', 'is_volume_muted', 'media_title',

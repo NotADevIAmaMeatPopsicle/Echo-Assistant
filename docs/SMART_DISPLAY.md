@@ -1,0 +1,250 @@
+# Echo smart display
+
+Echo is growing into two builds with one assistant: the compact round AMOLED
+smart speaker and a larger Raspberry Pi touchscreen for a bedside table, kitchen,
+or desk. The larger build takes inspiration from Nest Hub and Echo Show: useful
+at a glance, comfortable to touch, and able to answer or act when asked.
+
+The repository is private during this work. The next public package should
+include both complete builds, their assembly guides, and their verified limits.
+Private installation data remains outside Git even while the repository is private.
+
+## Try the first implementation
+
+The `/display` page is included in Echo's existing web server. Open **Smart
+display** from the web workspace, or run the existing launcher with `--display`:
+
+```powershell
+.venv/Scripts/python.exe tools/open_ui.py --display
+```
+
+For a completely separate, interactive demonstration:
+
+```powershell
+.venv/Scripts/python.exe tools/preview_smart_display.py
+```
+
+Open **http://127.0.0.1:8788/display**. The demo uses synthetic room names and
+in-memory state. List edits, timers, and simulated controls work, but no home
+devices, models, credentials, microphone, or speaker are connected. Closing the
+preview server clears its data. Workspace links explain their live counterpart.
+
+![Echo large-display home screen with synthetic data](images/display-home.png)
+
+![Room controls, thermostat, and speaker selection with synthetic data](images/display-rooms.png)
+
+The initial layout targets **1024 × 600 landscape**, with responsive layouts for
+larger displays and phones. Its blue background, luminous ring, mint accents,
+and listening states share the round device's visual identity. Software dimming
+and reduced-motion support are included; software dimming does not switch off
+an LCD backlight.
+
+## One system, two front ends
+
+```mermaid
+flowchart LR
+  R[Round ESP32-S3 speaker] <-->|existing audio and control transport| H[Echo host]
+  P[Pi 4 touchscreen / Chromium] <-->|authenticated HTTPS /display and APIs| H
+  A[Pi audio satellite: next phase] -.-> H
+  H <--> E[Hermes or configured model]
+  H <--> S[Local speech services]
+  H <--> HA[Home Assistant]
+  H <--> M[Spotify receiver]
+  H <--> D[Encrypted explicit memory, lists and routines]
+```
+
+The Pi is the touchscreen computer. The existing host runs the assistant,
+speech models, integrations, and shared storage. This keeps the Pi responsive
+and preserves the working round device. A future Pi audio satellite will use
+the same assistant with its own endpoint identity, rather than masquerading as
+the ESP32 or playing replies through an arbitrary default speaker.
+
+The initial display reflects the connected Echo audio endpoint. Text entry
+works without a Pi microphone. Showing “listening” is driven by live backend
+state; it does not mean this browser is recording. Stale or missing state is
+shown as unavailable and related controls are disabled.
+
+## Implemented software
+
+These features are implemented in the private development branch. Hardware and
+live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.md).
+
+| Page | What works | Boundaries |
+| --- | --- | --- |
+| Home | Clock, date, weather, named rooms, next timer, live voice status | Voice status currently reflects the existing round audio endpoint |
+| Rooms | Room lights, individual brightness/colour/white temperature, thermostat mode and temperature range, speaker selection and supported playback actions | Existing Home Assistant permission grants and fresh state are required; choosing a device does not act on it |
+| Music | Existing Spotify controls; saved HTTPS radio presets; local audio/video files on the display | Radio contacts the chosen provider only when Play is pressed. Local files stay in the browser session. Codec support varies; no proprietary casting or DRM claim |
+| My day | Selected Home Assistant calendars, all-day and timezone-aware events, selected camera snapshots | Read-only calendars; snapshots refresh every five seconds after Open view. No camera recording, microphone or camera audio |
+| Timers | Multiple persisted timers and a quick one-off alarm | Delivery still needs a connected audio endpoint |
+| Planner | Recurring alarms/reminders, daily/weekday/custom repeat, IANA zones, snooze, dismiss, missed events, quiet hours | Spring gaps use the first valid minute; autumn duplicates ring once. Events over 15 minutes late remain visible without sounding |
+| Lists | Shopping, to-do, notes, edit/reorder/complete/delete, encrypted persistence | Explicit text/voice commands such as “Add coffee to my shopping list” are supported; ambiguous deletes ask for clarification |
+| Notifications | Persisted household notes; explicit spoken announcements; delivery receipts | Silent by default. Spoken announcements use the existing connected audio endpoint, respect quiet hours, and do not broadcast to room speakers |
+| Routines | Review and run saved routines | Existing device grants and action checks apply |
+| Echo | Existing conversation, web research, memory and cited sources; explicit home-control opt-in; server-side Stop | Pi microphone/wake integration and endpoint audio routing are a separate stage |
+| Settings | Display preferences, encrypted shared photo album, camera/calendar selection, radio presets, display pairing and revocation | Only the owner can change sources, upload/remove shared photos, manage radios or pair displays |
+
+![Recurring reminders and notification inbox, using synthetic data](images/display-planner.png)
+
+![Selected agenda and camera page, using synthetic data](images/display-agenda.png)
+
+### Pairing and privacy
+
+The owner creates a five-minute, one-use pairing code in Display → Settings.
+Enrollment creates an individually revocable display credential. The host stores
+only its hash; the Pi stores the restricted credential in a private file outside
+Git. The Pi's loopback bridge keeps it out of Chromium and signs each upstream
+request. This path does not depend on an eight-hour browser cookie. Direct
+browser sessions can still expire and require signing in again.
+
+A paired display can use household features but cannot read provider keys, edit
+access policy, discover unselected calendar/camera sources, or enroll another
+display. Revocation is checked on every request. Camera permissions are checked
+again after fetching a frame. Snapshots and authenticated responses are not cached.
+
+Calendar and camera selection is opt-in and currently shared across paired
+displays. Per-user private calendars and per-room source policies remain future
+work. Calendars already connected in Home Assistant can be selected; this build
+does not ask for new Google or Microsoft credentials. Camera requests stay on
+the configured Home Assistant origin and never forward its token to redirects.
+
+Lists, schedule state, device credential hashes, selected sources, radio presets,
+and shared photos are encrypted with Echo's host storage protector. Revisions
+protect edits from overwriting another screen's changes. Unreadable data is
+preserved and reported, and writes use atomic replacement.
+
+Shared photos are limited to 60. Each upload must be a valid JPEG, PNG or WebP
+under 12 MB and 32 megapixels. Echo normalizes orientation, removes metadata,
+resizes to fit 1920 pixels and encrypts the resulting JPEG. Original filenames,
+EXIF and location tags are not retained. The small settings recovery archive
+includes new settings documents but **does not include the photo files**. Include
+`local/display-photos` in a private host backup along with the host encryption key.
+
+Browser local storage contains only display preferences. Session-only photos and
+media remain an option; clearing them releases their local object URLs. Shared
+photo removal affects all paired displays. Removing a radio preset does not revoke
+a stream already opened directly in a browser; press Stop to end playback.
+
+### Still ahead
+
+The next software stage is the Pi audio adapter, endpoint identity/routing,
+interruption and wake pipeline. Further integrations include calendar writes,
+doorbell event cards/full-motion streams, room intercom/grouped audio, calling,
+and household/guest profiles. These are not working features yet. Commercial
+video and proprietary casting depend on supported providers and licensing.
+
+## Pi hardware and bring-up
+
+Recommended baseline: Raspberry Pi 4B with at least 4 GB RAM, a supported
+touchscreen, reliable storage, a suitable **5.1 V / 3 A Pi supply**, and cooling.
+Use the display's specified supply when required. A dock USB connection does not
+automatically expose the Pi's SD card as a disk, and may not supply adequate power.
+
+Identify the actual panel before ordering parts or choosing a driver. Earlier
+art-frame deployment notes describe a 1024 × 600 HDMI display; a separately
+planned 10.1-inch DSI panel is not proof of the installed panel's model or size.
+Check the label, video cable, touch USB connection, connector state, resolution,
+rotation, and touch mapping. Pi audio needs a real capture device: the Pi 4 has
+no built-in microphone, and HDMI/headphone outputs do not provide one.
+
+1. Complete and verify the original whole-card backup, including partition table,
+   boot files, and Linux root filesystem. Store the image separately from the Pi.
+2. Either reuse the existing card after its owner approves repurposing, or choose
+   a **new 32 GB or larger card** to keep the original as an immediate rollback.
+   A supported OS with Chromium can be converted in place; a reflash is not
+   required just to change kiosks. Small cards should hold only the display client,
+   with models and media on the Echo host. Larger storage is recommended for
+   browser updates and media; it is not required to start the display client.
+3. Confirm stable power with no current undervoltage, then detect video, touch,
+   networking, and audio. Do not disable the hardware watchdog to hide instability.
+4. Start with the existing desktop and Chromium. Use the launcher preflight:
+
+   ```bash
+   python3 deploy/pi/kiosk.py --check
+   ```
+
+5. In a signed-in owner workspace, open Smart display → Settings → Your displays.
+   Create a code for the Pi, then run on the Pi as its desktop user:
+
+   ```bash
+   python3 deploy/pi/connect.py --url https://YOUR_ECHO_HOST/display
+   ```
+
+   Enter the code at the hidden prompt. Use a valid trusted HTTPS certificate;
+   loopback HTTP is accepted for a local forward. Do not put credentials in URLs.
+6. Check and install the display bundle as that same user, without sudo:
+
+   ```bash
+   python3 deploy/pi/setup.py --check
+   python3 deploy/pi/setup.py --install
+   ```
+
+   Installation copies a versioned client bundle, starts a user systemd loopback
+   bridge, and adds an Echo desktop autostart entry. It does not reflash the card,
+   install packages, enable OS auto-login, change audio, or retire another kiosk.
+   Deliberately stop the old kiosk before launching Echo; do not run two kiosks.
+7. From the existing desktop, open Echo now with:
+
+   ```bash
+   python3 ~/.local/share/echo-display/runner.py kiosk
+   ```
+
+   It uses a separate private Chromium profile and preserves TLS and sandbox
+   checks. If the host is offline, the display reports it and continues retrying.
+   If its access was revoked, create a new code and use `connect.py --replace`.
+8. To switch back after a client update:
+
+   ```bash
+   python3 deploy/pi/setup.py --rollback
+   ```
+
+   This selects the previous client bundle and restarts its bridge. Close and
+   reopen the kiosk or log out and in. Pairing and browser data remain intact.
+   `--remove-autostart` stops/removes only Echo-managed startup entries and keeps
+   installed bundles and data. It does not restore an SD image or modify the old
+   art-frame project. Existing unowned startup files are not overwritten.
+
+The bundle installer and rollback have been tested with temporary directories
+and a simulated loopback bridge. Actual Pi cold boot, systemd startup, desktop
+session recovery and physical touch still require hardware acceptance.
+
+The first release should offer both a reusable audio endpoint and a Pi with its
+own USB microphone/speaker path. Choose an audio device with known Linux support
+and a practical echo-cancellation path. Verify capture, playback, physical mute,
+and speaker feedback independently before introducing wake-word tests.
+
+## Build order and completion criteria
+
+| Stage | Deliverable | Acceptance before moving on |
+| --- | --- | --- |
+| 0 · Preserve | Full original-card image and restore instructions | Exact card length, source/image SHA-256, gzip integrity, read-only filesystem check; owner approval before reusing the card. A spare-card boot rehearsal remains recommended and must be reported separately |
+| 1 · Shared display | This UI, real API connections, encrypted lists, safe demo | Desktop and 1024 × 600 flows, authentication, disconnected state, no automatic actuation, physical touch acceptance |
+| 2 · Pi appliance | Stable OS/card, HTTPS access, per-device pairing, kiosk startup | Cold boot, network loss/recovery, credential revocation, original build rollback |
+| 3 · Pi voice | Capture/playback adapter, wake pipeline, AEC, routing, mute | Quiet wake/reply, interruption, DND, no feedback wake loops, endpoint isolation and recovery |
+| 4 · Daily usefulness | Recurring alarms/reminders, list tools, richer home/music controls, agenda | Correct timezone/DST and permissions, failed-action reporting, persistence and delete behavior |
+| 5 · Household experiences | Doorbell/camera, announcements, photo albums, optional calls | Private routing, explicit consent, supported codecs/services and usable fallback states |
+| 6 · Complete package | Both builds, enclosure/BOM, installer, screenshots, migration and recovery guide | Physical acceptance of both builds, private-data audit, clean-machine install, rollback, user-approved public release |
+
+For each stage, test the behavior that could fail: authorization, persistence,
+device routing, recovery, or hardware operation. Use synthetic data for screenshots
+and software checks. Sound and real home-device tests are separate, intentional
+acceptance steps. A rendered card or accepted HTTP request does not prove a
+microphone, speaker, light, or thermostat actually worked.
+
+### Current verification
+
+The current software passes 73 focused tests across schedules/DST, list commands,
+photo privacy/persistence, display credentials, selected sources, simulated camera
+responses, home action validation, routines, timer delivery, and Pi bundle/bridge
+behavior, and the private HTTPS gateway’s owner/display separation. Browser checks cover recurring schedules, silent notifications, list
+editing, agenda, source selection, album upload/delete, and a 390-pixel phone
+layout. They use a separate synthetic preview and make no real home-device calls,
+recordings, playback or external stream requests. JavaScript syntax and the source
+publication guard also pass.
+
+The original Pi card has a separate verified full-card backup. Reusing that card
+is authorized, but this branch has not replaced the old kiosk or the live Echo
+host. The latest read-only hardware check confirms Wi-Fi connectivity and healthy
+power, with both HDMI ports disconnected and no capture device. Pi video/touch acceptance, audio hardware,
+voice routing and cold-boot acceptance remain open. The private HTTPS gateway
+also needs its updated display-role support deployed before Pi enrollment. The repository remains private
+and there is no new release.

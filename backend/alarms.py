@@ -97,7 +97,7 @@ class Alarms:
             if timer:
                 self.delivering = timer['id']
                 self.index = self.timers.index(timer); self.render()
-                self.speech = self.speech_jobs.submit(synthesize, 'Your timer is ready.')
+                self.speech = self.speech_jobs.submit(synthesize, timer.get('spoken_text') or 'Your timer is ready.')
 
     def take(self):
         if self.speech and self.speech.done():

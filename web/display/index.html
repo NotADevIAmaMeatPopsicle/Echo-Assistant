@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark"><title>Echo · At home</title>
+  <link rel="icon" href="/assets/icon.svg"><link rel="stylesheet" href="/assets/display/display.css">
+  <script src="/assets/display/display.js" defer></script>
+  <script src="/assets/display/planner.js" defer></script>
+  <script src="/assets/display/devices.js" defer></script>
+  <script src="/assets/display/pairing.js" defer></script>
+  <script src="/assets/display/lists.js" defer></script>
+  <script src="/assets/display/experiences.js" defer></script>
+  <script src="/assets/display/photos.js" defer></script>
+  <script src="/assets/display/media.js" defer></script>
+</head>
+<body>
+<svg class="symbols" aria-hidden="true"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3Z M9 20v-7h6v7"/></symbol>
+  <symbol id="i-light" viewBox="0 0 24 24"><path d="M9 18h6m-5 3h4M8 14a7 7 0 1 1 8 0l-1 2H9Z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M9 2h6m-3 0v3m0 4v5l3 2m4-11 2 2"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><rect x="5" y="4" width="15" height="17" rx="3"/><path d="M9 3h7v4H9ZM9 12h7m-7 4h5"/></symbol>
+  <symbol id="i-routine" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-13h-8Z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 3h16v13H9l-5 5Z M8 8h8m-8 4h5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15A9 9 0 0 1 9 3a9 9 0 1 0 11 12Z"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m14 5-7 7 7 7"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="m6 5 11 7-11 7ZM19 5v14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="m7 4 13 8-13 8Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 4v16M16 4v16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="15" r="4"/><path d="M11 6h2"/></symbol>
+</defs></svg>
+<aside class="rail" aria-label="Main navigation">
+  <a class="brand" href="#home" aria-label="Echo home">e<span>·</span></a>
+  <nav id="navigation">
+    <button data-page="home" class="selected"><svg><use href="#i-home"/></svg><span>Home</span></button>
+    <button data-page="rooms"><svg><use href="#i-light"/></svg><span>Rooms</span></button>
+    <button data-page="music"><svg><use href="#i-music"/></svg><span>Music</span></button>
+    <button data-page="timers"><svg><use href="#i-timer"/></svg><span>Timers</span></button>
+    <button data-page="planner"><svg><use href="#i-list"/></svg><span>Planner</span></button>
+    <button data-page="lists"><svg><use href="#i-list"/></svg><span>Lists</span></button>
+    <button data-page="routines"><svg><use href="#i-routine"/></svg><span>Routines</span></button>
+    <button data-page="assistant"><svg><use href="#i-chat"/></svg><span>Echo</span></button>
+  </nav>
+  <button data-page="settings" class="rail-settings"><svg><use href="#i-settings"/></svg><span>Settings</span></button>
+</aside>
+<div class="workspace">
+  <header><div><span class="eyebrow">ECHO / AT HOME</span><h1 id="page-title">Your day, a little easier.</h1></div><div class="header-right"><span id="connection" class="status-pill">Connecting</span><button id="ambient-button" class="icon-button" aria-label="Show ambient clock"><svg><use href="#i-moon"/></svg></button></div></header>
+  <div id="notice" role="status" hidden></div>
+  <main>
+    <section id="page-home" class="page">
+      <div class="home-grid">
+        <article class="card hero"><div><p id="greeting" class="soft">Good afternoon.</p><div id="home-clock" class="big-clock">--:--</div><p id="home-date" class="soft"></p><button class="pill primary" data-page="assistant">A little help from Echo <span>↗</span></button></div><div class="orb-space"><div class="orb" data-orb><div class="orb-core"></div></div><strong id="voice-caption">Checking Echo</strong><span id="voice-detail" class="tiny soft">Waiting for live state</span></div></article>
+        <article class="card weather"><div class="row spread"><span class="eyebrow">OUTSIDE</span><svg class="weather-icon"><use href="#i-sun"/></svg></div><div id="weather-temperature" class="weather-temp">—</div><h2 id="weather-condition">Weather not connected</h2><p id="weather-detail" class="soft">Connect a weather entity in Home Assistant.</p></article>
+        <article class="card room-summary"><div class="row spread"><h2>Around the house</h2><button class="text-button" data-page="rooms">View rooms ↗</button></div><div id="home-rooms" class="mini-rooms"></div></article>
+        <article class="card next-up"><span class="eyebrow">UP NEXT</span><div id="next-timer"></div><button class="text-button" data-page="timers">Timers & alarms ↗</button></article>
+      </div>
+    </section>
+    <section id="page-rooms" class="page" hidden><div id="room-cards" class="room-grid"></div><div class="two-columns devices-row"><article class="card" id="thermostat"></article><article class="card" id="speaker"></article></div></section>
+    <section id="page-music" class="page" hidden><div class="music-layout"><article class="card now-playing"><div class="record-art"><div class="record"><span>e·</span></div></div><span class="eyebrow">SPOTIFY CONNECT</span><h2 id="track-title">Your next favourite.</h2><p id="track-artist" class="soft">Choose Echo from Spotify’s device picker.</p><div class="transport"><button id="previous-track" class="icon-button" aria-label="Previous track"><svg class="flipped"><use href="#i-next"/></svg></button><button id="play-track" class="play-button" aria-label="Play music"><svg><use href="#i-play"/></svg></button><button id="next-track" class="icon-button" aria-label="Next track"><svg><use href="#i-next"/></svg></button></div><span id="music-status" class="soft tiny">Checking receiver</span></article><article class="card music-side"><svg class="large-icon"><use href="#i-speaker"/></svg><h2>Music, where you want it.</h2><p class="soft">Echo’s Spotify receiver and your Home Assistant speakers keep their existing controls.</p><button class="pill" data-page="rooms">Choose a home speaker</button><div class="divider"></div><h3>More ways to listen</h3><p class="soft">Radio, podcasts, local libraries, and grouped playback are on the integration plan. Native Chromecast and AirPlay are not included.</p></article></div></section>
+    <section id="page-timers" class="page" hidden><div class="two-columns"><article class="card"><span class="eyebrow">MAKE A LITTLE TIME</span><h2>Set a timer</h2><div class="presets"><button data-minutes="1">1 min</button><button data-minutes="5">5 min</button><button data-minutes="10">10 min</button><button data-minutes="25">25 min</button></div><form id="timer-form"><label>Minutes<input id="timer-minutes" type="number" min="1" max="1440" value="5" required inputmode="numeric"></label><label>Name<input id="timer-label" maxlength="80" placeholder="Tea, pasta, a quiet moment…"></label><button class="pill primary" type="submit">Start timer</button></form><div class="divider"></div><form id="alarm-form"><label>One-off alarm<input id="alarm-time" type="time" required></label><button class="pill" type="submit">Set next alarm</button></form><p class="tiny soft">Uses this screen’s time zone. Alarms share Echo’s existing timer delivery; an audio endpoint must be connected to hear them.</p></article><article class="card"><div class="row spread"><h2>On the go</h2><span class="tiny soft">Up to 16 timers</span></div><div id="timer-list"></div></article></div></section>
+    <section id="page-lists" class="page" hidden><div class="row spread section-head"><div class="segmented" id="list-tabs"><button data-kind="shopping" class="selected">Shopping</button><button data-kind="tasks">To-do</button><button data-kind="notes">Notes</button></div><span id="list-storage" class="tiny soft">Private household board</span></div><article class="card"><form id="list-form" class="inline-form"><input id="list-text" maxlength="500" placeholder="Something to pick up…" required aria-label="New list item"><button class="pill primary" type="submit">Add</button></form><div id="household-items"></div><p class="tiny soft">Only what you add is saved. Live lists are encrypted on your Echo host.</p></article></section>
+    <section id="page-routines" class="page" hidden><div class="section-head row spread"><p class="soft">Small rituals. One intentional tap.</p><a class="text-button" href="/routines">Manage routines ↗</a></div><div id="routine-cards" class="routine-grid"></div><p class="tiny soft">Each routine uses its saved devices and current permissions. Nothing runs automatically from this page.</p></section>
+    <section id="page-assistant" class="page" hidden><div class="chat-layout"><aside class="card chat-presence"><div class="orb" data-orb><div class="orb-core"></div></div><h2>Hey, I’m Echo.</h2><p class="soft">A little brainpower for your everyday.</p><div class="suggestions"><button data-prompt="What can you help me with today?">Help me get started</button><button data-prompt="What is the weather like?">How’s it looking outside?</button><button data-prompt="List my routines">Show my routines</button></div><span id="mic-note" class="tiny soft">Text chat does not use this screen’s microphone.</span></aside><article class="card conversation"><div id="chat-reply" role="log" aria-live="polite"><p class="soft">Ask a question, make a plan, or get something done.</p></div><form id="chat-form"><label class="check-label"><input id="allow-home" type="checkbox">Allow home actions for this message</label><div class="inline-form"><input id="chat-text" maxlength="1200" placeholder="Ask Echo anything…" aria-label="Message to Echo" required><button class="pill primary" type="submit" id="send-chat">Send ↗</button><button class="pill" id="stop-chat" type="button" hidden>Stop</button></div></form><p class="tiny soft">Uses your configured Echo agent. This page does not save conversation history.</p></article></div></section>
+    <section id="page-settings" class="page" hidden><div class="two-columns"><article class="card"><h2>Make yourself at home.</h2><label class="check-label"><input type="checkbox" id="clock24">24-hour clock</label><label>Ambient clock after<select id="idle-time"><option value="0">Never automatically</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select></label><label class="check-label"><input type="checkbox" id="night-dim">Dim the ambient view</label><label class="file-button pill">Choose ambient photos<input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden></label><p class="tiny soft">Optional photos stay in this browser session. No upload, account, or cloud library.</p><button class="pill" id="clear-photos">Clear photos</button><div class="divider"></div><a class="pill primary" href="/settings">Open Echo settings ↗</a></article><article class="card"><h2>Your home. Your choices.</h2><p class="soft">Provider, model, personality, speech, saved memory, and device permissions stay in Echo’s existing workspace.</p><div id="capability-notes"></div><div class="divider"></div><h3>Still to connect</h3><p class="soft">Choose calendar and camera sources below. Calls, intercom, grouped audio, and Pi wake words still need their own integrations.</p><a class="text-button" href="/devices">Manage connected devices ↗</a></article></div></section>
+  </main>
+  <template id="planner-template">
+    <section id="page-planner" class="page" hidden>
+      <div class="two-columns">
+        <article class="card"><span class="eyebrow">A LITTLE STRUCTURE</span><h2 id="schedule-heading">Alarms & reminders</h2>
+          <form id="schedule-form">
+            <div class="two-columns"><label>Type<select id="schedule-kind"><option value="alarm">Alarm</option><option value="reminder">Reminder</option></select></label><label>Time<input id="schedule-time" type="time" required></label></div>
+            <label>Name<input id="schedule-title" maxlength="80" placeholder="Wake up, take a break…" required></label>
+            <label>Reminder message<input id="schedule-message" maxlength="400" placeholder="Optional words to say when it’s time"></label>
+            <div class="two-columns"><label>Repeat<select id="schedule-repeat"><option value="once">Just once</option><option value="daily">Every day</option><option value="weekdays">Weekdays</option><option value="custom">Choose days</option></select></label><label id="schedule-date-label">Date<input id="schedule-date" type="date" required></label></div>
+            <div id="schedule-days" class="weekday-picker" hidden></div>
+            <label>Time zone<input id="schedule-zone" list="timezones" required maxlength="80"></label>
+            <datalist id="timezones"><option value="UTC"><option value="America/New_York"><option value="America/Chicago"><option value="America/Denver"><option value="America/Los_Angeles"><option value="Europe/London"><option value="Europe/Paris"><option value="Asia/Tokyo"><option value="Australia/Sydney"></datalist>
+            <label class="check-label"><input id="schedule-enabled" type="checkbox" checked>Enabled</label>
+            <div class="row"><button class="pill primary" type="submit" data-requires="schedules">Save schedule</button><button class="pill" type="button" id="schedule-reset">New schedule</button></div>
+          </form><p class="tiny soft">Spring clock changes use the first valid minute; repeated autumn times ring once. An audio endpoint is required for sound.</p>
+        </article>
+        <div><article class="card"><h2>Coming up</h2><div id="schedule-list"></div></article><article class="card planner-notifications"><h2>Notifications</h2><div id="schedule-events"></div></article></div>
+      </div>
+      <article class="card planner-quiet"><h2>Quiet hours</h2><form id="quiet-form"><label class="check-label"><input id="quiet-enabled" type="checkbox">Hold spoken reminders during quiet hours</label><div class="two-columns"><label>From<input id="quiet-start" type="time" value="22:00" required></label><label>Until<input id="quiet-end" type="time" value="07:00" required></label></div><label>Time zone<input id="quiet-zone" list="timezones" required maxlength="80"></label><label class="check-label"><input id="quiet-alarms" type="checkbox" checked>Let alarms sound during quiet hours</label><button class="pill" type="submit" data-requires="schedules">Save quiet hours</button><span class="tiny soft" id="quiet-status"></span></form><p class="tiny soft">Applies to scheduled reminders and alarms. Physical microphone mute and music playback are separate controls. Reminders more than 15 minutes late stay in Notifications without sounding.</p></article>
+    </section>
+  </template>
+  <footer><span id="privacy-status">Local speech · Your choice of assistant</span><span id="last-update">Waiting for connection</span></footer>
+</div>
+<div id="ambient" hidden role="dialog" aria-modal="true" aria-label="Ambient clock"><img id="ambient-photo" alt="Selected ambient photo" hidden><div class="ambient-shade"></div><div class="ambient-content"><span class="eyebrow">ECHO / A MOMENT TO YOURSELF</span><div id="ambient-clock" class="big-clock"></div><p id="ambient-date"></p><span id="ambient-weather"></span><button class="pill" id="wake-screen">Back to Echo</button></div></div>
+<dialog id="confirm-routine"><form method="dialog"><span class="eyebrow">HOME ACTIONS</span><h2 id="confirm-title">Run this routine?</h2><p id="confirm-description"></p><div class="row"><button class="pill" value="cancel">Cancel</button><button class="pill primary" value="run">Run routine</button></div></form></dialog>
+<div id="toast" role="status" hidden></div>
+</body></html>
