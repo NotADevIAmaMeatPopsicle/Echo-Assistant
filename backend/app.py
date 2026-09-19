@@ -54,6 +54,8 @@ from .daily_briefing import DailyBriefing, briefing_request
 from .doorbells import Doorbells
 from .announcements import Announcements, AnnouncementUnavailable
 from .announcement_api import install as install_announcements
+from .intercom import Intercom
+from .intercom_api import install as install_intercom
 from .photos import Photos
 from .photo_api import install as install_photos
 from .media_presets import MediaPresets, install as install_media
@@ -133,6 +135,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     announcements=Announcements(runtime_root,store.protector,displays,schedules,
         lambda:voice_status(runtime_root) if runtime_root else {'status':'disconnected'})
     install_announcements(app,announcements,store,authorize,owner)
+    install_intercom(app,Intercom(announcements),authorize)
     experiences = Experiences(home, SourceStore(runtime_root, store.protector))
     doorbells=Doorbells(experiences,runtime_root,store.protector)
     briefing=DailyBriefing(experiences,home,schedules,household)

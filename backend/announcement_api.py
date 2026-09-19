@@ -66,7 +66,7 @@ def install(app,store,settings,authorize,owner,synthesizer=synthesize_checked):
     @app.get('/v1/audio/rooms')
     def rooms(session=Depends(authorize)):
         result=store.catalog()
-        if session.startswith('display:'):result['items']=[i for i in result['items'] if i['enabled']]
+        if session.startswith('display:'):result['items']=[i for i in result['items'] if i['enabled'] or i['calls_enabled']]
         return result
 
     @app.put('/v1/audio/rooms',dependencies=[Depends(owner)])

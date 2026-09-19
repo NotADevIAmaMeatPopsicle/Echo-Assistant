@@ -24,6 +24,7 @@ class RoomEndpoint(BaseModel):
     id:str=Field(pattern=EndpointId)
     room:str=Field(min_length=1,max_length=60)
     enabled:bool=False
+    calls_enabled:bool=False
 
 
 class RoomPolicy(BaseModel):
@@ -70,6 +71,7 @@ class Announcements:
         self.path=Path(root)/'local/echo-announcements.json' if root else None
         self.protector,self.displays,self.schedules,self.voice,self.clock=protector,displays,schedules,voice,clock
         self.lock=RLock();self.heartbeats={};self.error=False;self.state=SavedAnnouncements().model_dump()
+        self.intercom_busy=lambda identifier:False
         if self.path and self.path.exists():
             try:
                 if self.path.stat().st_size>2_000_000:raise ValueError()
@@ -117,6 +119,7 @@ class Announcements:
         if draft!=self.state:self.commit(draft)
 
     def ready(self,identifier,client=None):
+        if self.intercom_busy(identifier):return False,'intercom'
         if self.schedules.snapshot()['quiet_active']:return False,'quiet_hours'
         if identifier=='round':
             voice=self.voice()
@@ -137,7 +140,7 @@ class Announcements:
             policy={e['id']:e for e in self.state['policy']['endpoints']}
             items=[]
             for identifier,name in names.items():
-                config=policy.get(identifier,{'id':identifier,'room':'','enabled':False})
+                config=policy.get(identifier,{'id':identifier,'room':'','enabled':False,'calls_enabled':False})
                 ready,status=self.ready(identifier)
                 items.append({**config,'name':name,'ready':ready and config['enabled'],'status':status if config['enabled'] else 'disabled'})
             return {'revision':self.state['revision'],'items':items,'quiet_active':self.schedules.snapshot()['quiet_active']}

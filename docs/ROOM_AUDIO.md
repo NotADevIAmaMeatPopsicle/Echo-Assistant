@@ -1,4 +1,4 @@
-# Room announcements
+# Room audio
 
 Send a short spoken message to selected Echo receivers from **Planner → Room audio**.
 The round speaker and each paired display are separate destinations. An owner
@@ -10,7 +10,7 @@ or the round speaker bridge.
 ## Set up receivers
 
 1. In the smart display's owner session, open **Settings → Room receivers**.
-2. Give each receiver a room name, check **Enabled**, and save. Nothing is enabled
+2. Give each receiver a room name, check **Announcements**, and save. Nothing is enabled
    automatically in a new installation.
 3. On each paired display, open **Settings → Sound on this display** and press
    **Enable announcements here**. This allows browser audio for that session.
@@ -63,4 +63,52 @@ cover send/retry/cancel, assignments, receiving opt-in, interruption, and phone 
 
 Physical audibility on both endpoints remains unverified. The Pi needs an
 identified speaker/output and microphone for its broader voice features.
-**Two-way intercom is still pending**; announcements are one-way messages.
+## Live intercom between displays
+
+Open **Planner → Room audio → Intercom** to call another paired display.
+The owner first assigns rooms and checks **Allow calls** in **Settings → Room
+receivers**. Each display then presses **Enable calls here** for its current
+browser session. Calls start off after every reload. This permission is separate
+from announcement delivery.
+
+![Live room call with sample data and simulated audio](images/display-intercom.png)
+
+Choose an available room and press **Call**. The receiving display shows an
+incoming-call card; it opens its microphone only when someone presses **Answer**.
+Both people can speak at the same time. **Mute microphone** closes the local
+microphone while keeping incoming audio audible. **Unmute microphone** opens it
+again. **Hang up** closes the microphone and clears the audio buffers. The initial
+playback level is 2%; adjust it on the call page.
+
+A microphone, speaker and browser microphone permission are required at both
+ends. Use the installed Pi loopback bridge or an authenticated HTTPS connection.
+Browser echo cancellation is requested; actual feedback performance depends on
+those audio devices and still needs physical testing. An owner browser cannot
+make or receive calls until it is enrolled as a display.
+
+Calls require an explicit answer; there is no unattended listening. Quiet hours
+block new calls, and a display using voice capture, replies, announcements or
+media reports busy. One enabled tab holds the receiver at a time. Hiding or
+leaving the tab, losing its connection, removing its access or reaching the
+15-minute limit ends the call. Unanswered calls expire after 30 seconds. Calls
+are never automatically resumed after a restart.
+
+The host relays 16 kHz mono audio over the authenticated connection. Audio remains
+in bounded memory buffers, with stale packets discarded. It is not sent to speech
+recognition, the assistant or a recording file. Call signalling and end reasons
+remain only in memory for up to ten minutes, and a restart clears them.
+
+### Intercom acceptance and remaining work
+
+Host checks cover permissions, answer-before-audio, both directions, mute,
+revocation, disconnects, duplicate requests and stale packets. Silent browser
+checks use synthetic microphones and audio streams to exercise call/answer,
+mute/unmute, hang-up, delayed permission cancellation and phone layout. The
+worklet's conversion and playback buffers are checked separately. None of these
+checks proves audibility on physical hardware.
+
+**Round-speaker intercom is not implemented yet.** It requires firmware call
+controls and a duplex host audio adapter. The round receiver is unavailable for
+calls until that support is installed and connected; its existing announcements
+are independent. The package-wide two-way intercom item remains open until the
+round endpoint is implemented and both devices have completed physical checks.

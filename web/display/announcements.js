@@ -21,7 +21,7 @@ function renderRoomAudio(){
   const signature=JSON.stringify([state?.revision,items]);
   if(owner&&state&&!roomDirty&&signature!==roomSignature){
     roomSignature=signature;roomRevision=state.revision;
-    $('audio-room-settings').innerHTML=items.map(i=>`<div class="audio-room-setting" data-endpoint="${esc(i.id)}"><div><strong>${esc(i.name)}</strong><small class="soft">${esc(human(i.status))}</small></div><label>Room<input data-audio-room maxlength="60" value="${esc(i.room)}" placeholder="Kitchen"></label><label class="check-label"><input type="checkbox" data-audio-enabled ${i.enabled?'checked':''}>Enabled</label></div>`).join('')||empty('Pair a display first.');
+    $('audio-room-settings').innerHTML=items.map(i=>`<div class="audio-room-setting" data-endpoint="${esc(i.id)}"><div><strong>${esc(i.name)}</strong><small class="soft">${esc(human(i.status))}</small></div><label>Room<input data-audio-room maxlength="60" value="${esc(i.room)}" placeholder="Kitchen"></label><label class="check-label"><input type="checkbox" data-audio-enabled ${i.enabled?'checked':''}>Announcements</label><label class="check-label"><input type="checkbox" data-call-enabled ${i.calls_enabled?'checked':''}>Allow calls</label></div>`).join('')||empty('Pair a display first.');
   }
   const targets=items.filter(i=>i.enabled),targetState=JSON.stringify(targets);
   if(!messageDraft&&targetState!==targetSignature){
@@ -35,8 +35,8 @@ function renderRoomAudio(){
 extensions.push(renderRoomAudio);
 $('audio-room-form').oninput=()=>roomDirty=true;
 $('audio-room-form').onsubmit=event=>{event.preventDefault();action(async()=>{
-  const endpoints=[...$('audio-room-settings').children].filter(row=>row.dataset.endpoint).map(row=>({id:row.dataset.endpoint,room:row.querySelector('[data-audio-room]').value.trim(),enabled:row.querySelector('[data-audio-enabled]').checked}));
-  if(endpoints.some(i=>i.enabled&&!i.room))throw Error('Give each enabled receiver a room name.');
+  const endpoints=[...$('audio-room-settings').children].filter(row=>row.dataset.endpoint).map(row=>({id:row.dataset.endpoint,room:row.querySelector('[data-audio-room]').value.trim(),enabled:row.querySelector('[data-audio-enabled]').checked,calls_enabled:row.querySelector('[data-call-enabled]').checked}));
+  if(endpoints.some(i=>(i.enabled||i.calls_enabled)&&!i.room))throw Error('Give each enabled receiver a room name.');
   await api('/v1/audio/rooms',{endpoints:endpoints.filter(i=>i.room),revision:roomRevision},'PUT');roomDirty=false;roomSignature='';
 },'Room assignments saved.');};
 $('announcement-new').onclick=()=>{messageDraft=null;messageSent=false;targetSignature='';$('announcement-draft').disabled=false;$('announcement-text').value='';$('announcement-result').textContent='';$('announcement-send').textContent='Send announcement';renderRoomAudio();guardButtons();};

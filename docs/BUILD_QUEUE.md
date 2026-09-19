@@ -66,7 +66,12 @@ restart-safe duplicate protection, clock changes, permissions and local briefing
 composition; the related source and display-voice checks also pass. Silent browser
 checks cover the form and phone layout. No real calendar events were created.
 
-Next: two-way intercom. Room announcements now include room assignments, explicit
+Next: the round endpoint for two-way intercom. The host and paired-display call UI
+now support answered live audio, local microphone mute, hang-up and connection-loss
+cleanup. Synthetic API, worklet and browser checks pass. Calls are off by default;
+round firmware/adapter work and physical audio acceptance remain open.
+
+Room announcements now include room assignments, explicit
 destination selection, quiet hours, five-minute expiry, cancellation, protected
 delivery history, and receiver-reported playback. Twenty-three focused Python
 checks cover the new routing and existing timer/display-auth paths; silent browser

@@ -3,9 +3,10 @@ endpoints.displayVoice='/v1/display/voice';
 let micStream=null,micContext=null,micNode=null,micChunks=[],micSamples=0,micOpening=false,voiceRequest=null,voiceReplyUrl=null,voiceRequestHome=false,voiceEpoch=0,voiceCancelling=false,microphoneState=null;
 const voicePlayer=$('voice-reply');voicePlayer.volume=.02;
 function voiceButtons(){
-  displayCaptureBusy=micOpening || voiceCancelling || !!micStream || !!voiceRequest || !voicePlayer.paused;
+  const inCall=typeof intercomIsBusy==='function'&&intercomIsBusy();
+  displayCaptureBusy=micOpening || voiceCancelling || !!micStream || !!voiceRequest || !voicePlayer.paused || inCall;
   document.dispatchEvent(new Event('echo:audio-focus'));
-  $('voice-start').dataset.unavailable=String(!data.displayVoice?.available || microphoneState==='none' || micOpening || voiceCancelling || !!micStream || !!voiceRequest || !!chatAbort);
+  $('voice-start').dataset.unavailable=String(!data.displayVoice?.available || microphoneState==='none' || micOpening || voiceCancelling || !!micStream || !!voiceRequest || !!chatAbort || inCall);
   $('voice-send').hidden=!micStream;$('voice-cancel').hidden=!micOpening && !micStream && !voiceRequest && voicePlayer.paused;
   $('voice-start').hidden=!!micStream || !!voiceRequest;
   $('voice-wave').hidden=!micStream;$('chat-text').disabled=displayCaptureBusy;guardButtons();renderDisplayPresence();
@@ -29,6 +30,7 @@ extensions.push(()=>{
   voiceButtons();
 });
 document.addEventListener('echo:conversation',voiceButtons);
+document.addEventListener('echo:intercom',voiceButtons);
 document.addEventListener('echo:voice-state',renderDisplayPresence);
 navigator.mediaDevices?.addEventListener?.('devicechange',detectMicrophone);detectMicrophone();
 function clearVoiceReply(){voicePlayer.pause();voicePlayer.hidden=true;voicePlayer.removeAttribute('src');voicePlayer.load();if(voiceReplyUrl)URL.revokeObjectURL(voiceReplyUrl);voiceReplyUrl=null;}

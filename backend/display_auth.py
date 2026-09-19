@@ -17,6 +17,8 @@ class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if method=='POST' and (path in {'/v1/intercom/heartbeat','/v1/intercom/calls'} or re.fullmatch(r'/v1/intercom/calls/[a-f0-9]{32}/(?:accept|end|mute|audio)',path)):return True
+    if method=='GET' and re.fullmatch(r'/v1/intercom/calls/[a-f0-9]{32}/audio',path):return True
     if method=='GET' and path in {'/v1/audio/rooms','/v1/audio/messages','/v1/audio/inbox'}:return True
     if method=='POST' and (path in {'/v1/audio/messages','/v1/audio/receiver'} or re.fullmatch(r'/v1/audio/inbox/[a-f0-9]{32}/(?:claim|audio|receipt)',path)):return True
     if method=='DELETE' and re.fullmatch(r'/v1/audio/messages/[a-f0-9]{32}',path):return True
