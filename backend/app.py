@@ -52,6 +52,7 @@ from .experience_api import install as install_experiences
 from .photos import Photos
 from .photo_api import install as install_photos
 from .media_presets import MediaPresets, install as install_media
+from .display_voice import DisplayVoice, install as install_display_voice
 from . import __version__
 
 def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | None = None,
@@ -74,6 +75,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         finally:
             scheduler_stop.set(); scheduler_thread.join(timeout=3)
             app.state.speech_stop.set()
+            display_voice.close()
             research.close()
             from .neural_speech import close
             close()
@@ -120,6 +122,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     install_experiences(app, experiences, authorize, owner)
     install_photos(app, Photos(runtime_root, store.protector), authorize, owner)
     install_media(app, MediaPresets(runtime_root, store.protector), authorize, owner)
+    display_voice=DisplayVoice(runtime_root,store,echo)
+    install_display_voice(app,display_voice,authorize,conversations,app.state.speech_stop,enable_home=deployment_mode=='device')
     hosts = ['127.0.0.1', 'localhost', 'testserver'] if runtime_root is None else ['127.0.0.1', 'localhost']
     if os.environ.get('ECHO_CONTAINER') == '1': hosts += ['api', 'echo-api']
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)

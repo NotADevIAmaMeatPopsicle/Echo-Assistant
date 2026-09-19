@@ -11,7 +11,7 @@ import sys
 
 from kiosk import inventory
 
-FILES=('bridge.py','connect.py','kiosk.py')
+FILES=('bridge.py','connect.py','kiosk.py','audio_once.py')
 MARKER='# Managed by Echo display setup'
 
 

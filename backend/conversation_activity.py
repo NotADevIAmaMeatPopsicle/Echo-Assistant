@@ -7,6 +7,7 @@ import time
 from uuid import uuid4
 
 CAPTIONS = {
+    'transcribing': 'Listening to your recording', 'synthesizing': 'Preparing your spoken answer',
     'starting': 'Connecting to Echo', 'thinking': 'Preparing your answer',
     'checking': 'Checking your home', 'acting': 'Controlling your home',
     'searching': 'Requesting a sourced answer', 'completed': 'Reply ready',

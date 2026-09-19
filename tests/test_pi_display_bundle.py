@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from threading import Thread
 import unittest
 import urllib.request
+import urllib.error
 import httpx
 
 PI=Path(__file__).resolve().parents[1]/'deploy/pi'
@@ -20,6 +21,24 @@ setup=importlib.util.module_from_spec(spec);spec.loader.exec_module(setup)
 
 
 class BundleTests(unittest.TestCase):
+    def test_first_boot_without_host_retries_without_exposing_credentials(self):
+        class Unreachable:
+            def open(self,*args,**kwargs):raise urllib.error.URLError('Synthetic network outage')
+        class LocalBridge(Bridge):pass
+        LocalBridge.configuration={'url':'https://host.invalid/display','credential':'test-private-credential'}
+        LocalBridge.opener=Unreachable()
+        server=ThreadingHTTPServer(('127.0.0.1',0),LocalBridge)
+        thread=Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            with httpx.Client(base_url=f'http://127.0.0.1:{server.server_port}',trust_env=False) as client:
+                response=client.get('/display');self.assertEqual(response.status_code,503)
+                self.assertIn('text/html',response.headers['content-type'])
+                self.assertIn('5;url=/display',response.text)
+                self.assertNotIn('test-private-credential',response.text)
+                self.assertEqual(response.headers['cache-control'],'no-store')
+                self.assertEqual(client.get('/v1/household').json()['detail'],'Echo host unavailable. Check its address, connection, and pairing status.')
+        finally:server.shutdown();server.server_close();thread.join(2)
+
     def test_install_idempotence_update_rollback_and_unmanaged_startup(self):
         with TemporaryDirectory() as temp:
             root=Path(temp);home=root/'home';source=root/'source';source.mkdir()

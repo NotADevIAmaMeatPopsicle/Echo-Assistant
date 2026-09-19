@@ -1,5 +1,7 @@
 # Echo Assistant
 
+<img src="web/icon.svg" alt="Echo blue-green ring" width="64">
+
 ### An open-source smart speaker you can build, understand, and make your own.
 
 Echo brings an AI voice assistant, music, and home control to a round AMOLED touchscreen.

@@ -12,6 +12,7 @@
   <script src="/assets/display/experiences.js" defer></script>
   <script src="/assets/display/photos.js" defer></script>
   <script src="/assets/display/media.js" defer></script>
+  <script src="/assets/display/voice.js" defer></script>
 </head>
 <body>
 <svg class="symbols" aria-hidden="true"><defs>
@@ -31,9 +32,9 @@
   <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 4v16M16 4v16"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
   <symbol id="i-speaker" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="15" r="4"/><path d="M11 6h2"/></symbol>
-</defs></svg>
+<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8"/></symbol><symbol id="i-send" viewBox="0 0 24 24"><path d="m4 12 16-8-5 16-3-7-8-1Zm8 1 8-9"/></symbol></defs></svg>
 <aside class="rail" aria-label="Main navigation">
-  <a class="brand" href="#home" aria-label="Echo home">e<span>·</span></a>
+  <a class="brand" href="#home" aria-label="Echo home"><img src="/assets/icon.svg" alt="" width="46" height="46"></a>
   <nav id="navigation">
     <button data-page="home" class="selected"><svg><use href="#i-home"/></svg><span>Home</span></button>
     <button data-page="rooms"><svg><use href="#i-light"/></svg><span>Rooms</span></button>
@@ -42,7 +43,7 @@
     <button data-page="planner"><svg><use href="#i-list"/></svg><span>Planner</span></button>
     <button data-page="lists"><svg><use href="#i-list"/></svg><span>Lists</span></button>
     <button data-page="routines"><svg><use href="#i-routine"/></svg><span>Routines</span></button>
-    <button data-page="assistant"><svg><use href="#i-chat"/></svg><span>Echo</span></button>
+    <button data-page="assistant"><img class="echo-nav-icon" src="/assets/icon.svg" alt=""><span>Echo</span></button>
   </nav>
   <button data-page="settings" class="rail-settings"><svg><use href="#i-settings"/></svg><span>Settings</span></button>
 </aside>
@@ -63,7 +64,42 @@
     <section id="page-timers" class="page" hidden><div class="two-columns"><article class="card"><span class="eyebrow">MAKE A LITTLE TIME</span><h2>Set a timer</h2><div class="presets"><button data-minutes="1">1 min</button><button data-minutes="5">5 min</button><button data-minutes="10">10 min</button><button data-minutes="25">25 min</button></div><form id="timer-form"><label>Minutes<input id="timer-minutes" type="number" min="1" max="1440" value="5" required inputmode="numeric"></label><label>Name<input id="timer-label" maxlength="80" placeholder="Tea, pasta, a quiet moment…"></label><button class="pill primary" type="submit">Start timer</button></form><div class="divider"></div><form id="alarm-form"><label>One-off alarm<input id="alarm-time" type="time" required></label><button class="pill" type="submit">Set next alarm</button></form><p class="tiny soft">Uses this screen’s time zone. Alarms share Echo’s existing timer delivery; an audio endpoint must be connected to hear them.</p></article><article class="card"><div class="row spread"><h2>On the go</h2><span class="tiny soft">Up to 16 timers</span></div><div id="timer-list"></div></article></div></section>
     <section id="page-lists" class="page" hidden><div class="row spread section-head"><div class="segmented" id="list-tabs"><button data-kind="shopping" class="selected">Shopping</button><button data-kind="tasks">To-do</button><button data-kind="notes">Notes</button></div><span id="list-storage" class="tiny soft">Private household board</span></div><article class="card"><form id="list-form" class="inline-form"><input id="list-text" maxlength="500" placeholder="Something to pick up…" required aria-label="New list item"><button class="pill primary" type="submit">Add</button></form><div id="household-items"></div><p class="tiny soft">Only what you add is saved. Live lists are encrypted on your Echo host.</p></article></section>
     <section id="page-routines" class="page" hidden><div class="section-head row spread"><p class="soft">Small rituals. One intentional tap.</p><a class="text-button" href="/routines">Manage routines ↗</a></div><div id="routine-cards" class="routine-grid"></div><p class="tiny soft">Each routine uses its saved devices and current permissions. Nothing runs automatically from this page.</p></section>
-    <section id="page-assistant" class="page" hidden><div class="chat-layout"><aside class="card chat-presence"><div class="orb" data-orb><div class="orb-core"></div></div><h2>Hey, I’m Echo.</h2><p class="soft">A little brainpower for your everyday.</p><div class="suggestions"><button data-prompt="What can you help me with today?">Help me get started</button><button data-prompt="What is the weather like?">How’s it looking outside?</button><button data-prompt="List my routines">Show my routines</button></div><span id="mic-note" class="tiny soft">Text chat does not use this screen’s microphone.</span></aside><article class="card conversation"><div id="chat-reply" role="log" aria-live="polite"><p class="soft">Ask a question, make a plan, or get something done.</p></div><form id="chat-form"><label class="check-label"><input id="allow-home" type="checkbox">Allow home actions for this message</label><div class="inline-form"><input id="chat-text" maxlength="1200" placeholder="Ask Echo anything…" aria-label="Message to Echo" required><button class="pill primary" type="submit" id="send-chat">Send ↗</button><button class="pill" id="stop-chat" type="button" hidden>Stop</button></div></form><p class="tiny soft">Uses your configured Echo agent. This page does not save conversation history.</p></article></div></section>
+    <section id="page-assistant" class="page" hidden>
+      <div class="echo-layout">
+        <aside class="echo-sidebar">
+          <article class="card echo-presence">
+            <span class="eyebrow">YOUR EVERYDAY ASSISTANT</span>
+            <div class="orb echo-orb" id="assistant-orb" data-state="ready"><div class="orb-core"></div></div>
+            <h2>Hey, I’m Echo.</h2>
+            <strong id="assistant-phase">Ready when you are.</strong>
+            <p id="assistant-detail" class="soft">Type a thought, or tap to talk.</p>
+            <div class="wake-phrases"><span>“Hey Echo” · “Okay Echo”</span><small id="wake-word-status">Checking voice availability…</small></div>
+          </article>
+          <article class="card echo-controls">
+            <div class="row spread"><h3>Settings</h3><svg aria-hidden="true"><use href="#i-settings"/></svg></div>
+            <label class="voice-volume-label">Reply volume <strong id="voice-volume-label">2%</strong><input id="voice-volume" type="range" min="0" max="30" value="2"></label>
+            <label class="check-label"><input id="voice-speak" type="checkbox" checked>Speak voice replies</label>
+            <label class="check-label"><input id="allow-home" type="checkbox">Allow home controls for the next message</label>
+            <button class="text-button" data-page="settings">More settings ↗</button>
+          </article>
+        </aside>
+        <article class="card conversation echo-conversation">
+          <div class="conversation-heading"><div class="row"><img src="/assets/icon.svg" alt="" width="30" height="30"><div><h2>Your conversation</h2><span class="tiny soft">A little space to think out loud.</span></div></div><span class="session-chip">THIS SESSION</span></div>
+          <div id="chat-reply" role="log" aria-live="polite" aria-label="Conversation with Echo">
+            <div id="chat-welcome" class="chat-welcome"><img src="/assets/icon.svg" alt="" width="66" height="66"><h3>What’s on your mind?</h3><p>Ask a question. Make a plan.<br>Let’s get something done.</p><div class="suggestions"><button data-prompt="Help me plan the rest of my day">Plan my day</button><button data-prompt="What is on my shopping list?">My shopping list</button><button data-prompt="What can you help me with today?">Explore with Echo</button></div></div>
+          </div>
+          <div class="voice-composer-status"><div class="voice-wave" id="voice-wave" hidden aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><p id="display-voice-status" role="status">Type below, or use the microphone.</p><button id="voice-cancel" class="text-button" type="button" hidden>Cancel</button><button id="stop-chat" class="text-button" type="button" hidden>Stop</button></div>
+          <form id="chat-form" class="chat-composer">
+            <button id="voice-start" class="mic-button" type="button" data-requires="displayVoice" aria-label="Talk to Echo" title="Talk to Echo"><svg><use href="#i-mic"/></svg></button>
+            <button id="voice-send" class="pill primary" type="button" hidden>Send recording</button>
+            <input id="chat-text" maxlength="1200" placeholder="Message Echo…" aria-label="Message to Echo" required autocomplete="off">
+            <button class="send-button" type="submit" id="send-chat" aria-label="Send message"><svg><use href="#i-send"/></svg></button>
+          </form>
+          <div id="reply-audio-slot"><audio id="voice-reply" controls hidden></audio></div>
+          <p class="conversation-privacy">Mic closes before processing · messages stay in this tab until reload</p>
+        </article>
+      </div>
+    </section>
     <section id="page-settings" class="page" hidden><div class="two-columns"><article class="card"><h2>Make yourself at home.</h2><label class="check-label"><input type="checkbox" id="clock24">24-hour clock</label><label>Ambient clock after<select id="idle-time"><option value="0">Never automatically</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select></label><label class="check-label"><input type="checkbox" id="night-dim">Dim the ambient view</label><label class="file-button pill">Choose ambient photos<input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden></label><p class="tiny soft">Optional photos stay in this browser session. No upload, account, or cloud library.</p><button class="pill" id="clear-photos">Clear photos</button><div class="divider"></div><a class="pill primary" href="/settings">Open Echo settings ↗</a></article><article class="card"><h2>Your home. Your choices.</h2><p class="soft">Provider, model, personality, speech, saved memory, and device permissions stay in Echo’s existing workspace.</p><div id="capability-notes"></div><div class="divider"></div><h3>Still to connect</h3><p class="soft">Choose calendar and camera sources below. Calls, intercom, grouped audio, and Pi wake words still need their own integrations.</p><a class="text-button" href="/devices">Manage connected devices ↗</a></article></div></section>
   </main>
   <template id="planner-template">

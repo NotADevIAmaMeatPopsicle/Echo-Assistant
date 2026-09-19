@@ -45,7 +45,7 @@ an LCD backlight.
 flowchart LR
   R[Round ESP32-S3 speaker] <-->|existing audio and control transport| H[Echo host]
   P[Pi 4 touchscreen / Chromium] <-->|authenticated HTTPS /display and APIs| H
-  A[Pi audio satellite: next phase] -.-> H
+  A[Pi push-to-talk microphone] --> H
   H <--> E[Hermes or configured model]
   H <--> S[Local speech services]
   H <--> HA[Home Assistant]
@@ -55,9 +55,9 @@ flowchart LR
 
 The Pi is the touchscreen computer. The existing host runs the assistant,
 speech models, integrations, and shared storage. This keeps the Pi responsive
-and preserves the working round device. A future Pi audio satellite will use
-the same assistant with its own endpoint identity, rather than masquerading as
-the ESP32 or playing replies through an arbitrary default speaker.
+and preserves the working round device. Pi push-to-talk uses the same assistant with its own endpoint identity. Its
+spoken reply returns only to the requesting display. Hands-free Pi wake words
+and physical echo-cancellation acceptance remain a later integration.
 
 The initial display reflects the connected Echo audio endpoint. Text entry
 works without a Pi microphone. Showing “listening” is driven by live backend
@@ -80,7 +80,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | Lists | Shopping, to-do, notes, edit/reorder/complete/delete, encrypted persistence | Explicit text/voice commands such as “Add coffee to my shopping list” are supported; ambiguous deletes ask for clarification |
 | Notifications | Persisted household notes; explicit spoken announcements; delivery receipts | Silent by default. Spoken announcements use the existing connected audio endpoint, respect quiet hours, and do not broadcast to room speakers |
 | Routines | Review and run saved routines | Existing device grants and action checks apply |
-| Echo | Existing conversation, web research, memory and cited sources; explicit home-control opt-in; server-side Stop | Pi microphone/wake integration and endpoint audio routing are a separate stage |
+| Echo | Existing conversation, web research, memory and cited sources; explicit home-control opt-in; server-side Stop | Push-to-talk records up to eight seconds and returns speech to this display; Pi wake words and audio hardware acceptance remain open |
 | Settings | Display preferences, encrypted shared photo album, camera/calendar selection, radio presets, display pairing and revocation | Only the owner can change sources, upload/remove shared photos, manage radios or pair displays |
 
 ![Recurring reminders and notification inbox, using synthetic data](images/display-planner.png)
@@ -126,8 +126,8 @@ a stream already opened directly in a browser; press Stop to end playback.
 
 ### Still ahead
 
-The next software stage is the Pi audio adapter, endpoint identity/routing,
-interruption and wake pipeline. Further integrations include calendar writes,
+Push-to-talk capture, request cancellation and reply routing are implemented.
+The next voice stage is hands-free wake, interruption and hardware echo control. Further integrations include calendar writes,
 doorbell event cards/full-motion streams, room intercom/grouped audio, calling,
 and household/guest profiles. These are not working features yet. Commercial
 video and proprietary casting depend on supported providers and licensing.
@@ -204,8 +204,50 @@ no built-in microphone, and HDMI/headphone outputs do not provide one.
    art-frame project. Existing unowned startup files are not overwritten.
 
 The bundle installer and rollback have been tested with temporary directories
-and a simulated loopback bridge. Actual Pi cold boot, systemd startup, desktop
-session recovery and physical touch still require hardware acceptance.
+and a simulated loopback bridge. The first Pi installation now runs through its
+existing X11 kiosk service and returns automatically after an OS restart. The
+owner confirmed the interface looks right. A full power-off cold boot, extended
+network interruption and complete touch calibration remain acceptance steps.
+
+### Reusing a dedicated X11 kiosk
+
+Some existing Pi builds start X directly from a system service and do not run a
+full desktop. In that case an XDG autostart entry alone will not open Echo. Keep
+the original service and script, then use a separate service override to select
+Echo's session entry. Pair and install the bundle first, as the normal kiosk user:
+
+```bash
+install -m 0700 deploy/pi/x11-session.sh "$HOME/.local/share/echo-display/session.sh"
+sudo loginctl enable-linger "$USER"
+```
+
+User lingering starts the restricted loopback bridge independently of an SSH
+login. The existing kiosk service's override should keep its original `User`,
+display and restart settings, clear its old `ExecStart`, and start X with the new
+session script. Replace `YOUR_USER` with that existing desktop account:
+
+```ini
+# Managed by Echo display setup
+[Unit]
+Description=Echo smart display kiosk
+After=network-online.target tailscaled.service
+
+[Service]
+ExecStart=
+ExecStart=/usr/bin/startx /home/YOUR_USER/.local/share/echo-display/session.sh --
+```
+
+Store this in a distinct `echo-display.conf` drop-in for the existing kiosk
+service, then reload systemd and restart that service. Stop an old audio
+satellite separately if it would compete for capture or playback. Record each
+service's previous enabled state privately before changing it.
+
+For rollback, remove only the Echo-marked drop-in, reload systemd, and restart
+the original kiosk service. Restore previous audio-service states from that
+record. Remove Echo autostart with `setup.py --remove-autostart` when returning
+to the old project. Neither path needs to overwrite the verified SD image.
+The bridge presents an automatically retrying page if the private network or
+host is not yet available at boot.
 
 The first release should offer both a reusable audio endpoint and a Pi with its
 own USB microphone/speaker path. Choose an audio device with known Linux support
@@ -232,7 +274,7 @@ microphone, speaker, light, or thermostat actually worked.
 
 ### Current verification
 
-The current software passes 73 focused tests across schedules/DST, list commands,
+The current software passes 79 focused tests across schedules/DST, list commands,
 photo privacy/persistence, display credentials, selected sources, simulated camera
 responses, home action validation, routines, timer delivery, and Pi bundle/bridge
 behavior, and the private HTTPS gateway’s owner/display separation. Browser checks cover recurring schedules, silent notifications, list
@@ -241,10 +283,63 @@ layout. They use a separate synthetic preview and make no real home-device calls
 recordings, playback or external stream requests. JavaScript syntax and the source
 publication guard also pass.
 
-The original Pi card has a separate verified full-card backup. Reusing that card
-is authorized, but this branch has not replaced the old kiosk or the live Echo
-host. The latest read-only hardware check confirms Wi-Fi connectivity and healthy
-power, with both HDMI ports disconnected and no capture device. Pi video/touch acceptance, audio hardware,
-voice routing and cold-boot acceptance remain open. The private HTTPS gateway
-also needs its updated display-role support deployed before Pi enrollment. The repository remains private
-and there is no new release.
+The original Pi card has a separate verified full-card backup. With the owner's
+authorization, the existing OS was converted in place: no partitioning or
+formatting. Original kiosk files remain available for rollback. The reviewed
+backend features are deployed on the existing host with private settings and
+identity modules preserved. The Pi is paired through the private HTTPS gateway
+with the restricted `display` role. Its household requests succeed; owner
+settings and display administration return HTTP 403.
+
+The Pi runs at 1024 × 600 over HDMI with USB touch, Wi-Fi and healthy power.
+The owner confirmed the appearance, and the kiosk and authenticated bridge
+recovered after an OS restart. A local reconnecting page handles host/network
+startup before the main app loads. Microphone hardware is not detected, so
+physical capture, reply audio and wake-word acceptance remain open. The repo
+stays private; version `0.27.0.dev1` is an internal build, not a public release.
+
+### The conversation workspace
+
+Echo's blue-green ring is now the project icon, favicon and display navigation
+mark. The Echo page puts its status panel at top left, voice settings below,
+and the conversation alongside them. Typed and spoken messages share one
+scrolling conversation; the composer includes microphone, send and stop controls.
+The ring shows capture, processing and reply states. Messages remain visible in
+the browser tab during navigation and clear on reload; this view does not add a
+new persistent transcript store. Home-action receipts remain attached to replies.
+
+![Echo conversation workspace with synthetic data](images/display-echo.png)
+
+### Speech from the Pi
+
+Open **Echo → Start talking** to grant microphone access to this display. Finish
+and send the recording, or cancel to discard it. Capture stops automatically at
+eight seconds; all microphone tracks close before processing starts. Opening a
+different page cancels capture. The Pi sends mono PCM over its authenticated
+bridge; local Whisper on the host transcribes it, the configured agent answers,
+and the host returns a WAV reply only to the requesting display. This requires
+the host's Whisper runtime and selected speech model. The round speaker's wake
+path stays independent.
+
+Reply volume starts at **2%**. If the browser prevents playback, press Play on
+the returned audio control. A request can still return its text answer when
+speech generation fails. Home actions are off unless explicitly enabled for
+that request, and existing device permissions still apply. Stop requests cancel
+host processing; completed action receipts remain visible. An uncertain stop
+is reported as uncertain rather than inviting an automatic retry.
+
+The microphone audio stays in memory and is not saved. Transcribed text follows
+normal Echo conversation and explicit-memory behavior. Browser noise suppression
+and echo cancellation are requested, but actual hardware performance is unverified.
+This is push-to-talk, not an always-listening Pi wake-word service.
+
+For a named ALSA device, the installed bundle also includes a manual adapter:
+
+```bash
+python3 deploy/pi/audio_once.py --check
+python3 deploy/pi/audio_once.py --once --capture-device YOUR_INPUT --playback-device YOUR_OUTPUT --volume 2
+```
+
+The check only lists hardware. `--once` intentionally records and plays a single
+reply, so run it only when ready for a quiet physical test. It uses the same
+paired loopback bridge, keeps recordings in memory, and is never autostarted.

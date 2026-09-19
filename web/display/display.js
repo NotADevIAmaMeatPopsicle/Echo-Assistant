@@ -8,7 +8,7 @@ const human = value => String(value || 'unavailable').replaceAll('_', ' ');
 const data = {}, received = {};
 const extensions = [];
 const pageEndpoints = {};
-let busy = false, polling = false, voicePolling = false, kind = 'shopping', chatAbort, lastInput = Date.now(), photos = [], photoIndex = 0, previousFocus;
+let busy = false, polling = false, voicePolling = false, displayCaptureBusy = false, kind = 'shopping', chatAbort, lastInput = Date.now(), photos = [], photoIndex = 0, previousFocus;
 let preferences = {clock24:false, idle:300, dim:false};
 try { const saved = JSON.parse(localStorage.getItem('echo-display-preferences') || '{}');
   preferences = {clock24:saved.clock24 === true, idle:[0,60,300,900].includes(saved.idle) ? saved.idle : 300, dim:saved.dim === true};
@@ -33,6 +33,7 @@ function page(name) {
   document.querySelectorAll('[data-page]').forEach(b => { b.classList.toggle('selected', b.dataset.page === name); if (b.closest('nav') || b.classList.contains('rail-settings')) b.setAttribute('aria-current', b.dataset.page === name ? 'page' : 'false'); });
   $('page-title').textContent = titles[name]; history.replaceState(null, '', `${location.pathname}#${name}`);
   document.querySelector('main').scrollTop = 0;
+  document.dispatchEvent(new CustomEvent('echo:page',{detail:name}));
   refresh();
 }
 function guardButtons() {
@@ -43,7 +44,7 @@ function guardButtons() {
     $(form).querySelector('button[type="submit"]').disabled = busy || !fresh(source);
   }
   document.querySelectorAll('[data-minutes]').forEach(b => b.disabled = busy || !fresh('timers'));
-  $('send-chat').disabled = !!chatAbort || !fresh('voice');
+  $('send-chat').disabled = !!chatAbort || displayCaptureBusy || !fresh('voice');
 }
 async function action(callback, message = 'Command accepted. Checking the current state…') {
   if (busy) return; busy = true; guardButtons();
@@ -97,6 +98,7 @@ function renderVoice() {
   const p = phases[state] || phases.disconnected;
   document.querySelectorAll('[data-orb]').forEach(orb => orb.dataset.state = p[0]);
   $('voice-caption').textContent = p[1]; $('voice-detail').textContent = p[2];
+  document.dispatchEvent(new Event('echo:voice-state'));
 }
 function renderHome() {
   const home = data.home || {}, rooms = home.lights?.rooms || [], thermostat = home.devices?.thermostat, weather = home.devices?.weather;
@@ -178,20 +180,35 @@ $('alarm-form').onsubmit = event => {
   action(() => newTimer(seconds, `Alarm · ${target.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',hour12:!preferences.clock24})}`), 'One-off alarm set.');
 };
 $('list-form').onsubmit = event => { event.preventDefault(); if (!fresh('household')) return; const text = $('list-text').value.trim(); if (!text) return; action(async () => { const result = await api('/v1/household',{text,kind,revision:data.household.revision}); $('list-text').value = ''; return result; }, 'List saved.'); };
+function appendChatMessage(role, text, pending=false) {
+  $('chat-welcome')?.remove();
+  const message=document.createElement('article'); message.className='chat-message';message.dataset.role=role;
+  message.innerHTML=`<div class="message-author">${role==='assistant' ? '<img src="/assets/icon.svg" alt="" width="20" height="20">' : ''}<span>${role==='assistant' ? 'Echo' : 'You'}</span></div><p class="message-text"></p>`;
+  message.querySelector('.message-text').textContent=text;message.dataset.pending=String(pending);
+  $('chat-reply').append(message);
+  while($('chat-reply').children.length>60)$('chat-reply').firstElementChild.remove();
+  $('chat-reply').scrollTop=$('chat-reply').scrollHeight;return message;
+}
+function finishChatMessage(message,result) {
+  message.dataset.pending='false';message.querySelector('.message-text').textContent=result.text || 'Echo returned no text.';
+  const links=document.createElement('div');links.className='source-links';
+  for(const source of result.sources || []){try{const url=new URL(source.url);if(!['https:','http:'].includes(url.protocol))continue;const a=document.createElement('a');a.href=url.href;a.textContent=source.title || url.hostname;a.target='_blank';a.rel='noopener noreferrer';links.append(a);}catch{}}
+  if(links.children.length)message.append(links);
+  if(result.home_actions?.length){const details=document.createElement('details');details.className='action-receipts';details.innerHTML='<summary>Home action results</summary>'+result.home_actions.map(item=>`<p>${esc(human(item.action))} · ${esc(item.entity_id)} · ${esc(human(item.status))}</p>`).join('');message.append(details);}
+  $('chat-reply').scrollTop=$('chat-reply').scrollHeight;
+}
+function conversationChanged(){document.dispatchEvent(new Event('echo:conversation'));}
 $('chat-form').onsubmit = async event => {
-  event.preventDefault(); if (chatAbort || !fresh('voice')) return;
-  const text = $('chat-text').value.trim(); if (!text) return;
-  const allow = $('allow-home').checked; $('allow-home').checked = false;
-  chatAbort = new AbortController(); $('stop-chat').hidden = false; guardButtons();
-  $('chat-reply').innerHTML = `<p class="asked">${esc(text)}</p><p class="answer">Thinking…</p>`;
+  event.preventDefault(); if (chatAbort || displayCaptureBusy || !fresh('voice')) return;
+  const text=$('chat-text').value.trim();if(!text)return;
+  const allow=$('allow-home').checked;$('allow-home').checked=false;
+  chatAbort=new AbortController();$('stop-chat').hidden=false;guardButtons();conversationChanged();
+  appendChatMessage('user',text);const answer=appendChatMessage('assistant','Thinking…',true);$('chat-text').value='';
   try {
-    const result = await api('/v1/chat', {text,lookup:false,allow_home_actions:allow}, 'POST', chatAbort.signal);
-    $('chat-reply').querySelector('.answer').textContent = result.text || 'Echo returned no text.';
-    const links = document.createElement('div'); links.className = 'source-links';
-    for (const source of result.sources || []) { try { const url = new URL(source.url); if (!['https:','http:'].includes(url.protocol)) continue; const a = document.createElement('a'); a.href = url.href; a.textContent = source.title || url.hostname; a.target = '_blank'; a.rel = 'noopener noreferrer'; links.append(a); } catch { /* Ignore malformed sources. */ } }
-    $('chat-reply').append(links); $('chat-text').value = '';
-  } catch (error) { $('chat-reply').querySelector('.answer').textContent = error.name === 'AbortError' ? 'Stopped waiting. Any action already sent may still complete.' : error.message; }
-  finally { chatAbort = null; $('stop-chat').hidden = true; guardButtons(); refresh(); }
+    const result=await api('/v1/chat',{text,lookup:false,allow_home_actions:allow},'POST',chatAbort.signal);
+    finishChatMessage(answer,result);
+  } catch(error){finishChatMessage(answer,{text:error.name==='AbortError' ? 'Stopped waiting. Any action already sent may still complete.' : error.message});}
+  finally{chatAbort=null;$('stop-chat').hidden=true;guardButtons();conversationChanged();refresh();}
 };
 $('stop-chat').onclick = async () => {
   const request=chatAbort;if(!request)return;
@@ -216,7 +233,7 @@ function tick() {
   $('home-clock').textContent = time; $('ambient-clock').textContent = time; $('home-date').textContent = date; $('ambient-date').textContent = date;
   $('greeting').textContent = now.getHours() < 12 ? 'Good morning.' : now.getHours() < 18 ? 'Good afternoon.' : 'Good evening.';
   $('ambient').classList.toggle('dim', preferences.dim);
-  if (preferences.idle && Date.now() - lastInput > preferences.idle * 1000 && !chatAbort && !busy && !document.querySelector('dialog[open]') && $('ambient').hidden) ambient(true);
+  if (preferences.idle && Date.now() - lastInput > preferences.idle * 1000 && !chatAbort && !displayCaptureBusy && !busy && !document.querySelector('dialog[open]') && $('ambient').hidden) ambient(true);
   renderTimers(); guardButtons();
   if (received.voice && !fresh('voice')) { renderVoice(); $('connection').textContent = 'State is stale'; }
 }

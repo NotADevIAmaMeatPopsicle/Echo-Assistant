@@ -25,6 +25,26 @@ class Bridge(BaseHTTPRequestHandler):
         self.send_response(code); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(body))); self.send_header('Cache-Control','no-store'); self.end_headers()
         if self.command!='HEAD': self.wfile.write(body)
 
+    def waiting_page(self):
+        # This must work before the host's JavaScript has ever loaded, including
+        # a boot where Wi-Fi, Tailscale or the API is still starting.
+        body=b'''<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="5;url=/display"><title>Echo is reconnecting</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-content:center;text-align:center;
+background:radial-gradient(ellipse at top,#183449,#07121f);color:#edf5ff;font:22px system-ui}
+h1{font-size:42px;margin:0 0 16px}p{max-width:34em;color:#b2c4d3;line-height:1.5;padding:0 24px}
+a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
+<span>ECHO / AT HOME</span><h1>A moment to reconnect.</h1>
+<p>Your display is ready. Waiting for the private connection to the Echo host.</p>
+<p>This page retries automatically. <a href="/display">Try now</a></p></html>'''
+        self.send_response(503)
+        for key,value in {'Content-Type':'text/html; charset=utf-8','Content-Length':str(len(body)),
+                          'Cache-Control':'no-store','Retry-After':'5',
+                          'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'"}.items():self.send_header(key,value)
+        self.end_headers()
+        if self.command!='HEAD':self.wfile.write(body)
+
     def proxy(self):
         host=self.headers.get('Host',''); port=self.server.server_port
         if host not in {f'127.0.0.1:{port}',f'localhost:{port}'}: return self.error_reply(403,'Use the local display address')
@@ -40,15 +60,17 @@ class Bridge(BaseHTTPRequestHandler):
             body=self.rfile.read(size)
         source=urlsplit(self.configuration['url']); base=f'{source.scheme}://{source.netloc}'
         path='/display' if self.path=='/' else self.path
+        display_page=requested.path in {'/','/display'} and self.command in {'GET','HEAD'}
         headers={'Authorization':'Display '+self.configuration['credential'],'X-Echo-Request':'1','Origin':base}
         for key in ('Content-Type','Range','Accept'):
             if self.headers.get(key): headers[key]=self.headers[key]
         request=urllib.request.Request(base+path,data=body,method=self.command,headers=headers)
         started=False
         try:
-            try: response=self.opener.open(request,timeout=120)
+            try: response=self.opener.open(request,timeout=10 if display_page else 120)
             except urllib.error.HTTPError as error: response=error
             with response:
+                if display_page and response.status>=500:return self.waiting_page()
                 self.send_response(response.status)
                 for key in ('Content-Type','Content-Length','Content-Range','Accept-Ranges','Content-Security-Policy','Referrer-Policy','X-Content-Type-Options'):
                     if response.headers.get(key):self.send_header(key,response.headers[key])
@@ -56,6 +78,7 @@ class Bridge(BaseHTTPRequestHandler):
                 if self.command!='HEAD':
                     while block:=response.read(65536): self.wfile.write(block)
         except (urllib.error.URLError,TimeoutError):
+            if not started and display_page:return self.waiting_page()
             if not started: return self.error_reply(503,'Echo host unavailable. Check its address, connection, and pairing status.')
             self.close_connection=True
         except (BrokenPipeError,ConnectionResetError): pass

@@ -31,6 +31,7 @@ def fixtures():
     data['/health']['display_demo'] = True
     data['/v1/display/session']={'role':'owner'}
     data['/v1/displays']={'items':[]}
+    data['/v1/display/voice']={'available':False,'mode':'push_to_talk','message':'Silent preview.'}
     data['/v1/display/sources']={'status':'available','items':[
         {'entity_id':'calendar.household_demo','kind':'calendar','name':'Household · sample','available':True},
         {'entity_id':'camera.porch_demo','kind':'camera','name':'Porch · sample','available':False}]}
@@ -89,6 +90,8 @@ class DisplayPreview(Preview):
                   '/assets/display/experiences.js':('display/experiences.js','text/javascript'),
                   '/assets/display/photos.js':('display/photos.js','text/javascript'),
                   '/assets/display/media.js':('display/media.js','text/javascript'),
+                  '/assets/display/voice.js':('display/voice.js','text/javascript'),
+                  '/assets/display/capture-worklet.js':('display/capture-worklet.js','text/javascript'),
                   '/assets/display/display.css':('display/display.css','text/css'),
                   '/assets/icon.svg':('icon.svg','image/svg+xml')}
         if path in assets:
