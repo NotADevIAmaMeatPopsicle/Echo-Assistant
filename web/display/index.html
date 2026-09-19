@@ -89,8 +89,18 @@
             <div class="spotify-volume"><svg><use href="#i-speaker"/></svg><label for="spotify-volume">Spotify level</label><input id="spotify-volume" type="range" min="0" max="100" value="0" disabled><output id="spotify-volume-label" for="spotify-volume">—</output></div>
             <p id="music-output-note" class="tiny soft">Music plays on the round speaker. This screen is its remote.</p>
           </div>
-          <div class="music-library row spread"><span class="soft">Playlists, podcasts & your queue<br><small>Browse your library in Spotify, then choose Echo.</small></span><a id="open-spotify" class="pill" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open Spotify <span aria-hidden="true">↗</span></a></div>
+          <div class="music-library row spread"><span class="soft">Your music. One scan away.<br><small>Sign in on your phone, then choose Echo in Spotify.</small></span><button id="spotify-phone-open" class="pill" type="button" aria-haspopup="dialog">Connect with phone</button></div>
         </article>
+        <dialog id="spotify-phone-dialog" aria-labelledby="spotify-phone-title" aria-describedby="spotify-phone-description">
+          <div class="row spread"><span class="eyebrow">SPOTIFY CONNECT</span><button id="spotify-phone-close" class="pill" type="button" autofocus>Close</button></div>
+          <h2 id="spotify-phone-title">Bring your music over.</h2>
+          <p id="spotify-phone-description">Scan with your phone’s camera. No keyboard needed here.</p>
+          <div class="spotify-phone-body">
+            <figure><img src="/assets/display/spotify-phone.png" width="248" height="248" alt="QR code opening https://open.spotify.com/ on your phone"><figcaption>open.spotify.com</figcaption></figure>
+            <div><ol><li><strong>Open Spotify on your phone.</strong><span>Scan the code, or open the Spotify app. Sign in there if needed.</span></li><li><strong>Play something you love.</strong><span>Use your Premium account and keep your phone on the same home Wi-Fi as Echo for first connection.</span></li><li><strong>Choose Echo.</strong><span>Tap Spotify’s device picker, then select Echo. Cover art and controls appear here when a track starts.</span></li></ol><p class="tiny soft">The code opens Spotify. It doesn’t link your account or sign this display in. Audio plays on the round Echo speaker.</p></div>
+          </div>
+          <div class="spotify-phone-footer"><a id="open-spotify" class="text-button" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open Spotify on this device ↗</a><span class="tiny soft">Use this option if you have a keyboard.</span></div>
+        </dialog>
       </div>
       <div id="local-panel" role="tabpanel" aria-labelledby="tab-local" hidden></div>
       <div id="speakers-panel" role="tabpanel" aria-labelledby="tab-speakers" hidden>

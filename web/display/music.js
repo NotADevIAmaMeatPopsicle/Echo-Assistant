@@ -1,6 +1,10 @@
 /* Current playback only: no browsing history or track metadata in browser storage. */
 'use strict';
 const musicDrags=new Set();let coverSource='',speakerMusicSignature='';
+const spotifyPhoneDialog=$('spotify-phone-dialog');
+$('spotify-phone-open').onclick=()=>spotifyPhoneDialog.showModal();
+$('spotify-phone-close').onclick=()=>spotifyPhoneDialog.close();
+document.addEventListener('echo:page',event=>{if(event.detail!=='music'&&spotifyPhoneDialog.open)spotifyPhoneDialog.close();});
 function musicTime(ms){const seconds=Math.max(0,Math.floor(ms/1000));return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;}
 function selectMusicTab(name,focus=false){
   document.querySelectorAll('[data-music-tab]').forEach(button=>{const selected=button.dataset.musicTab===name;button.classList.toggle('selected',selected);button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;$(button.getAttribute('aria-controls')).hidden=!selected;if(selected&&focus)button.focus();});

@@ -16,8 +16,19 @@ that receiver; it does not yet become a separate Spotify audio destination. The
 Spotify level attenuates its incoming stream, independently of the round speaker's
 hardware volume. The page displays both when the hardware reports its volume.
 
-Start music in Spotify and choose Echo in its device picker. **Open Spotify** opens
-the current track or episode, or Spotify itself if nothing is selected. Playlists,
+On a touchscreen without a keyboard, tap **Connect with phone**. Scan the QR code
+with your phone's camera, sign in to Spotify there if needed, start music, and
+choose Echo in Spotify's device picker. For the first connection, keep the phone
+and Echo on the same home network. The code is a static link to
+`https://open.spotify.com/`; it is generated locally, contains no credentials,
+and does not perform device authorization or sign the display into an account.
+You can also open the Spotify app directly without scanning.
+
+![Phone handoff with a locally generated Spotify QR code](images/display-spotify-phone.png)
+
+**Open Spotify on this device** remains available inside that dialog for browsers
+with a keyboard. It opens the current track or episode, or Spotify itself if
+nothing is selected. Playlists,
 search, saved tracks and queue browsing remain in Spotify. Echo has no Spotify
 library OAuth integration and does not pretend to show a library or queue.
 

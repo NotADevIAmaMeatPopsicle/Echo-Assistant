@@ -102,6 +102,7 @@ class DisplayPreview(Preview):
                   '/assets/display/media.js':('display/media.js','text/javascript'),
                   '/assets/display/music.js':('display/music.js','text/javascript'),
                   '/assets/display/music.css':('display/music.css','text/css'),
+                  '/assets/display/spotify-phone.png':('display/spotify-phone.png','image/png'),
                   '/assets/display/voice.js':('display/voice.js','text/javascript'),
                   '/assets/display/capture-worklet.js':('display/capture-worklet.js','text/javascript'),
                   '/assets/display/display.css':('display/display.css','text/css'),
