@@ -30,7 +30,8 @@ Prioritize the Pi audio path before extending round intercom. See
 - [x] Per-room announcement routing, opt-in display/round receivers and delivery receipts (software; physical listening pending).
 - [ ] Two-way intercom between room endpoints.
 - [x] Pi push-to-talk/ALSA adapter and request-specific reply routing (software; simulated audio only).
-- [ ] Pi hands-free wake, interruption and physical echo-control acceptance.
+- [x] Pi local wake, cue/capture/replies, software mute and request interruption (software; installed disabled).
+- [ ] Physical Pi wake and echo-control acceptance, including playback and spoken interruption with the chosen microphone.
 - [x] Pi Spotify receiver, direct ALSA playback, output attenuation and endpoint-specific naming (software; real Spotify/audio acceptance pending).
 - [x] Pi alarm/reminder chimes, saved destination routing and visible snooze/dismiss controls (software; physical audio pending).
 - [x] Pi pairing/install/rollback client bundle; installed and OS restart verified.
@@ -79,8 +80,8 @@ restart-safe duplicate protection, clock changes, permissions and local briefing
 composition; the related source and display-voice checks also pass. Silent browser
 checks cover the form and phone layout. No real calendar events were created.
 
-Next: Pi audio independence: local wake/capture/replies and alarm
-routing, then hardware acceptance when its microphone and speaker are attached.
+Next: the requested Pi display polish, then audio hardware acceptance when its
+microphone and speaker are attached.
 The round intercom adapter remains planned as an optional endpoint.
 
 The host and paired-display call UI
@@ -104,16 +105,20 @@ Pi Spotify software now includes a separately named receiver, explicit ALSA outp
 The ARM64 binary starts on the Pi; Linux pipe and silent UI checks pass. It is
 installed disabled until an output is chosen. See [Pi Spotify](PI_SPOTIFY.md).
 
-Pi hands-free wake and acoustic acceptance need an identified microphone and
-speaker. No Pi wake-word or physical audio acceptance claim is made.
+Physical Pi wake and acoustic acceptance need an identified microphone and
+speaker. Software coverage does not establish physical audio performance.
 
 Pi timers, scheduled reminders and audible household messages now retain their
 creating endpoint. Native Pi chimes, quiet hours, playback receipts and snooze
-controls are implemented. See [Pi alerts](PI_ALERTS.md). Hands-free wake software
-is next, followed by the requested native-resolution/scaling check and visual
-polish. Physical microphone/speaker acceptance remains separate.
+controls are implemented. See [Pi alerts](PI_ALERTS.md). Local wake software is implemented; the requested display visual polish is next. Physical microphone/speaker acceptance remains separate.
 
 Display sharpness baseline: the connected panel advertises 1024 × 600 as its
 preferred HDMI timing and X11 is using that mode. Chromium is in kiosk mode.
 Confirm browser zoom/pixel mapping during polish; a higher accepted input mode
 does not establish a higher native panel resolution.
+
+The native Pi wake listener and pinned Vosk runtime are installed with listening
+disabled and software mute on. A synthetic Linux pipe check exercised the cue,
+command capture, reply attenuation and mute cleanup. Silent browser checks cover
+native state, conversation, Talk/Send/Stop and stale-adapter handling. See
+[Pi voice](PI_VOICE.md) for setup and the explicit echo-cancelled input requirement.

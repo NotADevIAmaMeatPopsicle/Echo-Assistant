@@ -10,7 +10,7 @@ AMOLED build remains a separate compact smart speaker.
 
 | Build | Audio path | Current implementation and limits |
 | --- | --- | --- |
-| Pi smart display | Microphone and speaker attached to the Pi | Paired kiosk, push-to-talk with replies returned to that Pi, radio/files, announcements and answered display calls are implemented in software. The Pi Spotify adapter adds a separately named ALSA receiver. Local wake words, Pi alarm routing and physical audio verification remain open. |
+| Pi smart display | Microphone and speaker attached to the Pi | Paired kiosk, push-to-talk with replies returned to that Pi, radio/files, announcements and answered display calls are implemented in software. The Pi Spotify adapter adds a separately named ALSA receiver. Local wake detection, native replies, software mute, request interruption and alarm chimes are implemented. Playback wake needs an explicitly configured echo-cancelled input. Physical audio verification remains open. |
 | Round AMOLED speaker | Onboard microphone and attached speaker | Existing firmware, host voice transport, wake words, replies and Spotify receiver. Round intercom controls and adapter remain open. |
 | Spare phone, tablet or computer | Its browser, microphone and speakers | Responsive paired display, push-to-talk and answered calls reuse the browser path. Requires a secure connection and explicit microphone permission. Mobile background operation, continuous wake and device-specific audio performance are not verified. |
 | Another Pi or ESP32 audio endpoint | Its configured input/output, with an optional separate screen | Planned adapter path. The current ESP32 firmware targets the documented Waveshare board; other boards are not plug-and-play. |
@@ -30,9 +30,10 @@ screen-to-audio pairing UI and general adapter protocol are not implemented yet.
 ## Build priority
 
 1. Complete the Pi's independent voice, music and alarm paths.
-2. Verify its attached audio hardware, mute behavior, wake words and interruption.
-3. Extend intercom to the round speaker and document both primary assemblies.
-4. Add reusable adapter guidance and device-specific acceptance for spare hardware.
+2. Polish the Pi display while microphone/speaker hardware acceptance remains pending.
+3. Verify its attached audio hardware, mute behavior, wake words and interruption.
+4. Extend intercom to the round speaker and document both primary assemblies.
+5. Add reusable adapter guidance and device-specific acceptance for spare hardware.
 
 The [build queue](BUILD_QUEUE.md) tracks implementation and physical acceptance.
 A feature passing a simulated test is not a claim that an untested phone, sound
@@ -40,3 +41,6 @@ card or ESP32 board will work unchanged.
 
 Pi timer and reminder chimes use the attached speaker independently of the round
 board. See [Pi alerts](PI_ALERTS.md) for output setup and delivery behavior.
+
+[Pi voice setup](PI_VOICE.md) explains the local listener, software mute, attached
+audio selection and the playback echo-control requirement.

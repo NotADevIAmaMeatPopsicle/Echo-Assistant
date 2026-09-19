@@ -20,7 +20,9 @@ def main():
     base=Path.home()/'.local/share/echo-display'
     release=selected_release(base)
     target=release/(sys.argv[1]+'.py')
-    os.execv(sys.executable,[sys.executable,str(target)])
+    voice_python=base/'runtime/voice/bin/python'
+    executable=str(voice_python) if sys.argv[1]=='bridge' and voice_python.is_file() else sys.executable
+    os.execv(executable,[executable,str(target)])
 
 
 if __name__=='__main__':

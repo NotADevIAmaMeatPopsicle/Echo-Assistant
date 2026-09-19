@@ -18,6 +18,7 @@
   <script src="/assets/display/alerts.js" defer></script>
   <script src="/assets/display/media.js" defer></script>
   <script src="/assets/display/voice.js" defer></script>
+  <script src="/assets/display/pi-voice.js" defer></script>
   <link rel="stylesheet" href="/assets/display/announcements.css">
   <script src="/assets/display/announcements.js" defer></script>
   <link rel="stylesheet" href="/assets/display/intercom.css">
@@ -151,7 +152,7 @@
             <button class="send-button" type="submit" id="send-chat" aria-label="Send message"><svg><use href="#i-send"/></svg></button>
           </form>
           <div id="reply-audio-slot"><audio id="voice-reply" controls hidden></audio></div>
-          <p class="conversation-privacy">Mic closes before processing · messages stay in this tab until reload</p>
+          <p class="conversation-privacy" id="voice-privacy-note">Mic closes before processing · messages stay in this tab until reload</p>
         </article>
       </div>
     </section>

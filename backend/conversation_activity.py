@@ -24,6 +24,7 @@ class ConversationBusy(ValueError):
 class ConversationActivity:
     id: str = field(default_factory=lambda: uuid4().hex)
     cancel: Event = field(default_factory=Event)
+    capture_id: str | None = None
     state: str = 'starting'
     started: float = field(default_factory=time.time)
     finished: float | None = None
@@ -64,7 +65,7 @@ class ConversationActivity:
 
     def snapshot(self):
         with self.lock:
-            return {'id': self.id, 'state': self.state, 'caption': CAPTIONS[self.state],
+            return {'id': self.id, 'capture_id': self.capture_id, 'state': self.state, 'caption': CAPTIONS[self.state],
                     'active': self.finished is None, 'cancel_requested': self.cancel.is_set(),
                     'started': self.started, 'finished': self.finished,
                     'events': deepcopy(self.events), 'home_actions': deepcopy(self.receipts)}
@@ -74,15 +75,19 @@ class Conversations:
     def __init__(self):
         self.lock = RLock()
         self.sessions = OrderedDict()
+        self.capture_stops = {}
 
     def _prune(self):
+        self.capture_stops = {key: until for key, until in self.capture_stops.items() if until > time.monotonic()}
         for session, job in list(self.sessions.items()):
             if job.finished is not None and time.time() - job.finished > 1800:
                 self.sessions.pop(session)
 
-    def begin(self, session):
+    def begin(self, session, capture_id=None):
         with self.lock:
             self._prune()
+            if capture_id and (session, capture_id) in self.capture_stops:
+                raise ConversationBusy('This capture was cancelled before it started.')
             previous = self.sessions.get(session)
             if previous and previous.finished is None:
                 raise ConversationBusy('A request is already running in this chat. Stop it or wait for its reply.')
@@ -90,7 +95,7 @@ class Conversations:
                 expired = next((key for key, job in self.sessions.items() if job.finished is not None), None)
                 if expired is None: raise ConversationBusy('Echo has too many active requests. Try again shortly.')
                 self.sessions.pop(expired)
-            job = ConversationActivity()
+            job = ConversationActivity(capture_id=capture_id)
             job.progress('starting')
             self.sessions[session] = job
             self.sessions.move_to_end(session)
@@ -108,6 +113,16 @@ class Conversations:
             job = self.sessions.get(session)
             if not job or job.id != identifier: raise KeyError('Conversation not found')
             return job.request_stop()
+
+    def stop_capture(self, session, capture_id):
+        with self.lock:
+            self._prune()
+            if len(self.capture_stops) >= 256:
+                raise ConversationBusy('Too many pending capture cancellations; try again shortly.')
+            self.capture_stops[(session, capture_id)] = time.monotonic()+180
+            job = self.sessions.get(session)
+            if job and job.capture_id == capture_id: return job.request_stop()
+            return {'cancel_requested': True, 'active': False}
 
     def clear(self, session):
         with self.lock:

@@ -4,12 +4,13 @@ let micStream=null,micContext=null,micNode=null,micChunks=[],micSamples=0,micOpe
 const voicePlayer=$('voice-reply');voicePlayer.volume=.02;
 function voiceButtons(){
   const inCall=typeof intercomIsBusy==='function'&&intercomIsBusy();
-  displayCaptureBusy=micOpening || voiceCancelling || !!micStream || !!voiceRequest || !voicePlayer.paused || inCall;
+  const native=typeof piVoiceEnabled==='function'&&piVoiceEnabled(),nativeBusy=native&&piVoiceBusy();
+  displayCaptureBusy=nativeBusy || micOpening || voiceCancelling || !!micStream || !!voiceRequest || !voicePlayer.paused || inCall;
   document.dispatchEvent(new Event('echo:audio-focus'));
-  $('voice-start').dataset.unavailable=String(!data.displayVoice?.available || microphoneState==='none' || micOpening || voiceCancelling || !!micStream || !!voiceRequest || !!chatAbort || inCall);
-  $('voice-send').hidden=!micStream;$('voice-cancel').hidden=!micOpening && !micStream && !voiceRequest && voicePlayer.paused;
-  $('voice-start').hidden=!!micStream || !!voiceRequest;
-  $('voice-wave').hidden=!micStream;$('chat-text').disabled=displayCaptureBusy;guardButtons();renderDisplayPresence();
+  $('voice-start').dataset.unavailable=String(!data.displayVoice?.available || (!native&&microphoneState==='none') || (native&&(!fresh('piVoice')||data.piVoice.settings.muted||['muted','unavailable','busy'].includes(data.piVoice.phase))) || micOpening || voiceCancelling || !!micStream || !!voiceRequest || !!chatAbort || inCall);
+  $('voice-send').hidden=!micStream&&!(native&&data.piVoice.phase==='listening');$('voice-cancel').hidden=!nativeBusy&&!micOpening && !micStream && !voiceRequest && voicePlayer.paused;
+  $('voice-start').hidden=!!micStream || !!voiceRequest || (native&&['cue','listening','thinking'].includes(data.piVoice.phase));
+  $('voice-wave').hidden=!micStream&&!(native&&data.piVoice.phase==='listening');$('chat-text').disabled=displayCaptureBusy;guardButtons();renderDisplayPresence();
 }
 function renderDisplayPresence(){
   const inCall=typeof intercomIsBusy==='function'&&intercomIsBusy();
@@ -22,11 +23,12 @@ function renderDisplayPresence(){
     else if(microphoneState==='none')detail=['Ready when you are.','Type to Echo. Connect a microphone to talk here.'];
     else if(!fresh('displayVoice')||!data.displayVoice?.available)detail=['Ready for a conversation.','Type to Echo. Speech service is unavailable.'];
   }
+  if(typeof piVoicePresence==='function'){const native=piVoicePresence();if(native&&!inCall&&!micStream&&!micOpening&&!voiceRequest&&!chatAbort){active=native.state;detail=native.detail;}}
   const ringState=active==='intercom'?'thinking':active;
   $('assistant-orb').dataset.state=ringState;$('assistant-phase').textContent=detail[0];$('assistant-detail').textContent=detail[1];
   document.querySelectorAll('[data-orb]').forEach(orb=>orb.dataset.state=ringState);
   $('voice-caption').textContent=detail[0];$('voice-detail').textContent=detail[1];
-  $('wake-word-status').textContent=data.health?.display_demo ? 'Voice preview · microphone off' : microphoneState==='none' ? 'Connect a microphone to this device. Local wake words are not enabled yet.' : 'Tap to talk with this device’s microphone. Local wake words are not enabled yet.';
+  $('wake-word-status').textContent=typeof piVoiceEnabled==='function'&&piVoiceEnabled() ? piVoiceWakeCaption() : data.health?.display_demo ? 'Voice preview · microphone off' : microphoneState==='none' ? 'Connect a microphone to this device. Local wake words are not enabled yet.' : 'Tap to talk with this device’s microphone. Local wake words are not enabled yet.';
 }
 async function detectMicrophone(){
   if(!navigator.mediaDevices?.enumerateDevices)return;
@@ -80,6 +82,7 @@ async function finishVoice(){
   finally{if(voiceRequest===controller)voiceRequest=null;voiceButtons();}
 }
 $('voice-start').onclick=async()=>{
+  if(typeof piVoiceEnabled==='function'&&piVoiceEnabled()){await piVoiceControl('talk');return;}
   if(!data.displayVoice?.available || voiceRequest || micStream || micOpening || voiceCancelling || chatAbort)return;
   const epoch=++voiceEpoch;
   clearVoiceReply();player.pause();micOpening=true;voiceButtons();$('display-voice-status').textContent='Opening the microphone…';
@@ -103,8 +106,9 @@ $('voice-start').onclick=async()=>{
   }catch(error){if(epoch===voiceEpoch){await closeMic();$('display-voice-status').textContent=error.name==='NotAllowedError' ? 'Microphone permission was declined. You can still type to Echo.' : error.name==='NotFoundError' ? 'No microphone was found on this device.' : error.message;}}
   finally{if(epoch===voiceEpoch)micOpening=false;voiceButtons();}
 };
-$('voice-send').onclick=finishVoice;
+$('voice-send').onclick=()=>typeof piVoiceEnabled==='function'&&piVoiceEnabled()?piVoiceControl('send'):finishVoice();
 async function cancelVoice(){
+  if(typeof piVoiceEnabled==='function'&&piVoiceEnabled()&&piVoiceBusy()){await piVoiceControl('stop');return;}
   if(voiceCancelling)return;voiceCancelling=true;voiceEpoch++;
   micOpening=false;await closeMic();micChunks=[];clearVoiceReply();
   const pending=voiceRequest;
@@ -118,3 +122,5 @@ voicePlayer.onplay=voiceButtons;voicePlayer.onpause=voiceButtons;
 voicePlayer.onended=()=>{$('display-voice-status').textContent='Ready when you are.';voiceButtons();};
 document.addEventListener('echo:page',event=>{if(event.detail!=='assistant' && (micOpening || micStream || voiceRequest || !voicePlayer.paused))cancelVoice();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden && (micOpening || micStream))cancelVoice();});
+
+$('voice-volume').onchange=()=>{if(typeof piVoiceEnabled==='function'&&piVoiceEnabled())void piVoiceVolume(Number($('voice-volume').value));};

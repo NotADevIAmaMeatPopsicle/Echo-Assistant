@@ -96,7 +96,9 @@ def install(app,pipeline,authorize,conversations,shutdown,*,enable_home=True):
     def status():return app.state.display_voice.status()
 
     @app.post('/v1/display/voice')
-    async def voice(request:Request,allow_home:bool=False,reply_audio:bool=True,session=Depends(authorize)):
+    async def voice(request:Request,allow_home:bool=False,reply_audio:bool=True,capture_id:str|None=None,session=Depends(authorize)):
+        import re
+        if capture_id is not None and not re.fullmatch(r"[a-f0-9]{32}",capture_id):raise HTTPException(422,"Invalid capture identifier")
         if request.headers.get('content-type','').split(';')[0] not in {'audio/wav','audio/x-wav'}:raise HTTPException(415,'Send PCM WAV audio')
         raw=bytearray()
         async for block in request.stream():
@@ -104,7 +106,7 @@ def install(app,pipeline,authorize,conversations,shutdown,*,enable_home=True):
             if len(raw)>MAX_CAPTURE+4096:raise HTTPException(413,'Recording exceeds eight seconds')
         try:pcm=capture_pcm(bytes(raw))
         except ValueError as error:raise HTTPException(422,str(error)) from None
-        try:activity=conversations.begin(session)
+        try:activity=conversations.begin(session,capture_id=capture_id)
         except ConversationBusy as error:raise HTTPException(409,str(error)) from None
         from functools import partial
         try:
@@ -113,3 +115,13 @@ def install(app,pipeline,authorize,conversations,shutdown,*,enable_home=True):
             authorize(request)  # Do not return a reply to an endpoint revoked during generation.
             return result
         except DisplayVoiceUnavailable as error:raise HTTPException(503,str(error)) from None
+
+    @app.post('/v1/display/voice/{capture_id}/stop')
+    def stop_capture(capture_id:str,session=Depends(authorize)):
+        import re
+        if not re.fullmatch(r'[a-f0-9]{32}',capture_id):raise HTTPException(422,'Invalid capture identifier')
+        try:return conversations.stop_capture(session,capture_id)
+        except ConversationBusy as error:raise HTTPException(409,str(error)) from None
+
+    @app.get('/v1/display/local-voice',dependencies=[Depends(authorize)])
+    def native_status():return {'supported':False,'phase':'unavailable'}

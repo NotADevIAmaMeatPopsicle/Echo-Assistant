@@ -17,6 +17,8 @@ class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if method=='GET' and path=='/v1/display/local-voice':return True
+    if method=='POST' and re.fullmatch(r'/v1/display/voice/[a-f0-9]{32}/stop',path):return True
     if method=='GET' and path in {'/v1/display/alerts','/v1/display/alert-settings'}:return True
     if method=='POST' and re.fullmatch(r'/v1/display/alerts/[a-f0-9]{32}/(?:claim|check|receipt)',path):return True
     if method=='POST' and re.fullmatch(r'/v1/timers/[a-f0-9]{32}/snooze',path):return True

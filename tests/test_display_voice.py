@@ -76,5 +76,10 @@ class VoiceTests(unittest.TestCase):
             self.assertEqual(response.status_code,200);self.assertNotIn('audio',response.json())
             self.assertEqual(agent.respond.call_args.args[1],'display:'+credential.split('.')[0]);self.assertFalse(agent.respond.call_args.kwargs['allow_home_actions'])
             synth.assert_not_called()
+            transcriber.reset_mock();agent.reset_mock()
+            capture_id='c'*32
+            self.assertEqual(client.post('/v1/display/voice/'+capture_id+'/stop',json={}).status_code,200)
+            stopped=client.post('/v1/display/voice?capture_id='+capture_id,content=raw,headers={'Content-Type':'audio/wav'})
+            self.assertEqual(stopped.status_code,409);transcriber.transcribe.assert_not_called();agent.respond.assert_not_called()
             self.assertEqual(client.post('/v1/display/voice',content=b'wrong',headers={'Content-Type':'audio/wav'}).status_code,422)
             self.assertEqual(client.post('/v1/display/voice',content=b'x'*270000,headers={'Content-Type':'audio/wav'}).status_code,413)

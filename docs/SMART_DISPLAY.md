@@ -72,7 +72,7 @@ and its spoken reply returns only to that display.
 
 The home and Echo rings show this display's capture, processing and reply state.
 Another device being offline does not put the Pi into an offline voice state.
-Text entry works without a microphone. Local wake words and Pi alarm delivery still need integration; physical audio acceptance remains open.
+Text entry works without a microphone. Native Pi wake words, reply playback and alarm chimes are implemented; physical audio acceptance remains open.
 The round speaker retains its separate voice path and existing Spotify receiver.
 
 [Build options](BUILD_OPTIONS.md) explains the Pi, round-speaker, browser/phone
@@ -95,7 +95,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | Lists | Shopping, to-do, notes, edit/reorder/complete/delete, encrypted persistence | Explicit text/voice commands such as “Add coffee to my shopping list” are supported; ambiguous deletes ask for clarification |
 | Notifications & room audio | Persisted household notes; room-targeted announcements and delivery receipts | [Room receivers](ROOM_AUDIO.md) are opt-in, respect quiet hours and expire queued messages after five minutes. Answered two-way intercom is implemented between paired displays; the round adapter and physical audio acceptance remain pending. |
 | Routines | Review and run saved routines | Existing device grants and action checks apply |
-| Echo | Existing conversation, web research, memory and cited sources; explicit home-control opt-in; server-side Stop | Push-to-talk records up to eight seconds and returns speech to this display; Pi wake words and audio hardware acceptance remain open |
+| Echo | Existing conversation, web research, memory and cited sources; explicit home-control opt-in; server-side Stop | Push-to-talk records up to eight seconds and returns speech to this display; native Pi wake is opt-in; audio hardware acceptance remains open |
 | Settings | Display preferences, encrypted shared photo album, camera/calendar selection, radio presets, display pairing and revocation | Only the owner can change sources, upload/remove shared photos, manage radios or pair displays |
 
 ![Recurring reminders and notification inbox, using synthetic data](images/display-planner.png)
@@ -142,7 +142,7 @@ a stream already opened directly in a browser; press Stop to end playback.
 ### Still ahead
 
 Push-to-talk capture, request cancellation and reply routing are implemented.
-The next voice stage is hands-free wake, interruption and hardware echo control. Further integrations include calendar event editing and natural-language drafting,
+Native Pi wake and request interruption are implemented; physical echo-control acceptance is still required. Further integrations include calendar event editing and natural-language drafting,
 grouped audio, round-endpoint intercom, external calling,
 and household/guest profiles. These are not working features yet. Commercial
 video and proprietary casting depend on supported providers and licensing.
@@ -354,7 +354,7 @@ is reported as uncertain rather than inviting an automatic retry.
 The microphone audio stays in memory and is not saved. Transcribed text follows
 normal Echo conversation and explicit-memory behavior. Browser noise suppression
 and echo cancellation are requested, but actual hardware performance is unverified.
-This is push-to-talk, not an always-listening Pi wake-word service.
+The browser path uses push-to-talk. The optional [native Pi listener](PI_VOICE.md) adds local wake words and attached ALSA audio.
 
 For a named ALSA device, the installed bundle also includes a manual adapter:
 
