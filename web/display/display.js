@@ -94,7 +94,7 @@ function render() {
   extensions.forEach(renderExtension => renderExtension()); guardButtons();
   $('capability-notes').innerHTML = [['Echo server', fresh('timers') && !signInRequired ? 'connected' : 'unavailable'], ['Optional round speaker', roundSpeakerConnected() ? human(data.voice.status) : 'not connected'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Voice and audio', 'This device’s microphone and speakers'], ['Spotify on this display', 'Configure the Pi receiver below; other receivers are optional']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
 }
-function roundSpeakerConnected() { return fresh('voice') && ['armed','activation','listening','thinking','speaking','music','alarm','cooldown','muted'].includes(data.voice.status); }
+function roundSpeakerConnected() { return fresh('voice') && ['armed','activation','listening','thinking','speaking','music','alarm','cooldown','muted','intercom'].includes(data.voice.status); }
 function renderVoice() {
   // Each display owns its capture/reply state; another endpoint is optional.
   document.dispatchEvent(new Event('echo:voice-state'));

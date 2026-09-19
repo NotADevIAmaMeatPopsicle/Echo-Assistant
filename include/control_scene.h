@@ -5,12 +5,12 @@
 
 namespace ControlScene {
 constexpr int brightnessMinimum=20,brightnessMaximum=255;
-enum class Page { Voice, Home, Thermostat, ThermostatMode, Soundbar, SoundbarVolume, Weather, Music, Settings, Network, Timer, NewTimer, Lights, SpeakerPicker };
+enum class Page { Voice, Home, Thermostat, ThermostatMode, Soundbar, SoundbarVolume, Weather, Music, Settings, Network, Timer, NewTimer, Lights, SpeakerPicker, Intercom };
 inline Page swipePage(Page page,bool left) {
     Page parent=page==Page::ThermostatMode?Page::Thermostat:page==Page::SoundbarVolume || page==Page::SpeakerPicker?Page::Soundbar:page==Page::Network?Page::Settings:page==Page::NewTimer?Page::Timer:page;
     if(!left && parent!=page)return parent;
-    const Page pages[]={Page::Voice,Page::Home,Page::Soundbar,Page::Thermostat,Page::Lights,Page::Music,Page::Weather,Page::Timer,Page::Settings};
-    for(int i=0;i<9;++i)if(pages[i]==parent)return pages[(i+(left?1:8))%9];
+    const Page pages[]={Page::Voice,Page::Home,Page::Soundbar,Page::Thermostat,Page::Lights,Page::Music,Page::Weather,Page::Timer,Page::Intercom,Page::Settings};
+    for(int i=0;i<10;++i)if(pages[i]==parent)return pages[(i+(left?1:9))%10];
     return Page::Home;
 }
 inline const char* physicalAction(Page page,bool upper) {
@@ -41,7 +41,7 @@ struct Model {
     const char *connection="Connection unavailable",*timerLabel="",*timerResult="",*musicTitle="",*musicArtist="",*musicState="";
 };
 inline const char* name(Page p) {
-    static const char* names[]={"voice","home","thermostat","thermostat-modes","bose","bose-volume","weather","music-controls","settings","connection","timers","new-timer","lights","speakers"};
+    static const char* names[]={"voice","home","thermostat","thermostat-modes","bose","bose-volume","weather","music-controls","settings","connection","timers","new-timer","lights","speakers","intercom"};
     return names[unsigned(p)];
 }
 template<class Surface> void fitted(Surface& g,const char* value,int cx,int y,unsigned size,uint16_t color,int width) {
@@ -193,7 +193,8 @@ template<class Surface> void render(Surface& g,const Model& m) {
             centered(g,!m.micReady?"Microphone unavailable":m.micMuted?"Software mute / capture off":"Software microphone control",146,0,!m.micReady || m.micMuted?amber:dim);
             pill(g,TouchTargets::microphone,m.micMuted?"Unmute microphone":"Mute microphone",m.micMuted?amber:mint);
             centered(g,"Brightness",222,1,dim);pill(g,TouchTargets::brightnessDown,"-",dim,m.brightness>brightnessMinimum);pill(g,TouchTargets::brightnessUp,"+",dim,m.brightness<brightnessMaximum);
-            snprintf(value,sizeof(value),"%d%%",m.brightness*100/255);centered(g,value,263,1,dim);pill(g,125,280,216,"Wireless / storage",mint);break;
+            snprintf(value,sizeof(value),"%d%%",m.brightness*100/255);centered(g,value,263,1,dim);
+            pill(g,95,280,132,"Connection",mint);pill(g,239,280,132,"Intercom",mint);break;
         case Page::Network:
             centered(g,"Connection",132,2);centered(g,m.wifi?"Paired Wi-Fi":m.system.connected?"USB / local host":"Host disconnected",184,2,m.system.connected?mint:dim);centered(g,m.connection,225,1,dim);
             centered(g,"Use USB to pair with your host",269,1,dim);

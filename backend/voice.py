@@ -34,6 +34,7 @@ from .spoken_reply import spoken_reply
 from .alarms import Alarms
 from .lifecycle import Lifecycle, request_stop
 from .transport import load_wifi, WifiTransport
+from .round_intercom import RoundIntercom
 
 ROOT = Path(__file__).resolve().parents[1]
 MAC = __import__('os').environ.get('ECHO_DEVICE_MAC', '').lower()
@@ -125,6 +126,7 @@ def main():
 
 
 def run_session(args, lifecycle, model, recovery, music):
+    calls=None
     sample=SpeakerCheck(ROOT)
     sample_id=None
     wifi = None if args.usb else load_wifi(ROOT)
@@ -197,6 +199,7 @@ def run_session(args, lifecycle, model, recovery, music):
                     sample_id=None
             display = HomeDisplay(client, worker, port.write)
             alarms = Alarms(client, worker, port.write,speech_jobs)
+            calls = RoundIntercom(client,port.write)
             pending = None
             port.write(b"STATUS\n")
             deadline = time.monotonic()+5
@@ -207,6 +210,7 @@ def run_session(args, lifecycle, model, recovery, music):
             else:
                 raise RuntimeError("Voice-capable firmware did not identify itself")
             if lifecycle.stopped(): return
+            if any(re.search(r'\bintercom=1\b',line) for line in lines):port.write(b'CALL_RESET\n')
             duplex = any(re.search(r'\bduplex=1\b', line) for line in lines if line.startswith('STATUS '))
             activation = Activation(any(re.search(r'\bcue_ready=1\b', line) for line in lines if line.startswith('STATUS ')))
             if duplex:
@@ -244,6 +248,7 @@ def run_session(args, lifecycle, model, recovery, music):
                 if (decoder.errors, decoder.gaps) != (previous_errors, previous_gaps):
                     recognition.reset()
                 for line in lines:
+                    calls.receive(line)
                     if phase == 'activation': activation.receive(line)
                     display.receive(line)
                     cancelled_alarm = alarms.receive(line)
@@ -253,6 +258,7 @@ def run_session(args, lifecycle, model, recovery, music):
                     except RuntimeError:
                         status["playback_errors"] += 1
                         finish_sample('failed','Speaker playback failed')
+                        if phase=='intercom':calls.disable('Speaker connection lost')
                         if phase == 'alarm': alarms.retry()
                         if phase == 'music': music.command('pause')
                         phase, until = "cooldown", now+1
@@ -260,7 +266,7 @@ def run_session(args, lifecycle, model, recovery, music):
                     if line.startswith("STATUS "):
                         device = dict(re.findall(r"(\w+)=([^ ]+)", line))
                         status["device"] = {k: device.get(k) for k in
-                            ("wake", "stream", "stream_drops", "usb_drops", "audio_errors", "peak", "volume", "transport", "network", "rssi", "version", "uptime_ms", "heartbeat_ms")}
+                            ("wake", "stream", "stream_drops", "usb_drops", "audio_errors", "peak", "volume", "transport", "network", "rssi", "version", "intercom", "uptime_ms", "heartbeat_ms")}
                         status["muted"] = device.get("muted") == "1"
                     elif line.startswith('NETWORK '):
                         status['network'] = {key: int(value) for key, value in re.findall(r'(\w+)=(\d+)', line)}
@@ -290,6 +296,7 @@ def run_session(args, lifecycle, model, recovery, music):
                         if pending: pending.cancel(); pending = None
                         if speaker.active and phase not in {'music', 'alarm'}: speaker.stop()
                     elif line == "EVENT cancelled=1":
+                        if calls.busy:calls.disable('Call stopped')
                         finish_sample('cancelled')
                         if phase == 'alarm': alarms.finished('cancelled')
                         alarms.messages.cancel()
@@ -298,7 +305,7 @@ def run_session(args, lifecycle, model, recovery, music):
                         if pending: pending.cancel(); pending = None
                         if speaker.active: speaker.stop()
                         resume_music = False
-                    elif line == "EVENT talk=1" and not status["muted"]:
+                    elif line == "EVENT talk=1" and not status["muted"] and not calls.busy:
                         finish_sample('cancelled')
                         last_pcm = now
                         if phase == 'alarm': alarms.finished('cancelled')
@@ -313,6 +320,26 @@ def run_session(args, lifecycle, model, recovery, music):
                             music.command(action)
                 display.pump()
                 alarms.pump()
+                calls.tick(status,phase)
+                if calls.busy and phase!='intercom':
+                    finish_sample('cancelled');alarms.messages.cancel()
+                    if phase=='music':music.command('pause');music.clear()
+                    if speaker.active:speaker.stop()
+                    if pending:pending.cancel();pending=None
+                    recognition.set_mode(None);resume_music=False;phase='intercom'
+                if phase=='intercom':
+                    if not calls.busy:
+                        if speaker.active:speaker.stop()
+                        port.write(b'MIC_DUPLEX 1\n' if recognition.echo_ready else b'MIC_DUPLEX 0\n')
+                        phase,until='cooldown',now+.5;last_pcm=now
+                    else:
+                        if calls.active and not speaker.active:speaker.start_stream(calls.read,kind='I')
+                        if calls.active:
+                            try:speaker.pump()
+                            except RuntimeError:calls.disable('Speaker connection lost')
+                        elif speaker.active:speaker.stop()
+                        calls.feed(packets,decoder.references)
+                        last_pcm=now
                 if phase=='alarm' and alarms.is_announcement and alarms.messages.stop_requested:
                     speaker.stop();alarms.finished('cancelled');phase,until='cooldown',now+.4;last_pcm=now
                 requested_music=take_music_command(ROOT,lifecycle.identity)
@@ -331,7 +358,7 @@ def run_session(args, lifecycle, model, recovery, music):
                             if speaker.active:speaker.stop()
                             finish_sample('cancelled')
                             port.write(b'VOICE_DONE\n');phase,until='cooldown',now+.4;last_pcm=now
-                        if not sample_id:
+                        if not sample_id and phase!='intercom':
                             sample_id=sample.claim(lifecycle.identity,{**status,'status':phase,'music':music.health(),
                                                                     'speaker':{'active':speaker.active}})
                             if sample_id:
@@ -449,7 +476,7 @@ def run_session(args, lifecycle, model, recovery, music):
                 status['framing'] = {'header': decoder.header_errors, 'checksum': decoder.checksum_errors,
                                      'noise': decoder.noise_errors, 'console_interference': decoder.console_frames}
                 status['speaker'] = {'active': speaker.active, 'kind': speaker.kind, 'frames': speaker.consumed, 'underruns': speaker.underruns}
-                if now-last_pcm > 4 and not status["muted"] and phase not in {"speaking", "music", "alarm"}:
+                if now-last_pcm > 4 and not status["muted"] and phase not in {"speaking", "music", "alarm", "intercom"}:
                     raise RuntimeError("Microphone stream stopped; disarming")
                 status['phase'] = phase
                 status['announcement'] = alarms.is_announcement
@@ -459,6 +486,7 @@ def run_session(args, lifecycle, model, recovery, music):
     except KeyboardInterrupt:
         pass
     finally:
+        if calls:calls.close()
         if sample_id:
             try:sample.update(sample_id,'failed',reason='Speaker connection ended')
             except (OSError,ValueError):pass

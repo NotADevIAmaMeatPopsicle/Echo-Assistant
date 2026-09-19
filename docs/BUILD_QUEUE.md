@@ -28,7 +28,7 @@ Prioritize the Pi audio path before extending round intercom. See
 - [x] Rich Spotify now-playing display: artwork, metadata, seeking, shuffle/repeat, input level and home-speaker controls (software; live listening acceptance pending).
 - [x] Persistent notification inbox and opt-in announcements on the existing audio endpoint.
 - [x] Per-room announcement routing, opt-in display/round receivers and delivery receipts (software; physical listening pending).
-- [ ] Two-way intercom between room endpoints.
+- [x] Answered two-way intercom for paired displays and the round speaker (software; round firmware installation and physical audio acceptance pending).
 - [x] Pi push-to-talk/ALSA adapter and request-specific reply routing (software; simulated audio only).
 - [x] Pi local wake, cue/capture/replies, software mute and request interruption (software; installed disabled).
 - [ ] Physical Pi wake and echo-control acceptance, including playback and spoken interruption with the chosen microphone.
@@ -82,12 +82,13 @@ checks cover the form and phone layout. No real calendar events were created.
 
 Next: owner visual acceptance of the polish pass, then audio hardware acceptance
 when the Pi microphone and speaker are attached.
-The round intercom adapter remains planned as an optional endpoint.
+The optional round intercom adapter and firmware controls are implemented; see
+[Round intercom](ROUND_INTERCOM.md). They do not replace the Pi's own audio path.
 
 The host and paired-display call UI
 now support answered live audio, local microphone mute, hang-up and connection-loss
 cleanup. Synthetic API, worklet and browser checks pass. Calls are off by default;
-round firmware/adapter work and physical audio acceptance remain open.
+round firmware installation and physical audio acceptance remain open.
 
 Room announcements now include room assignments, explicit
 destination selection, quiet hours, five-minute expiry, cancellation, protected
@@ -130,3 +131,13 @@ synthetic gallery images were refreshed; native-state and phone layouts were
 checked. The live Pi capture confirms the new font and positioning. See
 [Display design](DISPLAY_DESIGN.md) for the remaining one-pixel Chromium inset
 and physical-acceptance limits. No audio or home actions were used.
+
+Round intercom now has opt-in room selection, answer/decline, local mute and
+hang-up, contextual physical buttons, and a bounded duplex host adapter. Consent
+is scoped to a call and microphone forwarding waits for the firmware's capture
+acknowledgement. Wake recognition pauses during calls. Thirty-seven focused
+Python checks, shared firmware layout/consent checks and the ESP32 build pass.
+The matching host support is deployed with calls disabled and private settings
+preserved. The round board is currently absent from USB; no flash or acoustic
+test was performed. The compiled firmware and install notes are ready for its
+return. The Pi bridge remains connected and serves the polished display.

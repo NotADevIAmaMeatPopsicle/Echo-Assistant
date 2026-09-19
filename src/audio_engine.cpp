@@ -15,6 +15,7 @@ int16_t* capture=nullptr;
 int16_t* remotePcm=nullptr;
 RemoteStatus remote;
 uint32_t remoteGeneration=0;
+uint32_t remotePrebuffer=32;
 portMUX_TYPE remoteLock=portMUX_INITIALIZER_UNLOCKED;
 QueueHandle_t commands=nullptr;
 QueueHandle_t micBlocks=nullptr;
@@ -117,8 +118,8 @@ void worker(void*) {
         if (state.mode==AudioMode::Remote) {
             portENTER_CRITICAL(&remoteLock);
             uint32_t queued=remote.received-remote.consumed;
-            if (!remoteStarted && (queued>=32 || remote.ended)) remoteStarted=true;
-            if (buffering && (queued>=32 || remote.ended)) buffering=false;
+            if (!remoteStarted && (queued>=remotePrebuffer || remote.ended)) remoteStarted=true;
+            if (buffering && (queued>=remotePrebuffer || remote.ended)) buffering=false;
             if (remoteStarted && !buffering && queued) {
                 memcpy(remoteBlock,remotePcm+(remote.consumed%remoteCapacity)*framesPerBlock,sizeof(remoteBlock));
                 ++remote.consumed; tailFrames=0;
@@ -158,10 +159,10 @@ AudioStatus audioStatus() {
 RemoteStatus audioRemoteStatus() {
     portENTER_CRITICAL(&remoteLock); RemoteStatus result=remote; portEXIT_CRITICAL(&remoteLock); return result;
 }
-bool audioRemoteBegin() {
+bool audioRemoteBegin(bool intercom) {
     if (!remotePcm || !audioStatus().speakerReady) return false;
     portENTER_CRITICAL(&remoteLock);
-    remote=RemoteStatus{}; remote.active=true; ++remoteGeneration;
+    remote=RemoteStatus{}; remote.active=true; remotePrebuffer=intercom?8:32; ++remoteGeneration;
     portEXIT_CRITICAL(&remoteLock); return true;
 }
 bool audioRemoteWrite(const int16_t* samples,uint16_t count,uint32_t sequence) {

@@ -18,7 +18,7 @@ struct RemoteStatus {
     uint32_t received=0, consumed=0, underruns=0;
 };
 constexpr uint32_t remoteCapacity=256;
-bool audioRemoteBegin();
+bool audioRemoteBegin(bool intercom=false);
 bool audioRemoteWrite(const int16_t* samples, uint16_t count, uint32_t sequence);
 void audioRemoteEnd();
 void audioRemoteStop();

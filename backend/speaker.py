@@ -26,11 +26,12 @@ class Speaker:
         self.kind = kind
         self._begin()
 
-    def start_stream(self, source):
+    def start_stream(self, source, kind='M'):
+        if kind not in {'M','I'}: raise ValueError('Invalid streaming audio priority')
         if self.active: self.stop()
         self.pcm = b""
         self.source = source
-        self.kind = 'M'
+        self.kind = kind
         self._begin()
 
     def _begin(self):
@@ -77,7 +78,7 @@ class Speaker:
         # 128 blocks cover ~683 ms of Wi-Fi jitter. Stop and volume commands
         # remain immediate; the separate 96-frame transport credit still keeps
         # bursts inside the USB receive queue.
-        capacity = min(self.capacity, 128) if self.source else self.capacity
+        capacity = min(self.capacity, 24 if self.kind=='I' else 128) if self.source else self.capacity
         # Audio-buffer credits alone allow a burst larger than the USB RX queue.
         # Also cap unacknowledged transport frames to fit the 64 KiB receive queue.
         batch = bytearray()

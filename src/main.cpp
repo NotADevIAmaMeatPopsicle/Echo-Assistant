@@ -17,6 +17,8 @@
 #include "ui_type.h"
 #include "mute_button.h"
 #include "touch_gesture.h"
+#include "intercom_state.h"
+#include "intercom_scene.h"
 
 // CO5300 setup from YouAndEye's accepted AMOLED surface. See THIRD_PARTY_NOTICES.md.
 static Arduino_DataBus* bus=new Arduino_ESP32QSPI(Board::lcdCs,Board::lcdClock,Board::lcdD0,Board::lcdD1,Board::lcdD2,Board::lcdD3);
@@ -78,6 +80,8 @@ static String homeResult;
 static HomeActionState homeActionState;
 static uint32_t homeLegacyAt=0;
 static bool remoteIsMusic=false,remoteIsAlarm=false;
+static bool remoteIsIntercom=false,intercomCapture=false;
+static IntercomState intercom;
 static String musicState="not_configured",musicTitle,musicArtist;
 static uint32_t musicAt=0;
 static int timerCount=0,timerSeconds=0;
@@ -102,6 +106,25 @@ static VoiceScene::OrbCache voiceOrb;
 static void receiveHost();
 static void sendMic();
 static void pollMuteButton();
+static void syncIntercomCapture() {
+    bool capture=intercom.capture(wakeMuted) && wakeArmed;
+    if(capture==intercomCapture)return;
+    intercomCapture=capture;
+    audioCommand(capture?AudioCommand::StreamOn:AudioCommand::StreamOff);
+    if(capture) {audioCommand(AudioCommand::DuplexOn);Host.printf("EVENT intercom_capture=%s\n",intercom.id);}
+}
+static void endIntercom(bool disable=false) {
+    if(intercom.busy())Host.printf("EVENT intercom_action=hangup id=%s\n",intercom.id);
+    if(remoteIsIntercom || intercom.busy()){audioRemoteStop();audioCommand(AudioCommand::Stop);}
+    intercom.clear(disable);syncIntercomCapture();remoteIsIntercom=false;
+    if(wakeArmed && !wakeMuted)audioCommand(AudioCommand::StreamOn);
+    if(disable)Host.println("EVENT intercom_enabled=0");
+}
+static void muteIntercom() {
+    intercom.localMuted=!intercom.localMuted;intercom.muted=intercom.localMuted;
+    Host.printf("EVENT intercom_action=%s id=%s\n",intercom.muted?"mute":"unmute",intercom.id);
+    syncIntercomCapture();
+}
 
 struct VoiceSurface {
     void pixel(int x,int y,uint16_t c) { canvas->drawPixel(x,y,c); }
@@ -174,6 +197,12 @@ static void homeAction(const char* action) {
 static void draw() {
     uint32_t started=micros();
     auto audio=audioStatus(); volumeShown=audio.volume;
+    if(page==Page::Intercom) {
+        using namespace ControlScene;
+        VoiceSurface g;g.background();VoiceScene::Model system;system.connected=wakeArmed;system.micMuted=wakeMuted;system.volume=audio.volume;
+        system.powerKnown=powerKnown;system.battery=batteryPresent;system.percent=batteryPercent;system.charging=charging;
+        IntercomScene::render(g,intercom,system);finishFrame(started);return;
+    }
     if(page==Page::Voice) {
         VoiceScene::Model m;
         m.state=VoiceScene::resolve(voiceInput(audio));m.connected=wakeArmed;
@@ -211,7 +240,7 @@ static void report(unsigned query=0) {
     auto s=audioStatus();
     auto net=networkStats();
     auto usb=usbStats();
-    Host.printf("STATUS product=round-voice version=0.13.0 protocol=1 duplex=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
+    Host.printf("STATUS product=round-voice version=0.14.0 protocol=1 duplex=1 intercom=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
         displayReady,touchReady,ESP.getPsramSize(),sdReady,(unsigned long)sdMegabytes,pmuReady,
         batteryPresent,batteryPercent,charging,s.micReady,s.speakerReady,unsigned(s.mode),
         (unsigned long)s.recordedSamples,s.peak,s.volume,(unsigned long)s.errors,ESP.getFreeHeap(),
@@ -227,6 +256,7 @@ static void report(unsigned query=0) {
         (unsigned long)renderLastUs,(unsigned long)renderMaxUs,(unsigned long)renderFrames,(unsigned long)composeLastUs,(unsigned long)flushLastUs,voiceOrb.count,voiceBackground!=nullptr);
 }
 static void setWakeMuted(bool muted) {
+    if(muted && intercom.busy())endIntercom();
     wakeMuted=muted; cuePending=false; listenUntil=0; voiceResult=""; thinking=false;
     if (!((remoteIsMusic||remoteIsAlarm) && audioRemoteStatus().active)) { audioRemoteStop(); audioCommand(AudioCommand::Stop); }
     audioCommand(!muted && wakeArmed?AudioCommand::StreamOn:AudioCommand::StreamOff);
@@ -255,6 +285,7 @@ static void pollMuteButton() {
     auto press=[&](bool upper,Page startPage) {
         if(upper)++upperPresses;else ++lowerPresses;
         if(page!=startPage)return;
+        if(intercom.busy()) {if(upper && intercom.phase==IntercomState::Active)muteIntercom();else if(!upper)endIntercom();return;}
         const char* action=ControlScene::physicalAction(page,upper);
         if(strncmp(action,"sound_",6)==0) {
             if(soundFresh() && (soundFeatures&4) && soundVolume>=0 && (upper?soundVolume<100:soundVolume>0))homeAction(action);
@@ -279,11 +310,43 @@ static void pollMuteButton() {
 }
 static void handleCommand(const String& command) {
     if (!networkConnected() && networkCommand(command)) return;
+    if(command=="CALL_RESET") {endIntercom(true);return;}
+    if(command.startsWith("CALL_LIST ")) {
+        char binding[17],notice[33];unsigned count;int enabled,ready;
+        if(sscanf(command.c_str()+10,"%16s %u %d %d %32[^\n]",binding,&count,&enabled,&ready,notice)==5 && strlen(binding)==16 && strspn(binding,"0123456789abcdef")==16 && count<=32) {
+            if(strcmp(binding,intercom.binding)!=0){intercom.received=intercom.available=0;intercom.offset=0;}
+            strcpy(intercom.binding,binding);strcpy(intercom.notice,notice);intercom.count=count;intercom.ready=enabled && ready;
+        }
+        return;
+    }
+    if(command.startsWith("CALL_ROOM ")) {
+        char binding[17],name[33];unsigned index;int ready;
+        if(sscanf(command.c_str()+10,"%16s %u %d %32[^\n]",binding,&index,&ready,name)==4 && strcmp(binding,intercom.binding)==0 && index<intercom.count) {
+            strcpy(intercom.rooms[index],name);intercom.received|=1u<<index;
+            if(ready)intercom.available|=1u<<index;else intercom.available&=~(1u<<index);
+        }
+        return;
+    }
+    if(command.startsWith("CALL_STATE ")) {
+        char id[33],phase[12],room[33];int muted;unsigned long seconds;
+        if(sscanf(command.c_str()+11,"%32s %11s %d %lu %32[^\n]",id,phase,&muted,&seconds,room)!=5)return;
+        if(strcmp(phase,"idle")==0) {
+            bool wasBusy=intercom.busy();intercom.state("",IntercomState::Idle,true,millis());syncIntercomCapture();
+            if(wasBusy && !intercom.busy()){audioRemoteStop();remoteIsIntercom=false;if(wakeArmed && !wakeMuted)audioCommand(AudioCommand::StreamOn);}
+        } else if(intercom.enabled && wakeArmed && !wakeMuted && IntercomState::identifier(id)) {
+            auto next=strcmp(phase,"incoming")==0?IntercomState::Incoming:strcmp(phase,"outgoing")==0?IntercomState::Outgoing:IntercomState::Active;
+            if(strcmp(phase,"active")!=0 && next==IntercomState::Active)return;
+            if(!intercom.busy())audioCommand(AudioCommand::StreamOff);
+            intercom.state(id,next,muted!=0,millis());intercom.seconds=min(seconds,900ul);strcpy(intercom.room,room);
+            page=Page::Intercom;cuePending=false;listenUntil=0;thinking=false;syncIntercomCapture();
+        }
+        return;
+    }
     if (command=="STATUS") report();
     else if (command.startsWith("STATUS ")) report(strtoul(command.c_str()+7,nullptr,10));
-    else if (command=="VOICE_ARM") { wakeArmed=true; wakeHeartbeat=millis(); if (!wakeMuted) audioCommand(AudioCommand::StreamOn); report(); }
+    else if (command=="VOICE_ARM") { wakeArmed=true; wakeHeartbeat=millis(); if (!wakeMuted && !intercom.busy()) audioCommand(AudioCommand::StreamOn); report(); }
     else if (command=="VOICE_PING") { wakeHeartbeat=millis(); }
-    else if (command=="VOICE_OFF") { wakeArmed=false; cuePending=false; thinking=false; listenUntil=0; audioRemoteStop(); audioCommand(AudioCommand::StreamOff); }
+    else if (command=="VOICE_OFF") { wakeArmed=false; endIntercom(true); cuePending=false; thinking=false; listenUntil=0; audioRemoteStop(); audioCommand(AudioCommand::StreamOff); }
     else if (command=="MUTE") setWakeMuted(true);
     else if (command=="UNMUTE" && wakeArmed) setWakeMuted(false);
     else if(command.startsWith("HOME_SELECTED ")) {
@@ -368,7 +431,7 @@ static void handleCommand(const String& command) {
             timerCount=count; timerSeconds=remaining; timerFinished=finished==1; timerAt=millis(); timerAvailable=true;
         }
     }
-    else if ((command=="WAKE" || command.startsWith("WAKE ")) && wakeArmed && !wakeMuted && !listenUntil) {
+    else if ((command=="WAKE" || command.startsWith("WAKE ")) && wakeArmed && !wakeMuted && !intercom.busy() && !listenUntil) {
         page=Page::Voice; thinking=false;
         cueRequest=command=="WAKE"?1:strtoul(command.c_str()+5,nullptr,10);
         cueBefore=audioStatus().cueCompletions; cuePending=true;
@@ -381,8 +444,10 @@ static void handleCommand(const String& command) {
         audioSession=strtoul(command.c_str()+12,nullptr,10);
         remoteIsMusic=command.endsWith(" M");
         bool alarm=command.endsWith(" A");
+        remoteIsIntercom=command.endsWith(" I");
         remoteIsAlarm=alarm;
-        if (audioSession && (!wakeMuted||remoteIsMusic||alarm) && audioRemoteBegin()) {
+        bool callAllowed=intercom.enabled && intercom.phase==IntercomState::Active && strcmp(intercom.id,intercom.consent)==0;
+        if (audioSession && (remoteIsIntercom?callAllowed:!intercom.busy()) && (!wakeMuted||remoteIsMusic||alarm) && audioRemoteBegin(remoteIsIntercom)) {
             if (remoteIsMusic) page=Page::Music;
             if (alarm) page=Page::Timer;
             Host.printf("EVENT audio_ready=%lu capacity=%lu\n",(unsigned long)audioSession,(unsigned long)remoteCapacity);
@@ -400,10 +465,10 @@ static void handleCommand(const String& command) {
     }
     else if (command=="VOICE_UNKNOWN") { listenUntil=0; thinking=false; voiceResult="Try a supported command"; voiceResultAt=millis(); voiceNotice=true; }
     else if (command=="VOICE_TIMEOUT") { cuePending=false; listenUntil=0; thinking=false; voiceResult="Didn't catch that. Try again."; voiceResultAt=millis(); voiceNotice=true; }
-    else if (command=="RECORD" && !wakeMuted) audioCommand(AudioCommand::Record);
-    else if (command=="STOP") { audioRemoteStop(); audioCommand(AudioCommand::Stop); }
-    else if (command=="PLAY") audioCommand(AudioCommand::Playback);
-    else if (command=="CHIME") audioCommand(AudioCommand::Chime);
+    else if (command=="RECORD" && !wakeMuted && !intercom.busy()) audioCommand(AudioCommand::Record);
+    else if (command=="STOP") { if(intercom.busy())endIntercom();audioRemoteStop(); audioCommand(AudioCommand::Stop); }
+    else if (command=="PLAY" && !intercom.busy()) audioCommand(AudioCommand::Playback);
+    else if (command=="CHIME" && !intercom.busy()) audioCommand(AudioCommand::Chime);
     else if (command=="VOL+") { audioCommand(AudioCommand::VolumeUp); preferenceAt=millis(); }
     else if (command=="VOL-") { audioCommand(AudioCommand::VolumeDown); preferenceAt=millis(); }
     else Host.println("ERROR unknown command");
@@ -417,7 +482,7 @@ static void receiveHost() {
     unsigned currentEpoch=networkEpoch();
     if (currentEpoch!=transportEpoch) {
         homeActionState.tick(millis(),false);
-        transportEpoch=currentEpoch; wakeArmed=false; cuePending=false; thinking=false; listenUntil=0;
+        transportEpoch=currentEpoch; wakeArmed=false; endIntercom(true); cuePending=false; thinking=false; listenUntil=0;
         serialLine=""; incomingSize=0; discardLine=false; audioSession=0;
         audioRemoteStop(); audioCommand(AudioCommand::StreamOff); audioCommand(AudioCommand::Stop);
     }
@@ -540,10 +605,11 @@ void loop() {
     pollMuteButton();
     receiveHost();
     if (wakeArmed && millis()-wakeHeartbeat>5000) {
-        wakeArmed=false; cuePending=false; listenUntil=0; voiceResult=""; thinking=false;
+        wakeArmed=false; endIntercom(true); cuePending=false; listenUntil=0; voiceResult=""; thinking=false;
         audioRemoteStop();
         audioCommand(AudioCommand::StreamOff); audioCommand(AudioCommand::Stop);
     }
+    if (intercom.busy() && millis()-intercom.at>4000)endIntercom(true);
     if (listenUntil && int32_t(millis()-listenUntil)>=0) listenUntil=0;
     homeActionState.tick(millis(),wakeArmed);
     sendMic();
@@ -554,12 +620,13 @@ void loop() {
     // Incoming wake/music/physical-key navigation invalidates the old surface.
     if(touchPage!=page)gesture.kind=TouchGesture::Kind::None;
     bool swiped=gesture.kind==TouchGesture::Kind::Left || gesture.kind==TouchGesture::Kind::Right;
-    if(swiped)page=ControlScene::swipePage(page,gesture.kind==TouchGesture::Kind::Left);
+    if(swiped && !intercom.busy())page=ControlScene::swipePage(page,gesture.kind==TouchGesture::Kind::Left);
     bool touchBegan=gesture.kind==TouchGesture::Kind::Tap;
     if (touchBegan) {
         int x=gesture.x,y=gesture.y;
         auto s=audioStatus();
         if (y>=333 && y<=375) {
+            if(intercom.busy())return;
             if (page==Page::Voice && VoiceScene::busy(VoiceScene::resolve(voiceInput(s)))) {
                 if(!TouchTargets::navTalk.contains(x,y)) return;
                 audioRemoteStop(); audioCommand(AudioCommand::Stop); cuePending=false; listenUntil=0; thinking=false;
@@ -569,6 +636,31 @@ void loop() {
             else if (TouchTargets::navTalk.contains(x,y)) { page=Page::Voice; if (!wakeMuted && wakeArmed && s.micReady) Host.println("EVENT talk=1"); }
         } else if (y>=382 && y<=424 && ((x>=154 && x<=199) || (x>=267 && x<=312))) {
             audioCommand(x<233?AudioCommand::VolumeDown:AudioCommand::VolumeUp); preferenceAt=millis();
+        } else if (page==Page::Intercom) {
+            if(intercom.busy()) {
+                if(y>=275 && y<=317 && x>=239 && x<=371)endIntercom();
+                else if(y>=275 && y<=317 && x>=95 && x<=227 && !wakeMuted) {
+                    if(intercom.phase==IntercomState::Incoming && intercom.authorize(intercom.id))Host.printf("EVENT intercom_action=answer id=%s\n",intercom.id);
+                    else if(intercom.phase==IntercomState::Active)muteIntercom();
+                }
+            } else if(!intercom.enabled) {
+                if(y>=275 && y<=317 && x>=125 && x<=341 && wakeArmed && !wakeMuted){intercom.enabled=true;Host.println("EVENT intercom_enabled=1");}
+            } else if(y>=274 && y<=316) {
+                if(x>=183 && x<=283)endIntercom(true);
+                else if(x>=95 && x<=177 && intercom.offset>0)intercom.offset-=2;
+                else if(x>=289 && x<=371 && intercom.offset+2<intercom.count)intercom.offset+=2;
+            } else if(x>=95 && x<=371 && y>=164 && y<254 && (y-164)%48<42 && intercom.ready && millis()-intercom.at<3000) {
+                unsigned index=intercom.offset+(y-164)/48;
+                if(index<intercom.count && (intercom.received&(1u<<index)) && (intercom.available&(1u<<index))) {
+                    char id[33];snprintf(id,sizeof(id),"%08lx%08lx%08lx%08lx",(unsigned long)esp_random(),(unsigned long)esp_random(),(unsigned long)esp_random(),(unsigned long)esp_random());
+                    if(intercom.authorize(id)) {
+                        intercom.state(id,IntercomState::Outgoing,true,millis());strcpy(intercom.room,intercom.rooms[index]);
+                        intercom.awaiting=true;intercom.requestedAt=millis();
+                        audioCommand(AudioCommand::StreamOff);
+                        Host.printf("EVENT intercom_call=%u binding=%s id=%s\n",index,intercom.binding,id);
+                    }
+                }
+            }
         } else if (page==Page::Home) {
             if (TouchTargets::homeThermostat.contains(x,y)) page=Page::Thermostat;
             else if (TouchTargets::homeBose.contains(x,y)) page=Page::Soundbar;
@@ -628,7 +720,8 @@ void loop() {
                 } else if (y>=265 && y<=307 && x>=95 && x<=227 && soundMuted>=0 && (soundFeatures&8)) homeAction(soundMuted?"sound_unmute":"sound_mute");
             }
         } else if (page==Page::Settings) {
-            if (y>=280 && y<=322 && x>=125 && x<=341) page=Page::Network;
+            if (y>=280 && y<=322 && x>=95 && x<=227) page=Page::Network;
+            else if (y>=280 && y<=322 && x>=239 && x<=371) page=Page::Intercom;
             else if (TouchTargets::microphone.contains(x,y)) setWakeMuted(!wakeMuted);
             else if (TouchTargets::brightnessDown.contains(x,y) || TouchTargets::brightnessUp.contains(x,y)) {
                 brightness=constrain(brightness+(x<233?-20:20),ControlScene::brightnessMinimum,ControlScene::brightnessMaximum);

@@ -1,5 +1,7 @@
 """Authenticated call signalling and framed PCM relay over the private HTTP bridge."""
 import asyncio
+import struct
+import time
 from fastapi import Depends,HTTPException,Query,Request
 from fastapi.responses import JSONResponse,StreamingResponse
 from pydantic import BaseModel,ConfigDict,Field
@@ -71,14 +73,20 @@ def install(app,intercom,authorize):
         return {'accepted':sequence}
 
     @app.get('/v1/intercom/calls/{identifier}/audio')
-    def stream(identifier:str,request:Request,client:str=Query(pattern=r'^(round|[a-f0-9]{32})$'),session=Depends(authorize)):
+    def stream(identifier:str,request:Request,client:str=Query(pattern=r'^(round|[a-f0-9]{32})$'),keepalive:bool=False,session=Depends(authorize)):
         receiver=endpoint(request,session);marker=intercom.open_stream(identifier,receiver,client)
         async def frames():
+            last=time.monotonic()
             try:
                 while not await request.is_disconnected():
                     authorize(request)
                     block=intercom.pull(identifier,receiver,client,marker)
-                    if block:yield block
+                    if block:
+                        yield block;last=time.monotonic()
+                    elif keepalive and time.monotonic()-last>=1:
+                        # Opt-in framing for bounded native socket timeouts.
+                        # Empty frames carry no microphone samples or sequence.
+                        yield struct.pack('<II',0,0);last=time.monotonic()
                     await asyncio.sleep(.02)
             except (IntercomConflict,IntercomDenied,HTTPException):return
             finally:intercom.close_stream(identifier,receiver,marker)

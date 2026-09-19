@@ -10,7 +10,7 @@ def voice_status(root: Path, now=None):
     try:
         data = json.loads((root / "local/voice-status.json").read_text(encoding="utf-8"))
         phases = {'connecting', 'disconnected', 'armed', 'activation', 'listening', 'thinking',
-                  'speaking', 'music', 'alarm', 'cooldown', 'muted'}
+                  'speaking', 'music', 'alarm', 'cooldown', 'muted', 'intercom'}
         if not isinstance(data, dict) or not isinstance(data.get('status'), str) or data['status'] not in phases:
             raise ValueError('Invalid bridge health')
         timestamp = data.get('updated_at')

@@ -107,8 +107,8 @@ mute/unmute, hang-up, delayed permission cancellation and phone layout. The
 worklet's conversion and playback buffers are checked separately. None of these
 checks proves audibility on physical hardware.
 
-**Round-speaker intercom is not implemented yet.** It requires firmware call
-controls and a duplex host audio adapter. The round receiver is unavailable for
-calls until that support is installed and connected; its existing announcements
-are independent. The package-wide two-way intercom item remains open until the
-round endpoint is implemented and both devices have completed physical checks.
+The [round-speaker call controls and duplex host adapter](ROUND_INTERCOM.md) are
+implemented for firmware 0.14.0. Calls remain off by default and require both
+owner permission and a local opt-in. The round receiver stays unavailable until
+the matching firmware is installed, connected and enabled. Its announcements
+are independent. Physical two-way call acceptance remains open for both builds.

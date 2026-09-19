@@ -13,6 +13,7 @@
 #include "../include/fonts/FreeSans18pt7b.h"
 #include "../include/voice_scene.h"
 #include "../include/control_scene.h"
+#include "../include/intercom_scene.h"
 #include "../include/home_action_state.h"
 #include "../include/ui_type.h"
 #include "../include/mute_button.h"
@@ -189,6 +190,30 @@ int main(int argc,char** argv) {
         puts("PASS: mute button bounce, startup, hold, repeat, bus-fault and rollover cases");
     }
     const char* directory=argc>1?argv[1]:".";
+
+    // A host's active status cannot open a call microphone without local consent.
+    IntercomState call;
+    const char* callId="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    call.enabled=true;call.state(callId,IntercomState::Incoming,false,1);
+    assert(!call.capture(false));call.state(callId,IntercomState::Active,false,2);
+    assert(!call.capture(false));assert(call.authorize(callId));call.state(callId,IntercomState::Active,false,3);
+    assert(call.capture(false));assert(!call.capture(true));
+    call.localMuted=true;call.state(callId,IntercomState::Active,false,4);assert(!call.capture(false));
+    call.clear(true);assert(!call.enabled && !call.capture(false));
+    call.enabled=true;call.authorize(callId);call.state(callId,IntercomState::Outgoing,true,100);
+    call.awaiting=true;call.requestedAt=100;call.state("",IntercomState::Idle,true,200);
+    assert(call.busy() && strcmp(call.consent,callId)==0);
+    call.state("",IntercomState::Idle,true,3100);assert(!call.busy() && !call.consent[0]);
+    const char* callStates[]={"off","rooms","incoming","outgoing","active","muted"};
+    for(unsigned i=0;i<6;++i) {
+        Raster raster;VoiceScene::Model system;system.connected=true;system.volume=2;system.powerKnown=true;
+        IntercomState c;c.enabled=i>0;c.ready=true;strcpy(c.notice,i>0?"Ready":"Calls off");c.count=2;c.received=c.available=3;
+        strcpy(c.rooms[0],"Kitchen display");strcpy(c.rooms[1],"Living room");strcpy(c.room,"Kitchen display");
+        if(i>=2) {c.state(callId,i==2?IntercomState::Incoming:i==3?IntercomState::Outgoing:IntercomState::Active,i==5,100);if(i>=3)c.authorize(callId);c.muted=i==5;}
+        IntercomScene::render(raster,c,system);raster.checkBounds();
+        char file[1024];snprintf(file,sizeof(file),"%s/intercom-%s.ppm",directory,callStates[i]);raster.save(file);
+    }
+
     {
         Raster raster;ControlScene::Model m;m.page=ControlScene::Page::Music;
         m.system.connected=true;m.system.powerKnown=true;m.system.volume=2;
