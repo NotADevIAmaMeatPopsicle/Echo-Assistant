@@ -1,5 +1,7 @@
+const {previewBase}=require('./display_check.cjs');
 const {chromium}=require('playwright');const assert=require('node:assert/strict');
 (async()=>{
+  const base=await previewBase();
   const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
     const page=await browser.newPage({viewport:{width:1024,height:600}});let uploads=0;
@@ -12,7 +14,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
       Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:()=>new Promise(resolve=>window.micPromises.push(()=>resolve({getTracks:()=>[{stop:()=>window.stoppedTracks++}]})))}});
       window.AudioContext=class{constructor(){throw new Error('Cancelled capture must never open an AudioContext');}};
     });
-    await page.goto('http://127.0.0.1:8788/display');
+    await page.goto(base+'/display');
     await page.getByRole('button',{name:'Echo',exact:true}).click();
     await page.locator('#voice-start').click();await page.locator('#voice-cancel').click();
     // A delayed permission reply from a cancelled attempt must close its tracks,

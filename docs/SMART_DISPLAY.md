@@ -96,7 +96,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | Timers | Multiple persisted timers and a quick one-off alarm | Delivery still needs a connected audio endpoint |
 | Planner | Recurring alarms/reminders, daily/weekday/custom repeat, IANA zones, snooze, dismiss, missed events, quiet hours | Spring gaps use the first valid minute; autumn duplicates ring once. Events over 15 minutes late remain visible without sounding |
 | Lists | Shopping, to-do, notes, edit/reorder/complete/delete, encrypted persistence | Explicit text/voice commands such as “Add coffee to my shopping list” are supported; ambiguous deletes ask for clarification |
-| Notifications & room audio | Persisted household notes; room-targeted announcements and delivery receipts | [Room receivers](ROOM_AUDIO.md) are opt-in, respect quiet hours and expire queued messages after five minutes. Answered two-way intercom is implemented between paired displays; the round adapter and physical audio acceptance remain pending. |
+| Notifications & room audio | Persisted household notes; room-targeted announcements and delivery receipts | [Room receivers](ROOM_AUDIO.md) are opt-in, respect quiet hours and expire queued messages after five minutes. Answered two-way intercom includes a round adapter; new round firmware installation and physical audio acceptance remain pending. |
 | Routines | Review and run saved routines | Existing device grants and action checks apply |
 | Echo | Existing conversation, web research, memory and cited sources; explicit home-control opt-in; server-side Stop | Push-to-talk records up to eight seconds and returns speech to this display; native Pi wake is opt-in; audio hardware acceptance remains open |
 | Settings | Display preferences, encrypted shared photo album, camera/calendar selection, radio presets, display pairing and revocation | Only the owner can change sources, upload/remove shared photos, manage radios or pair displays |
@@ -146,7 +146,7 @@ a stream already opened directly in a browser; press Stop to end playback.
 
 Push-to-talk capture, request cancellation and reply routing are implemented.
 Native Pi wake and request interruption are implemented; physical echo-control acceptance is still required. Further integrations include calendar event editing and natural-language drafting,
-grouped audio, round-endpoint intercom, external calling,
+grouped audio, external calling,
 and household/guest profiles. These are not working features yet. Commercial
 video and proprietary casting depend on supported providers and licensing.
 

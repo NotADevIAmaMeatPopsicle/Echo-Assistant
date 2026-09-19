@@ -24,7 +24,7 @@ function renderMusicPanel(){
   const local=musicReceiver==='display',name=local?(state.receiver_name||'Echo Display'):'Round Voice';
   const status=state.status||(!local&&data.voice?.music?.status)||'unavailable';
   const speakerReady=local?!!state.available:fresh('voice')&&['armed','muted','cooldown','music'].includes(data.voice?.status);
-  const active=speakerReady&&['playing','paused','connected','stopped'].includes(status);
+  const active=!!fresh('nowPlaying')&&speakerReady&&['playing','paused','connected','stopped'].includes(status);
   const trackActive=active&&!!state.title&&['playing','paused'].includes(status);
   const capabilities=state.capabilities||[],has=(name)=>trackActive&&capabilities.includes(name);
   $('track-title').textContent=state.title||'Your next favourite.';
@@ -54,9 +54,13 @@ function renderMusicPanel(){
     if(art){image.alt=`${state.album||state.title||'Current track'} cover`;image.src=art;}else image.removeAttribute('src');
   }
   $('open-spotify').href=/^https:\/\/open\.spotify\.com\/(track|episode)\/[A-Za-z0-9]{22}$/.test(state.open_url||'') ? state.open_url : 'https://open.spotify.com/';
-  renderMusicSpeakers();
+  renderMusicSpeakers();guardButtons();
 }
-function sendMusic(actionName,value){if(!fresh('nowPlaying')||musicReceiver==='round'&&!fresh('voice'))return;const route=musicReceiver==='display'?'/v1/display/music/control':'/v1/music/control';return action(()=>api(route,{action:actionName,value}),'Sent to Spotify. Waiting for the receiver’s state.');}
+function sendMusic(actionName,value){
+  const ready=fresh('nowPlaying')&&(musicReceiver==='display'?data.nowPlaying.available:fresh('voice')&&['armed','muted','cooldown','music'].includes(data.voice?.status));
+  if(!ready||!['playing','paused','connected','stopped'].includes(data.nowPlaying.status))return;
+  const route=musicReceiver==='display'?'/v1/display/music/control':'/v1/music/control';return action(()=>api(route,{action:actionName,value}),'Sent to Spotify. Waiting for the receiver’s state.');
+}
 $('shuffle-track').onclick=()=>sendMusic('shuffle',data.nowPlaying?.shuffle!==true);
 $('repeat-track').onclick=()=>{const cycle=['off','context','track'];sendMusic('repeat',cycle[(Math.max(0,cycle.indexOf(data.nowPlaying?.repeat))+1)%3]);};
 for(const [id,command,label] of [['track-seek','seek','track-elapsed'],['spotify-volume','volume','spotify-volume-label']]){

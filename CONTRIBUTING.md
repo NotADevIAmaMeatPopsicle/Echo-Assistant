@@ -14,9 +14,11 @@ pio run -e round_voice
 ```
 
 Unit tests use synthetic services and must not operate real appliances, invoke
-paid models, flash boards or play audio. Hardware checks in `tools/check_*` are
-explicit diagnostics and do not belong in CI. Record physical observations
-separately from successful compilation or transport counters.
+paid models, flash boards or play audio. The [package checks](docs/PACKAGE_CHECKS.md)
+include a silent browser suite and Linux pipe tests. Other `tools/check_*`
+commands can be live hardware diagnostics; read their descriptions before use
+and keep those out of CI. Record physical observations separately from successful
+compilation or transport counters.
 
 Keep configuration portable, source URLs/checksums pinned where used, and
 third-party licenses/attribution intact. Contributions are provided under the

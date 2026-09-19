@@ -1,7 +1,8 @@
+const {previewBase}=require('./display_check.cjs');
 /* Synthetic preview and simulated Web Audio only. Never opens an audio device. */
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 (async()=>{
-  const base=process.env.ECHO_PREVIEW_URL||'http://127.0.0.1:8789';
+  const base=await previewBase();
   const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
     fs.mkdirSync('output/playwright',{recursive:true});

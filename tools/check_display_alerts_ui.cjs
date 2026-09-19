@@ -1,9 +1,10 @@
+const {previewBase}=require('./display_check.cjs');
 /* Synthetic UI only. No playback, microphone capture, or real-device requests. */
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 (async()=>{
   const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
-    const base=process.env.ECHO_PREVIEW_URL||'http://127.0.0.1:8789',page=await browser.newPage({viewport:{width:1024,height:600}});
+    const base=await previewBase(),page=await browser.newPage({viewport:{width:1024,height:600}});
     assert.equal((await (await page.request.get(base+'/health')).json()).display_demo,true);
     let settings={enabled:false,output:'',volume:2},items=[],commands=[];const errors=[];
     await page.addInitScript(()=>{HTMLMediaElement.prototype.play=()=>{throw Error('Audio forbidden');};Object.defineProperty(navigator,'mediaDevices',{value:{enumerateDevices:async()=>[],addEventListener(){},getUserMedia(){throw Error('Capture forbidden');}}});});

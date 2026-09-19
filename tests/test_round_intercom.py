@@ -4,7 +4,7 @@ import threading
 import time
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock,patch
 
 from backend.announcements import Announcements
 from backend.intercom import Intercom
@@ -119,6 +119,12 @@ class RoundControlTests(unittest.TestCase):
 
 
 class CallAudioTests(unittest.TestCase):
+    def test_old_firmware_does_not_start_intercom_requests_or_cleaner(self):
+        client=Mock();cleaner=Mock();receiver=RoundIntercom(client,lambda _:None,cleaner_factory=cleaner)
+        receiver.tick({'device':{'version':'0.13.0'},'muted':False},'armed')
+        receiver.close()
+        client.request.assert_not_called();cleaner.assert_not_called()
+
     def test_bounded_output_duplicate_frames_and_silence_keepalive(self):
         now=[10.];audio=CallAudio(None,'a'*32,Cleaner(),lambda:now[0])
         audio.append(struct.pack('<1600h',*([3000]*1600)))

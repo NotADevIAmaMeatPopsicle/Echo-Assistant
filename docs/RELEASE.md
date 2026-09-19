@@ -1,6 +1,14 @@
-# Alpha release status
+# Package and release status
 
-Public package: **0.1.0-alpha.1**. Included host implementation: **0.26.0**;
+The repository is currently **private** while the round speaker and Pi smart
+display are completed together. Current firmware source is **0.14.0**; it has
+not been published as a new release. [Build queue](BUILD_QUEUE.md) records open
+hardware and integration acceptance, and [package checks](PACKAGE_CHECKS.md)
+describes the reproducible software checks. The release notes below are historical.
+
+## Previous source release
+
+Previously published package: **0.1.0-alpha.1**. Included host implementation: **0.26.0**;
 firmware implementation: **0.13.0**. Wire-protocol identifiers retain `round-voice`
 for compatibility; the project and repository are Echo Assistant.
 

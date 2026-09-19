@@ -1,13 +1,15 @@
+const {previewBase}=require('./display_check.cjs');
 /* Synthetic daily overview and calendar forms; never writes a real calendar. */
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 (async()=>{
+  const base=await previewBase();
   fs.mkdirSync('output/playwright',{recursive:true});const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
     const page=await browser.newPage({viewport:{width:1024,height:600}}),errors=[];let sent;
     page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
     await page.route('**/v1/display/calendar/events',route=>{sent=route.request().postDataJSON();return route.continue();});
-    await page.goto('http://127.0.0.1:8788/display#day');
+    await page.goto(base+'/display#day');
     await page.locator('#briefing-summary').getByText(/room to breathe/).waitFor();
     await page.screenshot({path:'output/playwright/display-daily.png',animations:'disabled'});
     await page.locator('#calendar-create').click();await page.locator('#event-title').fill('An afternoon outside · sample');

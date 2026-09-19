@@ -4,6 +4,7 @@ services:
     environment:
       ECHO_DEPLOYMENT_MODE: device
       ECHO_VOICE_ENABLED: "1"
+      ECHO_DEVICE_MAC: "${ECHO_DEVICE_MAC:?Set ECHO_DEVICE_MAC to the verified paired round-board MAC}"
       ECHO_WIFI_BIND: 0.0.0.0
     ports:
       - "${ECHO_BIND_ADDRESS:?Set ECHO_BIND_ADDRESS to the Docker host LAN IPv4 address}:8769:8769"

@@ -1,9 +1,10 @@
+const {previewBase}=require('./display_check.cjs');
 /* Synthetic native listener. No microphone, speaker, or home actions. */
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 (async()=>{
   const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
-    const base=process.env.ECHO_PREVIEW_URL||'http://127.0.0.1:8789',page=await browser.newPage({viewport:{width:1024,height:600}});
+    const base=await previewBase(),page=await browser.newPage({viewport:{width:1024,height:600}});
     assert.equal((await (await page.request.get(base+'/health')).json()).display_demo,true);
     let state={supported:true,runtime_installed:true,phase:'armed',error:null,result:null,inputs:[{id:'mic',name:'Sample microphone'}],outputs:[{id:'speaker',name:'Sample speaker'}],settings:{enabled:true,muted:false,input:'mic',output:'speaker',volume:2,echo_cancelled_input:false,allow_home:false}};
     const errors=[],commands=[],focus=[];let offline=false;

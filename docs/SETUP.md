@@ -10,10 +10,16 @@ in a separate environment.
 3. Run `./tools/setup.ps1`. This installs the pinned host dependencies and Vosk
    model inside the checkout. `-Echo` optionally adds local echo cancellation
    using an existing Python 3.13 installation.
-4. Follow [hardware setup](HARDWARE.md). For USB ownership, set
+4. For a round speaker, follow [hardware setup](HARDWARE.md). For USB ownership, set
    `$env:ECHO_DEVICE_MAC` to the MAC confirmed by esptool. No maintainer board
    identity is built into the public source.
+   For a Pi-only build, skip ESP32 flashing and the board identity; use the
+   [Pi guide](SMART_DISPLAY.md#pi-hardware-and-bring-up).
 5. Run `./tools/run.ps1 start`, then `./.venv/Scripts/python.exe tools/open_ui.py`.
+   A Pi-only local host uses `./tools/run.ps1 start -DisplayOnly` and
+   `./.venv/Scripts/python.exe tools/open_ui.py --display` instead. This does not
+   launch a round listener or stop an existing one. The switch is local-only;
+   a checkout already assigned to a remote host keeps its configured deployment.
 6. In Settings choose your conversation provider, model, endpoint where applicable
    and API key. Leave the provider disabled to use the offline built-in functions.
 

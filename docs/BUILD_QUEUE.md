@@ -36,7 +36,7 @@ Prioritize the Pi audio path before extending round intercom. See
 - [x] Pi alarm/reminder chimes, saved destination routing and visible snooze/dismiss controls (software; physical audio pending).
 - [x] Pi pairing/install/rollback client bundle; installed and OS restart verified.
 - [x] Pi display visual polish: bundled typography, smooth status ring, contrast and touch spacing; deployed with dedicated kiosk sizing. Owner visual acceptance of this pass remains open.
-- [ ] Integrated software verification and refreshed screenshots/documentation.
+- [x] Integrated software verification, fresh Docker build, repeatable browser suite, and refreshed screenshots/documentation. Physical and external-service acceptance below remains open.
 
 ## Hardware acceptance when the owner returns
 
@@ -141,3 +141,26 @@ The matching host support is deployed with calls disabled and private settings
 preserved. The round board is currently absent from USB; no flash or acoustic
 test was performed. The compiled firmware and install notes are ready for its
 return. The Pi bridge remains connected and serves the polished display.
+
+## Complete-package software checkpoint
+
+The full Windows host suite completed **431 tests with seven platform-specific
+skips**. A fresh Docker image built from the tracked source, including the native
+audio dependencies. In an isolated Linux container with no network or devices,
+36 Pi/storage/supervisor/native-echo tests and the synthetic wake/reply and
+Spotify output pipelines passed. Twelve browser flows passed against separate
+temporary previews; microphone and intercom worklet checks also passed. These
+results cover software behavior, not real sound, external accounts or physical
+assembly. See [repeatable package checks](PACKAGE_CHECKS.md).
+
+The setup path now supports a Pi-only Windows host without starting the round
+listener. Docker context generation excludes ignored private files and preserves
+the previous generated context separately. The round Docker override explicitly
+passes the verified board identity into its container. Music controls disable
+immediately when switching to an unavailable receiver. The README presents both
+builds, their independent audio paths and their setup guides.
+
+A fresh Pi hardware inventory still reports no capture device. It exposes only
+the built-in headphone and HDMI outputs; a connected, suitable microphone and
+speaker remain required for acoustic acceptance. No microphone, speaker or home
+device was exercised during this software checkpoint.

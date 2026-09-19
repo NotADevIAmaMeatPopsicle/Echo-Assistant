@@ -1,19 +1,21 @@
+const {previewBase}=require('./display_check.cjs');
 /* Real browser, synthetic state only. Never plays audio or sends home actions. */
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 (async()=>{
+  const base=await previewBase();
   fs.mkdirSync('output/playwright',{recursive:true});
   const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
     const page=await browser.newPage({viewport:{width:1024,height:600}}),errors=[],commands=[];
-    assert.equal((await (await page.request.get('http://127.0.0.1:8788/health')).json()).display_demo,true);
-    for(const [action,value] of [['seek',83000],['volume',75],['shuffle',false],['repeat','off']])await page.request.post('http://127.0.0.1:8788/v1/music/control',{data:{action,value}});
+    assert.equal((await (await page.request.get(base+'/health')).json()).display_demo,true);
+    for(const [action,value] of [['seek',83000],['volume',75],['shuffle',false],['repeat','off']])await page.request.post(base+'/v1/music/control',{data:{action,value}});
     page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
     await page.route('**/v1/music/control',route=>{commands.push(route.request().postDataJSON());return route.continue();});
     await page.addInitScript(()=>{HTMLMediaElement.prototype.play=()=>{throw new Error('Physical audio forbidden in UI check');};});
-    await page.goto((process.env.ECHO_PREVIEW_URL||'http://127.0.0.1:8789')+'/display#music');
+    await page.goto(base+'/display#music');
     await page.locator('#music-receiver').selectOption('round');
     await page.locator('#track-cover:visible').waitFor();
     assert.equal(await page.locator('#track-title').textContent(),'Room to breathe');

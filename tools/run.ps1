@@ -1,6 +1,7 @@
-param([ValidateSet('start','stop','status')][string]$Action = 'start', [switch]$Usb, [switch]$PlayMusic)
+param([ValidateSet('start','stop','status')][string]$Action = 'start', [switch]$Usb, [switch]$PlayMusic, [switch]$DisplayOnly)
 # Starts the selected host's existing services; never installs software or changes agent configuration.
 $ErrorActionPreference = 'Stop'
+if ($DisplayOnly -and ($Action -ne 'start' -or $Usb -or $PlayMusic)) { throw '-DisplayOnly is for start without round-board USB or music options.' }
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $python = Join-Path $projectRoot '.venv/Scripts/python.exe'
 if (-not (Test-Path -LiteralPath $python)) { throw 'Run tools/setup.ps1 first to create the local Python runtime' }
@@ -8,6 +9,7 @@ $local = Join-Path $projectRoot 'local'
 New-Item -ItemType Directory -Path $local -Force | Out-Null
 $targetPath=Join-Path $local 'host-target.json'
 if (Test-Path -LiteralPath $targetPath) {
+    if ($DisplayOnly) { throw '-DisplayOnly starts a local host. This checkout is assigned to a remote host; use its configured deployment.' }
     $target=Get-Content -LiteralPath $targetPath -Raw|ConvertFrom-Json
     if ($target.mode -eq 'migrating') { throw 'Echo is moving between hosts. Wait for the transfer to finish.' }
     if ($target.mode -ne 'remote') { throw 'Unknown Echo host target' }
@@ -65,6 +67,10 @@ try {
         $until = (Get-Date).AddSeconds(15)
         do { Start-Sleep -Milliseconds 250; $health = Read-Health } while (-not $health -and (Get-Date) -lt $until)
         if (-not $health -or $health.product -ne 'round-voice') { throw 'Local API did not start; inspect local/api-health.log' }
+    }
+    if ($DisplayOnly) {
+        Write-Output 'Echo host is ready for paired displays. Open tools/open_ui.py --display. This launch did not start a round-board listener.'
+        exit 0
     }
     if ($health.device_transport -notin @('usb_connected','wifi_connected') -and -not (Test-BridgeRunning)) {
         $executable = $python

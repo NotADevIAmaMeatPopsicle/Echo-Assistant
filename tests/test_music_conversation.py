@@ -110,7 +110,7 @@ class MusicConversationTests(unittest.TestCase):
             original_write=voice.write_status
             def publish(status):
                 states.append(dict(status)); return original_write(status)
-            alarms=Mock(); alarms.receive.return_value=False; alarms.take.return_value=None
+            alarms=Mock(is_announcement=False); alarms.receive.return_value=False; alarms.take.return_value=None
             replacements={
                 'ROOT':root,'load_wifi':Mock(return_value={ 'enabled':True }),
                 'WifiTransport':Mock(return_value=port),'Recognition':Mock(return_value=recognition),

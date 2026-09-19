@@ -2,15 +2,16 @@
 
 <img src="web/icon.svg" alt="Echo blue-green ring" width="64">
 
-### An open-source smart speaker you can build, understand, and make your own.
+### A smart speaker and display you can build, understand, and make your own.
 
-Echo brings an AI voice assistant, music, and home control to a round AMOLED touchscreen.
+Echo brings an AI voice assistant, music, and home control to a round AMOLED
+smart speaker or a Raspberry Pi touchscreen with its own microphone and speaker.
 Say **“Hey Echo”** or **“Okay Echo”**, hear a warm activation cue, and watch the
 screen respond as it listens, thinks, and replies. A companion web app puts
 conversation, devices, memory, and customization in one place.
 
-**In development:** a Raspberry Pi smart display with its own microphone and
-speaker shares Echo's backend. The round speaker is a separate build option.
+Choose a compact speaker or a larger view of your rooms, music and day.
+Each device has its own audio path; the Pi does not need the round speaker.
 See [build options](docs/BUILD_OPTIONS.md) for Pi, round-device and browser setups.
 The repository is private while both primary builds are completed as one package. See the [smart-display preview, feature map, and build plan](docs/SMART_DISPLAY.md)
 for implemented pages and the remaining hardware and integration work.
@@ -21,7 +22,7 @@ for implemented pages and the remaining hardware and integration work.
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
-**[Prototype](#the-built-prototype)** · **[Web app](#the-web-workspace)** · **[Device screens](#on-the-device)** ·
+**[Prototype](#the-built-prototype)** · **[Web app](#the-web-workspace)** · **[Smart display](#on-the-smart-display)** · **[Round screens](#on-the-device)** ·
 **[Build your own](#build-your-own)** · **[Enclosure](#the-crescent-enclosure)** ·
 **[Documentation](#documentation)**
 
@@ -51,11 +52,14 @@ pairs close-ups with printable models and fitting instructions.
 | **Control the room** | Home Assistant lights, thermostat, speakers, and named routines, with per-device permissions and action results. |
 | **Play your music** | A Spotify Connect receiver, track controls, speaker selection, and voice interruption/resume. Spotify Premium is required. |
 | **Use it at a glance** | Swipeable pages for weather, timers, lights, music, settings, connection, and battery status. |
+| **Plan and share** | The Pi display adds calendar views, reminders, lists, selected cameras, photo albums, room announcements and answered intercom calls. |
 | **Make it yours** | Provider and model selection, editable personality, local voice choices, an open firmware/host stack, and printable enclosure source. |
 
-Echo is a **board-and-host system**: the ESP32 runs the display, touch controls,
-and audio transport; a separate computer runs speech and the assistant. Start
-with the Windows host over USB, then add Wi-Fi and integrations at your own pace.
+Echo is a **device-and-host system**: each endpoint handles its screen and audio;
+a separate computer runs speech and the assistant. Start with a Windows host,
+then add remote hosting and integrations at your own pace. The Pi's audio and
+the new intercom paths still need physical acceptance; the [build queue](docs/BUILD_QUEUE.md)
+distinguishes implemented software from verified hardware.
 Home Assistant, Spotify, and Hermes are optional additions to the basic setup.
 
 ## The web workspace
@@ -138,6 +142,22 @@ Open **[http://127.0.0.1:8778/](http://127.0.0.1:8778/)** and browse the pages.
 Press **Ctrl+C** in the terminal when finished. Changes and device actions are
 disabled in the preview. Follow the build steps below for a connected assistant.
 
+## On the smart display
+
+The larger touch layout puts Echo's status and microphone controls beside a
+shared conversation. Rooms, Music and My day have space for richer controls;
+Planner holds alarms, reminders and household messages. The idle screen becomes
+a quiet clock or photo display.
+
+![Echo conversation and microphone controls on the Pi layout, with synthetic data](docs/images/display-echo.png)
+
+![Smart-display home with weather, room cards and upcoming reminders, using synthetic data](docs/images/display-home.png)
+
+These are captures of the working interface with sample data. The current Pi
+installation runs at 1024 × 600 with locally served fonts and vector icons.
+See the [smart-display guide](docs/SMART_DISPLAY.md) for pairing, supported media,
+privacy controls and the remaining hardware checks.
+
 ## On the device
 
 The **466 × 466 AMOLED** uses a deep blue background, a softly glowing ring,
@@ -192,15 +212,17 @@ is available for builds that keep the language model on their own hardware.
 
 ## Build your own
 
-Start your smart speaker build with **the supported board, a speaker, a USB data cable,
-and a Windows computer**. Get that working on the desk, then add the enclosure,
-battery, and remote hosting as separate steps.
+Choose the **round speaker** or **Pi smart display**, then prepare the shared
+host. Get the screen and audio working on the desk before adding an enclosure,
+battery or remote hosting. Each build works independently of the other.
 
 ### Parts and tools
 
 | Item | Needed for | Notes |
 | --- | --- | --- |
-| **Waveshare ESP32-S3-Touch-AMOLED-1.75** | Core build | Exact supported board: 16 MB flash, 8 MB PSRAM, touch AMOLED, ES7210 microphones, ES8311 audio, and AXP2101 power management. |
+| **Waveshare ESP32-S3-Touch-AMOLED-1.75** | Round speaker | Exact supported board: 16 MB flash, 8 MB PSRAM, touch AMOLED, ES7210 microphones, ES8311 audio, and AXP2101 power management. |
+| **Raspberry Pi 4B, touchscreen and storage** | Pi smart display | A supported Chromium desktop; the current layout targets 1024 × 600. Use a reliable 5.1 V / 3 A Pi supply and the panel's required supply. |
+| **Pi microphone and speaker** | Pi voice and music | A supported USB capture device and explicitly selected output. The Pi 4 has no built-in microphone. Wake during playback requires an echo-cancelled input. |
 | **Compatible speaker and connector** | Spoken replies and music | Use the board's speaker output and the vendor's electrical specification. Check whether the purchased kit includes a speaker. |
 | **USB-C data cable** | Power, backup/flash, and initial connection | Use a data-capable cable. |
 | **Windows computer** | Speech and assistant host | 64-bit Python 3.13 is the recommended start. Local speech runs on CPU; local language-model requirements depend on the model. |
@@ -223,14 +245,20 @@ This installs pinned host dependencies and a Vosk model into the project.
 [Local setup](docs/SETUP.md) covers optional echo cancellation, neural voices,
 and platform requirements. Speech model downloads are explicit.
 
-### 2. Back up and flash the board
+### 2. Set up your device
 
-Connect by USB and follow **[hardware and firmware setup](docs/HARDWARE.md)**:
+**Round speaker:** connect by USB and follow **[hardware and firmware setup](docs/HARDWARE.md)**:
 identify the board, preserve its full original-flash backup, build with
 PlatformIO, and use the identity-checked flashing command.
 
 Set `ECHO_DEVICE_MAC` to the board identity verified during setup. This value
 belongs to your local build and is not supplied by the repository.
+
+**Pi display:** preserve the original SD card with a verified backup, then follow
+**[Pi bring-up and pairing](docs/SMART_DISPLAY.md#pi-hardware-and-bring-up)**.
+An existing supported desktop can be converted in place. Choose the Pi's own
+input and output using [Pi voice](docs/PI_VOICE.md) and [Pi music](docs/PI_SPOTIFY.md).
+No ESP32 flash or round-board identity is required for this build.
 
 ### 3. Start Echo and open its workspace
 
@@ -238,6 +266,10 @@ belongs to your local build and is not supplied by the repository.
 ./tools/run.ps1 start
 ./.venv/Scripts/python.exe tools/open_ui.py
 ```
+
+For a **Pi-only local host**, use `./tools/run.ps1 start -DisplayOnly` and
+`./.venv/Scripts/python.exe tools/open_ui.py --display`. This starts the API
+without starting a round-board listener. Pair the Pi from the owner workspace.
 
 The launcher opens the authenticated local UI at `http://127.0.0.1:8768/`.
 In **Settings**, select a provider and model, add the corresponding key, choose
@@ -318,6 +350,10 @@ provides the request scope for home actions.
 | Guide | What you will find |
 | --- | --- |
 | [Local setup](docs/SETUP.md) | Environment, startup, speech options, and sign-in |
+| [Choose a build](docs/BUILD_OPTIONS.md) | Pi, round speaker and browser options |
+| [Pi smart display](docs/SMART_DISPLAY.md) | Touchscreen setup, pairing and complete feature map |
+| [Pi voice](docs/PI_VOICE.md) / [Spotify](docs/PI_SPOTIFY.md) / [alerts](docs/PI_ALERTS.md) | The Pi's independent microphone and speaker paths |
+| [Room audio](docs/ROOM_AUDIO.md) / [round intercom](docs/ROUND_INTERCOM.md) | Opt-in announcements, calls and physical acceptance |
 | [Hardware and flashing](docs/HARDWARE.md) | Board identity, pins, backup, build, and flash |
 | [Wireless connection](docs/WIRELESS.md) | USB pairing, Wi-Fi, and remote USB setup |
 | [Home Assistant](docs/HOME_CONTROL.md) | Inventory, rooms, permissions, and routines |
@@ -327,6 +363,7 @@ provides the request scope for home actions.
 | [Crescent assembly](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md) | Printing, fasteners, fitting, and wiring routes |
 | [Web UI gallery](docs/WEB_UI.md) | Browser pages and the screenshot preview workflow |
 | [Release status](docs/RELEASE.md) | Tested paths and remaining acceptance work |
+| [Package checks](docs/PACKAGE_CHECKS.md) | Reproducible host, firmware and silent display checks |
 
 <details>
 <summary><strong>Source layout and contributing</strong></summary>
@@ -336,6 +373,7 @@ provides the request scope for home actions.
 | `src`, `include` | Board firmware and shared scene renderer |
 | `backend`, `web` | Host services and browser application |
 | `deploy/host`, `deploy/remote` | Images, Compose, and host helpers |
+| `deploy/pi` | Pi kiosk, pairing, native voice, music and alerts |
 | `tools` | Setup, pairing, previews, models, backups, and diagnostics |
 | `config` | Nonsecret examples and dependency/model pins |
 | `tests` | Offline tests using synthetic services |

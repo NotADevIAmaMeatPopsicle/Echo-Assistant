@@ -1,3 +1,4 @@
+const {previewBase}=require('./display_check.cjs');
 /* Silent, synthetic display acceptance. Requires a separately running preview. */
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
@@ -5,13 +6,14 @@ const fs=require('node:fs');
 const path=require('node:path');
 
 (async()=>{
+  const base=await previewBase();
   const output=path.resolve('output/playwright');fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
     const page=await browser.newPage({viewport:{width:1024,height:600}}),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1' ? route.continue() : route.abort());
-    await page.goto('http://127.0.0.1:8788/display');
+    await page.goto(base+'/display');
     await page.getByRole('button',{name:'Planner',exact:true}).click();
     await page.locator('#schedule-title').fill('Morning routine reminder');
     await page.locator('#schedule-time').fill('07:30');await page.locator('#schedule-repeat').selectOption('daily');

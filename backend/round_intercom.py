@@ -252,8 +252,9 @@ class RoundIntercom:
         finally:
             if self.audio:self.audio.close()
             if self.cleaner:self.cleaner.close()
-            try:self.request('POST','/v1/intercom/heartbeat',{'client':'round','enabled':False,'busy':False})
-            except Exception:pass
+            if self.capable:
+                try:self.request('POST','/v1/intercom/heartbeat',{'client':'round','enabled':False,'busy':False})
+                except Exception:pass
 
     def tick(self,status,phase):
         self.capable=status.get('device',{}).get('intercom')=='1'

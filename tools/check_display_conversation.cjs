@@ -1,8 +1,10 @@
+const {previewBase}=require('./display_check.cjs');
 /* Synthetic UI check. Fake capture and model responses; never opens real audio. */
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 (async()=>{
+  const base=await previewBase();
   fs.mkdirSync('output/playwright',{recursive:true});
   const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
@@ -27,7 +29,7 @@ const fs=require('node:fs');
       window.AudioContext=class{constructor(){this.state='running';this.audioWorklet={addModule:async()=>{}};this.destination={};}createMediaStreamSource(){return{connect:()=>{}};}createGain(){return{gain:{value:0},connect:()=>{}};}async close(){this.state='closed';}async resume(){}};
       window.AudioWorkletNode=class{constructor(){this.port={onmessage:null};window.fakeCapture=this;}connect(){}disconnect(){}};
     });
-    await page.goto('http://127.0.0.1:8788/display#assistant');
+    await page.goto(base+'/display#assistant');
     await page.locator('#voice-start:not([disabled])').waitFor();
     await page.screenshot({path:'output/playwright/display-echo-empty.png',animations:'disabled'});
     const presence=await page.locator('.echo-presence').boundingBox(),settings=await page.locator('.echo-controls').boundingBox(),chat=await page.locator('.echo-conversation').boundingBox(),composer=await page.locator('.chat-composer').boundingBox();
@@ -39,9 +41,9 @@ const fs=require('node:fs');
     assert.equal(await page.locator('.chat-message').count(),4);
     await page.screenshot({path:'output/playwright/display-echo-conversation.png',animations:'disabled'});
     await page.locator('#voice-speak').uncheck();await page.locator('#voice-start').click();
-    await page.getByText('I’m listening.',{exact:true}).waitFor();
+    await page.waitForFunction(()=>document.getElementById('assistant-phase').textContent==='I’m listening.');
     await page.evaluate(()=>window.fakeCapture.port.onmessage({data:{type:'pcm',data:new Int16Array(1600).buffer}}));
-    await page.locator('#voice-send').click();await page.getByText('Coffee is on the list. Future you approves.',{exact:true}).waitFor();
+    await page.locator('#voice-send').click();await page.locator('.chat-message').getByText('Coffee is on the list. Future you approves.',{exact:true}).waitFor();
     assert.equal(voices,1);assert.equal(await page.locator('.chat-message').count(),6);
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

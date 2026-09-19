@@ -45,6 +45,20 @@ read their help and retain a private recovery archive.
 5. `tools/migrate_remote.py` performs a preflight only; `--execute` performs the
    board/host transfer. `--resume` is restricted to its documented rollback state.
 
+The round-device Compose override requires `ECHO_DEVICE_MAC` and passes it into
+the container for pairing validation. Set it to the identity verified from your
+board before starting or recovering that deployment. The value is not included
+in the image. The managed migration path still starts from a working round
+installation; a new Pi-only host can use the local `-DisplayOnly` startup path.
+
+`tools/build_remote_host.py --stage-only` prepares the Docker context without
+building an image. Backend and web files must be reviewed and tracked in Git;
+ignored local files are excluded. Each context is assembled afresh, with file
+hashes in `context-manifest.json`. A previous generated context is preserved in
+ignored `local/build-context-backups`, so removed source cannot silently remain
+in a later image. Cached native sources are checksum-verified; missing ones are
+downloaded only when this explicit build command is run.
+
 Use the repository Python for these scripts. Startup thereafter uses
 `tools/remote_device.py start`, and the desktop launcher targets the selected host.
 Recovery archives use `tools/backup_remote.py`; they are encrypted to the local

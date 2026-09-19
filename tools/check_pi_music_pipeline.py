@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from unittest.mock import patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'deploy/pi'))
 from spotify import Spotify
@@ -28,14 +29,18 @@ while True:
             assert command[0].endswith('echo-librespot')
             return subprocess.Popen([sys.executable,'-c',producer],**kwargs)
         receiver=Spotify(root,devices=lambda:[{'id':'synthetic','name':'No hardware'}],popen=popen)
-        receiver.config.update(enabled=True,output='synthetic');receiver.start()
-        try:
-            deadline=time.monotonic()+5
-            while not record.exists() or record.stat().st_size<4096:
-                if time.monotonic()>deadline:raise AssertionError('Synthetic PCM did not reach the output pipe')
-                time.sleep(.02)
-            receiver.focus('a'*32,True);assert receiver.player is None;assert receiver.silenced
-        finally:receiver.close()
+        # A CI/container user has no desktop login's /run/user/<uid>. Keep this
+        # synthetic receiver's volatile cache inside its temporary test home.
+        temporary_directory=tempfile.TemporaryDirectory
+        with patch('spotify.tempfile.TemporaryDirectory',side_effect=lambda **kw:temporary_directory(prefix=kw['prefix'],dir=root)):
+            receiver.config.update(enabled=True,output='synthetic');receiver.start()
+            try:
+                deadline=time.monotonic()+5
+                while not record.exists() or record.stat().st_size<4096:
+                    if time.monotonic()>deadline:raise AssertionError('Synthetic PCM did not reach the output pipe')
+                    time.sleep(.02)
+                receiver.focus('a'*32,True);assert receiver.player is None;assert receiver.silenced
+            finally:receiver.close()
         samples=array('h',record.read_bytes());assert samples and set(samples)=={200,-200}
         assert len(commands)==2;assert '--disable-credential-cache' in commands[0]
         assert not receiver.thread.is_alive()

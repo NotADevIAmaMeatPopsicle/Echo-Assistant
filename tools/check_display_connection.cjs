@@ -1,3 +1,4 @@
+const {previewBase}=require('./display_check.cjs');
 /* Connection failures use synthetic responses. No sound, chat, or home actions. */
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
@@ -5,7 +6,7 @@ const assert=require('node:assert/strict');
   const browser=await chromium.launch({channel:'chrome',headless:true});
   try{
     const page=await browser.newPage({viewport:{width:1024,height:600}}),errors=[];
-    const base=process.env.ECHO_PREVIEW_URL||'http://127.0.0.1:8788';
+    const base=await previewBase();
     assert.equal((await (await page.request.get(base+'/health')).json()).display_demo,true);
     let mode='speaker-offline';
     page.on('pageerror',e=>errors.push(e.message));

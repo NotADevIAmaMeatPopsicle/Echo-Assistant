@@ -14,6 +14,12 @@
 - `voice-states.png`, `home-controls.png`, and `everyday-tools.png` are generated
   from the shared firmware C++ renderer with synthetic fixtures. They contain no
   screenshots of a user's network, accounts, keys, conversations, or home state.
+- `round-intercom.png` uses the same firmware renderer for disabled, room-picker,
+  incoming, outgoing, active and muted call states with fictional room names.
+- `display-*.png`, `pi-spotify.png` and `pi-alerts.png` show the actual smart-display
+  UI with synthetic state. They are captured by the checks listed in
+  [package checks](../PACKAGE_CHECKS.md), without real cameras, calendars,
+  microphones, speakers or household accounts.
 - Enclosure renders live in `enclosure/crescent-v1/preview`. They depict exported
   geometry and reference electronics. They are separate from the prototype
   photographs above.
