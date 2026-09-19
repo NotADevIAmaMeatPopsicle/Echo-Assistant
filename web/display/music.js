@@ -24,7 +24,7 @@ function renderMusicPanel(){
   const trackActive=active&&!!state.title&&['playing','paused'].includes(status);
   const capabilities=state.capabilities||[],has=(name)=>trackActive&&capabilities.includes(name);
   $('track-title').textContent=state.title||'Your next favourite.';
-  $('track-artist').textContent=(state.artist||'Choose Echo from Spotify’s device picker.').replaceAll('\n',', ');
+  $('track-artist').textContent=(state.artist||'Choose Round Voice from Spotify’s device picker.').replaceAll('\n',', ');
   $('track-album').textContent=state.album|| (state.title ? 'Spotify' : 'Start something good in Spotify.');
   $('track-explicit').hidden=!state.explicit;
   $('music-status').textContent=!speakerReady&&['connected','playing','paused'].includes(status)?'Waiting for speaker':human(status);$('music-status').classList.toggle('is-playing',active&&status==='playing');

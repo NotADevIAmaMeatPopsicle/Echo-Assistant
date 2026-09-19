@@ -1,7 +1,7 @@
 'use strict';
 const experiencePage=document.createElement('section');
 experiencePage.id='page-day'; experiencePage.className='page'; experiencePage.hidden=true;
-experiencePage.innerHTML=`<div class="two-columns"><article class="card agenda-card"><span class="eyebrow">A LITTLE LOOK AHEAD</span><h2>Your agenda</h2><form id="agenda-form" class="inline-form"><label>From<input id="agenda-date" type="date" required></label><label>Days<select id="agenda-days"><option value="1">Today</option><option value="7" selected>A week</option><option value="31">A month</option></select></label><button class="pill" type="submit">Show</button></form><p id="agenda-status" class="tiny soft"></p><div id="agenda-events"></div></article><article class="card camera-card"><span class="eyebrow">A VIEW FROM HOME</span><h2>Cameras & doorbells</h2><label>Camera<select id="camera-choice"><option value="">Choose a camera</option></select></label><div class="camera-frame"><img id="camera-frame" alt="Selected camera snapshot" hidden><p id="camera-placeholder" class="empty">Choose an approved camera, then open its view.</p></div><p id="camera-status" class="tiny soft">Snapshots refresh every five seconds while this page is open.</p><div class="row"><button id="camera-open" class="pill primary" type="button" data-requires="sources">Open view</button><button id="camera-close" class="pill" type="button">Close view</button></div><p class="tiny soft">No microphone, recording, or camera audio. Closing the view clears its last image.</p></article></div>`;
+experiencePage.innerHTML=`<div class="two-columns"><article class="card agenda-card"><span class="eyebrow">A LITTLE LOOK AHEAD</span><h2>Your agenda</h2><form id="agenda-form" class="inline-form"><label>From<input id="agenda-date" type="date" required></label><label>Days<select id="agenda-days"><option value="1">Today</option><option value="7" selected>A week</option><option value="31">A month</option></select></label><button class="pill" type="submit">Show</button></form><p id="agenda-status" class="tiny soft"></p><div id="agenda-events"></div></article><article class="card camera-card"><span class="eyebrow">A VIEW FROM HOME</span><h2>Cameras & doorbells</h2><div class="camera-selectors"><label>Camera<select id="camera-choice"><option value="">Choose a camera</option></select></label><label>View mode<select id="camera-mode"><option value="live">Live stream</option><option value="snapshots">Snapshots · every 5 seconds</option></select></label></div><div class="camera-frame"><img id="camera-frame" alt="Selected camera view" hidden><p id="camera-placeholder" class="empty">Choose an approved camera, then open its view.</p></div><p id="camera-status" class="tiny soft">Live MJPEG from Home Assistant. Choose snapshots if streaming is unsupported.</p><div class="row"><button id="camera-open" class="pill primary" type="button" data-requires="sources">Open view</button><button id="camera-close" class="pill" type="button">Close view</button></div><p class="tiny soft">No microphone, recording, or camera audio. Closing the view clears its last image.</p></article></div>`;
 document.querySelector('main').append(experiencePage);
 const dayNav=document.createElement('button'); dayNav.dataset.page='day'; dayNav.innerHTML=icon('sun')+'<span>My day</span>';
 $('navigation').insertBefore(dayNav,$('navigation').querySelector('[data-page="planner"]'));
@@ -13,8 +13,8 @@ agendaEndpoint(); pageEndpoints.agenda='day';
 const sourceCard=document.createElement('article');sourceCard.className='card pairing-card';sourceCard.hidden=true;
 sourceCard.innerHTML='<span class="eyebrow">CHOOSE WHAT IS SHARED</span><h2>Calendars & cameras</h2><p class="soft">Choose sources for your paired displays. Nothing is selected automatically. Calendar accounts and doorbell cameras are connected through Home Assistant.</p><button class="pill" id="source-load" type="button">Load sources</button><form id="source-form" hidden><p id="source-status" class="tiny soft"></p><div id="source-choices"></div><button class="pill primary" type="submit">Save display sources</button></form>';
 $('page-settings').append(sourceCard);
-let sourceRevision=null, cameraUrl=null, cameraActive=false, cameraBusy=false, cameraGeneration=0;
-function stopCamera(){cameraActive=false;cameraGeneration++;$('camera-frame').hidden=true;$('camera-frame').removeAttribute('src');if(cameraUrl)URL.revokeObjectURL(cameraUrl);cameraUrl=null;$('camera-placeholder').hidden=false;}
+let sourceRevision=null, cameraUrl=null, cameraActive=false, cameraBusy=false, cameraGeneration=0, cameraAbort=null;
+function stopCamera(){cameraAbort?.abort();cameraAbort=null;cameraActive=false;cameraGeneration++;$('camera-frame').hidden=true;$('camera-frame').removeAttribute('src');if(cameraUrl)URL.revokeObjectURL(cameraUrl);cameraUrl=null;$('camera-placeholder').hidden=false;}
 function localEventDate(event){return event.all_day ? event.start : localDate(new Date(event.start));}
 function renderAgenda(){
   const state=data.agenda;
@@ -46,15 +46,16 @@ $('agenda-form').onsubmit=event=>{event.preventDefault();agendaEndpoint();delete
 $('source-load').onclick=()=>action(async()=>{
   const state=await api('/v1/display/source-settings');sourceRevision=state.revision;
   const selected=new Set([...state.sources.calendars,...state.sources.cameras]),writers=new Set(state.sources.writable_calendars||[]);
-  const items=[...state.items];for(const id of selected)if(!items.some(i=>i.entity_id===id))items.push({entity_id:id,name:id,available:false});
+  const items=state.items.filter(i=>['camera','calendar'].includes(i.kind));for(const id of selected)if(!items.some(i=>i.entity_id===id))items.push({entity_id:id,name:id,available:false});
   $('source-status').textContent=state.status==='available' ? 'Checked sources are shared with paired displays. Uncheck to remove access.' : 'Home Assistant is unavailable or not configured. You can clear existing selections.';
   $('source-choices').innerHTML=items.map(i=>`<div class="source-permissions"><label class="source-choice"><input type="checkbox" data-source-read value="${esc(i.entity_id)}" ${selected.has(i.entity_id)?'checked':''}><span>${esc(i.name)}<small class="soft">${esc(i.entity_id)}${i.available ? '' : ' · unavailable'}</small></span></label>${i.can_create||writers.has(i.entity_id)?`<label class="check-label calendar-write-choice"><input type="checkbox" data-source-write value="${esc(i.entity_id)}" ${writers.has(i.entity_id)?'checked':''}>Allow event creation from Echo displays</label>`:''}</div>`).join('') || empty('No calendar or camera entities were found.');
+  renderDoorbellChoices(state);
   $('source-form').hidden=false;
 },'Sources loaded.');
 $('source-form').onsubmit=event=>{event.preventDefault();if(sourceRevision===null)return;action(async()=>{
   const selected=[...$('source-choices').querySelectorAll('[data-source-read]:checked')].map(i=>i.value);
   const writers=[...$('source-choices').querySelectorAll('[data-source-write]:checked')].map(i=>i.value);
-  const state=await api('/v1/display/source-settings',{revision:sourceRevision,sources:{calendars:selected.filter(i=>i.startsWith('calendar.')),cameras:selected.filter(i=>i.startsWith('camera.')),writable_calendars:writers}},'PUT');
+  const state=await api('/v1/display/source-settings',{revision:sourceRevision,sources:{calendars:selected.filter(i=>i.startsWith('calendar.')),cameras:selected.filter(i=>i.startsWith('camera.')),writable_calendars:writers,doorbells:doorbellSelection()}},'PUT');
   sourceRevision=state.revision;stopCamera();
 },'Display sources saved.');};
 $('source-choices').addEventListener('change',event=>{
@@ -62,22 +63,69 @@ $('source-choices').addEventListener('change',event=>{
   if(event.target.hasAttribute('data-source-write')&&event.target.checked)row.querySelector('[data-source-read]').checked=true;
   if(event.target.hasAttribute('data-source-read')&&!event.target.checked){const write=row.querySelector('[data-source-write]');if(write)write.checked=false;}
 });
-$('camera-choice').onchange=()=>{stopCamera();$('camera-placeholder').textContent='Press Open view to start snapshots.';renderSources();guardButtons();};
-async function cameraFrame(){
-  if(!cameraActive || cameraBusy || experiencePage.hidden || document.hidden)return;
-  const generation=cameraGeneration, identifier=$('camera-choice').value;
-  cameraBusy=true;
+$('camera-choice').onchange=()=>{stopCamera();$('camera-placeholder').textContent='Press Open view to start the selected view.';renderSources();guardButtons();};
+// Decode only the normalized, length-delimited JPEG parts emitted by Echo.
+async function liveCamera(response,generation,controller){
+  if(!response.headers.get('content-type')?.startsWith('multipart/x-mixed-replace'))throw new Error('Live view is unsupported. Try snapshots.');
+  const reader=response.body.getReader();let buffer=new Uint8Array(),length=null,frames=0;
+  let idle=setTimeout(()=>controller.abort('timeout'),15000);
   try{
-    const response=await fetch('/v1/display/cameras/'+encodeURIComponent(identifier)+'/snapshot',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(10000)});
-    if(!response.ok)throw new Error(response.status===403 || response.status===401 ? 'Camera access was removed. Open Settings to check permissions.' : 'Camera unavailable. Close and reopen the view to retry.');
-    const blob=await response.blob();if(!['image/jpeg','image/png','image/webp'].includes(blob.type) || blob.size>5000000)throw new Error('Camera returned an unsupported image.');
-    if(!cameraActive || generation!==cameraGeneration)return;
-    const url=URL.createObjectURL(blob);if(cameraUrl)URL.revokeObjectURL(cameraUrl);cameraUrl=url;
-    $('camera-frame').src=url;$('camera-frame').hidden=false;$('camera-placeholder').hidden=true;$('camera-status').textContent='Latest snapshot · '+new Date().toLocaleTimeString();
-  }catch(error){if(generation===cameraGeneration){stopCamera();$('camera-placeholder').textContent=error.message;}}
-  finally{cameraBusy=false;}
+    while(cameraActive&&generation===cameraGeneration){
+      const {value,done}=await reader.read();if(done)throw new Error('Live stream ended. Open again to reconnect, or try snapshots.');
+      clearTimeout(idle);idle=setTimeout(()=>controller.abort('timeout'),15000);
+      if(buffer.length+value.length>5100000)throw new Error('Camera frame is too large.');
+      const next=new Uint8Array(buffer.length+value.length);next.set(buffer);next.set(value,buffer.length);buffer=next;
+      while(true){
+        if(length===null){
+          let split=-1;for(let i=0;i<buffer.length-3;i++)if(buffer[i]===13&&buffer[i+1]===10&&buffer[i+2]===13&&buffer[i+3]===10){split=i;break;}
+          if(split<0){if(buffer.length>1024)throw new Error('Invalid camera stream.');break;}
+          const header=new TextDecoder().decode(buffer.slice(0,split)),match=/Content-Length: (\d+)/i.exec(header);
+          if(!match||!header.includes('Content-Type: image/jpeg'))throw new Error('Invalid camera stream.');
+          length=Number(match[1]);if(length<4||length>5000000)throw new Error('Camera frame is too large.');
+          buffer=buffer.slice(split+4);
+        }
+        if(buffer.length<length)break;
+        if(!cameraActive||generation!==cameraGeneration)return;
+        showCamera(new Blob([buffer.slice(0,length)],{type:'image/jpeg'}),'Live · '+new Date().toLocaleTimeString());
+        buffer=buffer.slice(length);length=null;frames++;
+      }
+    }
+  }finally{clearTimeout(idle);await reader.cancel().catch(()=>{});}
 }
-$('camera-open').onclick=()=>{if(!fresh('sources') || !$('camera-choice').value)return;cameraActive=true;cameraGeneration++;cameraFrame();};
-$('camera-close').onclick=()=>{stopCamera();$('camera-placeholder').textContent='View closed.';};
-setInterval(cameraFrame,5000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden && cameraActive)stopCamera();});
+function showCamera(blob,status){
+  const url=URL.createObjectURL(blob),old=cameraUrl;cameraUrl=url;
+  $('camera-frame').src=url;$('camera-frame').hidden=false;$('camera-placeholder').hidden=true;$('camera-status').textContent=status;
+  if(old)URL.revokeObjectURL(old);
+  $('camera-frame').onerror=()=>{if(cameraUrl!==url)return;stopCamera();$('camera-placeholder').textContent='Camera image could not be decoded. Try snapshots or check the camera.';};
+}
+async function cameraFrame(){
+  if(!cameraActive||cameraBusy||experiencePage.hidden||document.hidden)return;
+  const generation=cameraGeneration,identifier=$('camera-choice').value,live=$('camera-mode').value==='live';
+  const controller=new AbortController();cameraAbort=controller;cameraBusy=true;
+  const timeout=setTimeout(()=>controller.abort(live?'renew':'timeout'),live?100000:10000);
+  let renew=false;
+  try{
+    $('camera-status').textContent=live?'Connecting live view…':'Refreshing snapshot…';
+    const response=await fetch('/v1/display/cameras/'+encodeURIComponent(identifier)+(live?'/stream':'/snapshot'),{credentials:'same-origin',cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw new Error(response.status===403||response.status===401?'Camera access was removed. Check source permissions.':'Camera unavailable. Try snapshots or check its Home Assistant integration.');
+    if(live)await liveCamera(response,generation,controller);
+    else{
+      const blob=await response.blob();if(!['image/jpeg','image/png','image/webp'].includes(blob.type)||blob.size>5000000)throw new Error('Camera returned an unsupported image.');
+      if(cameraActive&&generation===cameraGeneration)showCamera(blob,'Latest snapshot · '+new Date().toLocaleTimeString());
+    }
+  }catch(error){
+    if(generation===cameraGeneration){
+      if(controller.signal.reason==='renew')renew=true;
+      else{stopCamera();$('camera-status').textContent='View stopped.';$('camera-placeholder').textContent=controller.signal.reason==='timeout'?'Camera stopped sending frames. Open again to retry.':error.message||'Camera connection ended. Open again to retry.';}
+    }
+  }finally{clearTimeout(timeout);cameraBusy=false;if(cameraAbort===controller)cameraAbort=null;}
+  if(cameraActive&&generation!==cameraGeneration){cameraFrame();return;}
+  if(renew&&cameraActive&&generation===cameraGeneration)cameraFrame();
+}
+$('camera-open').onclick=()=>{if(!fresh('sources')||!$('camera-choice').value)return;cameraAbort?.abort();cameraActive=true;cameraGeneration++;cameraFrame();};
+$('camera-close').onclick=()=>{stopCamera();$('camera-placeholder').textContent='View closed.';$('camera-status').textContent='Camera closed.';};
+$('camera-mode').onchange=()=>{stopCamera();$('camera-placeholder').textContent='Press Open view to start the selected view.';};
+setInterval(()=>{if($('camera-mode').value==='snapshots')cameraFrame();},5000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&cameraActive)stopCamera();});
+document.addEventListener('echo:page',event=>{if(event.detail!=='day')stopCamera();});
+new MutationObserver(()=>{if(!$('ambient').hidden)stopCamera();}).observe($('ambient'),{attributes:true,attributeFilter:['hidden']});

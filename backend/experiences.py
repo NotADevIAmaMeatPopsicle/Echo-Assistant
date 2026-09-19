@@ -18,11 +18,19 @@ class ExperienceUnavailable(RuntimeError): pass
 class ExperienceConflict(ValueError): pass
 
 
+class DoorbellSource(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    trigger: str = Field(pattern=r'^(event|binary_sensor)\.[a-z0-9_]{1,128}$')
+    label: str = Field(min_length=1, max_length=60)
+    camera: str | None = Field(default=None, pattern=r'^camera\.[a-z0-9_]{1,128}$')
+
+
 class Sources(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
     calendars: list[str] = Field(default_factory=list, max_length=12)
     cameras: list[str] = Field(default_factory=list, max_length=12)
     writable_calendars: list[str] = Field(default_factory=list, max_length=12)
+    doorbells: list[DoorbellSource] = Field(default_factory=list, max_length=12)
 
     @field_validator('calendars', 'cameras', 'writable_calendars')
     @classmethod
@@ -35,6 +43,8 @@ class Sources(BaseModel):
     @model_validator(mode='after')
     def selected_writers(self):
         if not set(self.writable_calendars)<=set(self.calendars):raise ValueError('Writable calendars must also be shared for reading')
+        if len({d.trigger for d in self.doorbells}) != len(self.doorbells):raise ValueError('Choose each doorbell trigger once')
+        if any(d.camera and d.camera not in self.cameras for d in self.doorbells):raise ValueError('Doorbell cameras must also be shared')
         return self
 
 
@@ -98,18 +108,20 @@ class Experiences:
         for state in states:
             if not isinstance(state, dict): continue
             identifier = state.get('entity_id', '')
-            if not isinstance(identifier, str) or not re.fullmatch(r'(calendar|camera)\.[a-z0-9_]{1,128}', identifier): continue
+            if not isinstance(identifier, str) or not re.fullmatch(r'(calendar|camera|event|binary_sensor)\.[a-z0-9_]{1,128}', identifier): continue
             attrs = state.get('attributes') or {}
+            if not isinstance(attrs,dict):continue
             name = attrs.get('friendly_name')
             items.append({'entity_id': identifier, 'kind': identifier.split('.')[0],
                           'name': name[:160] if isinstance(name, str) else identifier,
                           'can_create':identifier.startswith('calendar.') and type(attrs.get('supported_features')) is int and bool(attrs['supported_features']&1),
                           'available': state.get('state') not in {None, 'unknown', 'unavailable'}})
-        return {'status': 'available', 'items': items[:256]}
+        items.sort(key=lambda i:(i['kind'] not in {'calendar','camera'},i['name']))
+        return {'status': 'available', 'items': items[:512]}
 
     def save_sources(self, sources, revision):
         checked = Sources.model_validate(sources)
-        selected = set(checked.calendars+checked.cameras)
+        selected = set(checked.calendars+checked.cameras+[d.trigger for d in checked.doorbells])
         # Removing all sources remains possible when Home Assistant is offline.
         if selected:
             inventory=self.discovery()['items']

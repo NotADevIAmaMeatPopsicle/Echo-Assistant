@@ -76,7 +76,9 @@ a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
                     if response.headers.get(key):self.send_header(key,response.headers[key])
                 self.send_header('Cache-Control','no-store'); self.send_header('X-Echo-Display-Bridge','1'); self.end_headers(); started=True
                 if self.command!='HEAD':
-                    while block:=response.read(65536): self.wfile.write(block)
+                    while block:=response.read1(65536):
+                        self.wfile.write(block)
+                        self.wfile.flush()
         except (urllib.error.URLError,TimeoutError):
             if not started and display_page:return self.waiting_page()
             if not started: return self.error_reply(503,'Echo host unavailable. Check its address, connection, and pairing status.')

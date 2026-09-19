@@ -13,7 +13,7 @@ card backup is separate from Git; reuse of that card is authorized.
 - [x] Opt-in Home Assistant calendar agenda (read-only software).
 - [x] Daily briefing composition, spoken/typed briefing requests and calendar event creation forms (software; actual calendar writes untested).
 - [x] Camera discovery and opt-in refreshing snapshots (software).
-- [ ] Full-motion camera streams and doorbell event cards.
+- [x] Live MJPEG camera streams and persistent silent doorbell event cards (software; real camera/doorbell acceptance pending).
 - [x] Encrypted shared photo albums and supported local/radio media playback (software).
 - [x] Rich Spotify now-playing display: artwork, metadata, seeking, shuffle/repeat, input level and home-speaker controls (software; live listening acceptance pending).
 - [x] Persistent notification inbox and opt-in announcements on the existing audio endpoint.
@@ -65,6 +65,10 @@ restart-safe duplicate protection, clock changes, permissions and local briefing
 composition; the related source and display-voice checks also pass. Silent browser
 checks cover the form and phone layout. No real calendar events were created.
 
-Next: camera streaming/doorbell cards, announcement routing and intercom.
+Next: announcement routing and intercom. Camera/doorbell software now passes
+22 focused checks together with calendar and Pi bridge coverage; silent browser
+checks verify moving frames, source selection and event-to-camera navigation.
+The current Home Assistant installation has no camera entities, so physical
+camera and doorbell acceptance is still open.
 Pi hands-free wake and acoustic acceptance need an identified microphone and
 speaker. No Pi wake-word or physical audio acceptance claim is made.

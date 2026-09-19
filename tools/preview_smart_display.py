@@ -35,10 +35,13 @@ def fixtures():
     data['/v1/display/voice']={'available':False,'mode':'push_to_talk','message':'Silent preview.'}
     data['/v1/display/sources']={'status':'available','items':[
         {'entity_id':'calendar.household_demo','kind':'calendar','name':'Household · sample','available':True,'can_create':True,'writable':True},
-        {'entity_id':'camera.porch_demo','kind':'camera','name':'Porch · sample','available':False}]}
+        {'entity_id':'camera.porch_demo','kind':'camera','name':'Porch · sample','available':True}]}
     data['/v1/display/source-settings']={'revision':0,'status':'available',
         'sources':{'calendars':['calendar.household_demo'],'cameras':['camera.porch_demo'],'writable_calendars':['calendar.household_demo']},
         'items':deepcopy(data['/v1/display/sources']['items'])}
+    data['/v1/display/source-settings']['items'].append({'entity_id':'event.porch_demo','kind':'event','name':'Front door press · sample','available':True})
+    data['/v1/display/source-settings']['sources']['doorbells']=[]
+    data['/v1/display/doorbells']={'status':'not_selected','events':[],'revision':0}
     data['/v1/display/sources']['revision']=0
     data['/v1/display/agenda']={'status':'available','unavailable':[], 'events':[
         {'id':'a'*32,'calendar':'calendar.household_demo','calendar_name':'Household · sample','title':'A slow Saturday',
@@ -86,16 +89,41 @@ class DisplayPreview(Preview):
 
     def json_reply(self, body, status=200): self.reply(status, json.dumps(body).encode())
 
+    def camera_sample(self, stream=False):
+        import io,time
+        from PIL import Image,ImageDraw
+        def frame(tick):
+            image=Image.new('RGB',(640,360),'#122b3c');draw=ImageDraw.Draw(image)
+            draw.rectangle((240,85,400,350),fill='#286070');draw.rectangle((30,220,160,330),fill='#315440')
+            draw.ellipse((450,35,490,75),fill='#d8d9af')
+            x=40+(tick*9)%500;draw.ellipse((x,260,x+35,295),fill='#9de9cc')
+            draw.text((20,20),'SAMPLE PORCH / LIVE DEMO',fill='#d4eae7')
+            draw.text((20,42),'Frame '+str(tick)+' - generated locally',fill='#d4eae7')
+            out=io.BytesIO();image.save(out,format='JPEG',quality=80);return out.getvalue()
+        if not stream:return self.reply(200,frame(0),'image/jpeg')
+        from backend.camera_stream import multipart
+        self.send_response(200);self.send_header('Content-Type','multipart/x-mixed-replace; boundary=echo-frame')
+        self.send_header('Cache-Control','no-store');self.send_header('Connection','close');self.end_headers()
+        self.close_connection=True
+        try:
+            for tick in range(800):
+                self.wfile.write(multipart(frame(tick)));self.wfile.flush();time.sleep(.125)
+        except (BrokenPipeError,ConnectionResetError):pass
+
     def do_GET(self):
         path = urlsplit(self.path).path
         if path in {'/', '/display'}:
             return self.reply(200, (WEB/'display/index.html').read_bytes(), 'text/html; charset=utf-8')
+        if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
+            return self.camera_sample(path.endswith('/stream'))
         assets = {'/assets/display/display.js':('display/display.js','text/javascript'),
                   '/assets/display/planner.js':('display/planner.js','text/javascript'),
                   '/assets/display/devices.js':('display/devices.js','text/javascript'),
                   '/assets/display/pairing.js':('display/pairing.js','text/javascript'),
                   '/assets/display/lists.js':('display/lists.js','text/javascript'),
                   '/assets/display/experiences.js':('display/experiences.js','text/javascript'),
+                  '/assets/display/doorbells.js':('display/doorbells.js','text/javascript'),
+                  '/assets/display/doorbells.css':('display/doorbells.css','text/css'),
                   '/assets/display/briefing.js':('display/briefing.js','text/javascript'),
                   '/assets/display/briefing.css':('display/briefing.css','text/css'),
                   '/assets/display/photos.js':('display/photos.js','text/javascript'),
@@ -169,8 +197,19 @@ class DisplayPreview(Preview):
             identifiers=set(sources['calendars']+sources['cameras'])
             if not identifiers<={i['entity_id'] for i in state['items']}:raise ValueError()
             state.update(sources=sources,revision=state['revision']+1)
+            self.state['/v1/display/doorbells']={'status':'available' if sources['doorbells'] else 'not_selected','events':[],'revision':state['revision']}
             self.state['/v1/display/sources']={'status':'available' if identifiers else 'not_selected','revision':state['revision'],'items':[{**i,'writable':i['entity_id'] in sources['writable_calendars']} for i in state['items'] if i['entity_id'] in identifiers]}
             return {'sources':sources,'revision':state['revision']}
+        if path=='/v1/demo/doorbell':
+            import secrets,time
+            bindings=self.state['/v1/display/source-settings']['sources']['doorbells']
+            if not bindings:raise ValueError('Select a sample doorbell first')
+            binding=bindings[0]
+            self.state['/v1/display/doorbells']['events'].insert(0,{'id':secrets.token_hex(16),'trigger':binding['trigger'],'label':binding['label'],'camera':binding['camera'],'at':time.time()})
+            return {'status':'demo ring'}
+        if path.startswith('/v1/display/doorbells/events/') and self.command=='DELETE':
+            state=self.state['/v1/display/doorbells'];state['events']=[e for e in state['events'] if e['id']!=path.rsplit('/',1)[1]]
+            return state
         if path=='/v1/display/calendar/events':
             event=CalendarEvent.model_validate(body['event']);policy=self.state['/v1/display/source-settings']
             if body['revision']!=policy['revision'] or event.calendar not in policy['sources']['writable_calendars']:raise ValueError()

@@ -18,7 +18,7 @@ hardware volume. The page displays both when the hardware reports its volume.
 
 On a touchscreen without a keyboard, tap **Connect with phone**. Scan the QR code
 with your phone's camera, sign in to Spotify there if needed, start music, and
-choose Echo in Spotify's device picker. For the first connection, keep the phone
+choose **Round Voice** (the receiver's advertised name) in Spotify's device picker. For the first connection, keep the phone
 and Echo on the same home network. The code is a static link to
 `https://open.spotify.com/`; it is generated locally, contains no credentials,
 and does not perform device authorization or sign the display into an account.

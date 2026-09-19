@@ -96,6 +96,14 @@ class ExperienceTests(unittest.TestCase):
             self.assertEqual(client.get('/v1/display/cameras/camera.porch/snapshot').status_code,200)
             self.assertEqual(client.get('/v1/display/cameras/camera.private/snapshot').status_code,403)
             self.assertEqual(client.get('/v1/display/cameras/camera.porch/snapshot').headers['cache-control'],'no-store')
+            from tests.test_camera_stream import part
+            self.extra=lambda request:httpx.Response(200,content=part()+b'--sample--\r\n',headers={'Content-Type':'multipart/x-mixed-replace; boundary=sample'}) if request.url.path.endswith('/camera.porch') else None
+            streamed=client.get('/v1/display/cameras/camera.porch/stream')
+            self.assertEqual(streamed.status_code,200);self.assertIn(b'--echo-frame',streamed.content)
+            self.assertEqual(streamed.headers['cache-control'],'no-store')
+            self.assertEqual(client.get('/v1/display/cameras/camera.private/stream').status_code,403)
+            self.assertEqual(client.get('/v1/display/doorbells').json()['events'],[])
+            self.extra=None
             client.headers['Authorization']='Bearer '+'synthetic-owner-token-'*3
             self.assertEqual(client.put('/v1/display/source-settings',json={'revision':1,'sources':{}}).status_code,200)
             client.headers['Authorization']='Display '+credential

@@ -86,7 +86,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | Home | Clock, date, weather, named rooms, next timer, live voice status | Voice status currently reflects the existing round audio endpoint |
 | Rooms | Room lights, individual brightness/colour/white temperature, thermostat mode and temperature range, speaker selection and supported playback actions | Existing Home Assistant permission grants and fresh state are required; choosing a device does not act on it |
 | Music | Spotify cover art, title/artist/album, seek bar, previous/play/pause/next, shuffle, repeat and input level; home-speaker selection; saved HTTPS radio presets and local files | Spotify currently plays through the round speaker; the Pi is its remote. Library, playlists and queue browsing open Spotify. Chromecast/AirPlay receivers are not installed. Radio and local files play through the display's output |
-| My day | Local daily briefing; selected calendars; timed/all-day event creation with separate write grants; selected camera snapshots | Creation requires a compatible calendar and owner permission. Snapshots refresh every five seconds after Open view. No camera recording, microphone or camera audio |
+| My day | Local daily briefing; selected calendars; timed/all-day event creation with separate write grants; selected camera streams/snapshots; silent doorbell cards | Creation requires a compatible calendar and owner permission. Live MJPEG depends on the camera integration. No recording or camera audio |
 | Timers | Multiple persisted timers and a quick one-off alarm | Delivery still needs a connected audio endpoint |
 | Planner | Recurring alarms/reminders, daily/weekday/custom repeat, IANA zones, snooze, dismiss, missed events, quiet hours | Spring gaps use the first valid minute; autumn duplicates ring once. Events over 15 minutes late remain visible without sounding |
 | Lists | Shopping, to-do, notes, edit/reorder/complete/delete, encrypted persistence | Explicit text/voice commands such as “Add coffee to my shopping list” are supported; ambiguous deletes ask for clarification |
@@ -140,7 +140,7 @@ a stream already opened directly in a browser; press Stop to end playback.
 
 Push-to-talk capture, request cancellation and reply routing are implemented.
 The next voice stage is hands-free wake, interruption and hardware echo control. Further integrations include calendar event editing and natural-language drafting,
-doorbell event cards/full-motion streams, room intercom/grouped audio, calling,
+room intercom/grouped audio, calling,
 and household/guest profiles. These are not working features yet. Commercial
 video and proprietary casting depend on supported providers and licensing.
 
@@ -355,3 +355,10 @@ python3 deploy/pi/audio_once.py --once --capture-device YOUR_INPUT --playback-de
 The check only lists hardware. `--once` intentionally records and plays a single
 reply, so run it only when ready for a quiet physical test. It uses the same
 paired loopback bridge, keeps recordings in memory, and is never autostarted.
+
+### Cameras and doorbells
+
+Live MJPEG views and encrypted doorbell activity are implemented, with opt-in
+source selection, silent cards and explicit camera opening. See the
+[camera and doorbell setup guide](CAMERAS_AND_DOORBELLS.md) for supported triggers,
+stream limits and remaining physical acceptance.
