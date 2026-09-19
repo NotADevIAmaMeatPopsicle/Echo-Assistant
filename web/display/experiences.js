@@ -45,17 +45,23 @@ extensions.push(renderSources);
 $('agenda-form').onsubmit=event=>{event.preventDefault();agendaEndpoint();delete data.agenda;refresh();};
 $('source-load').onclick=()=>action(async()=>{
   const state=await api('/v1/display/source-settings');sourceRevision=state.revision;
-  const selected=new Set([...state.sources.calendars,...state.sources.cameras]);
+  const selected=new Set([...state.sources.calendars,...state.sources.cameras]),writers=new Set(state.sources.writable_calendars||[]);
   const items=[...state.items];for(const id of selected)if(!items.some(i=>i.entity_id===id))items.push({entity_id:id,name:id,available:false});
   $('source-status').textContent=state.status==='available' ? 'Checked sources are shared with paired displays. Uncheck to remove access.' : 'Home Assistant is unavailable or not configured. You can clear existing selections.';
-  $('source-choices').innerHTML=items.map(i=>`<label class="source-choice"><input type="checkbox" value="${esc(i.entity_id)}" ${selected.has(i.entity_id)?'checked':''}><span>${esc(i.name)}<small class="soft">${esc(i.entity_id)}${i.available ? '' : ' · unavailable'}</small></span></label>`).join('') || empty('No calendar or camera entities were found.');
+  $('source-choices').innerHTML=items.map(i=>`<div class="source-permissions"><label class="source-choice"><input type="checkbox" data-source-read value="${esc(i.entity_id)}" ${selected.has(i.entity_id)?'checked':''}><span>${esc(i.name)}<small class="soft">${esc(i.entity_id)}${i.available ? '' : ' · unavailable'}</small></span></label>${i.can_create||writers.has(i.entity_id)?`<label class="check-label calendar-write-choice"><input type="checkbox" data-source-write value="${esc(i.entity_id)}" ${writers.has(i.entity_id)?'checked':''}>Allow event creation from Echo displays</label>`:''}</div>`).join('') || empty('No calendar or camera entities were found.');
   $('source-form').hidden=false;
 },'Sources loaded.');
 $('source-form').onsubmit=event=>{event.preventDefault();if(sourceRevision===null)return;action(async()=>{
-  const selected=[...$('source-choices').querySelectorAll('input:checked')].map(i=>i.value);
-  const state=await api('/v1/display/source-settings',{revision:sourceRevision,sources:{calendars:selected.filter(i=>i.startsWith('calendar.')),cameras:selected.filter(i=>i.startsWith('camera.'))}},'PUT');
+  const selected=[...$('source-choices').querySelectorAll('[data-source-read]:checked')].map(i=>i.value);
+  const writers=[...$('source-choices').querySelectorAll('[data-source-write]:checked')].map(i=>i.value);
+  const state=await api('/v1/display/source-settings',{revision:sourceRevision,sources:{calendars:selected.filter(i=>i.startsWith('calendar.')),cameras:selected.filter(i=>i.startsWith('camera.')),writable_calendars:writers}},'PUT');
   sourceRevision=state.revision;stopCamera();
 },'Display sources saved.');};
+$('source-choices').addEventListener('change',event=>{
+  const row=event.target.closest('.source-permissions');if(!row)return;
+  if(event.target.hasAttribute('data-source-write')&&event.target.checked)row.querySelector('[data-source-read]').checked=true;
+  if(event.target.hasAttribute('data-source-read')&&!event.target.checked){const write=row.querySelector('[data-source-write]');if(write)write.checked=false;}
+});
 $('camera-choice').onchange=()=>{stopCamera();$('camera-placeholder').textContent='Press Open view to start snapshots.';renderSources();guardButtons();};
 async function cameraFrame(){
   if(!cameraActive || cameraBusy || experiencePage.hidden || document.hidden)return;

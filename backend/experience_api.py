@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from .experiences import Sources, ExperienceUnavailable, ExperienceConflict
 from .home import HomeUnavailable
+from .calendar_events import CalendarEvent
 
 
 class Selection(BaseModel):
@@ -13,7 +14,14 @@ class Selection(BaseModel):
     sources: Sources
 
 
-def install(app, experiences, authorize, owner):
+class CreateEvent(BaseModel):
+    model_config=ConfigDict(extra='forbid',strict=True)
+    revision:int=Field(ge=0)
+    request_id:str=Field(pattern=r'^[a-f0-9]{32}$')
+    event:CalendarEvent
+
+
+def install(app, experiences, authorize, owner, writer=None, briefing=None):
     @app.exception_handler(ExperienceUnavailable)
     async def unavailable(request, error): return JSONResponse({'detail': str(error)}, status_code=503)
 
@@ -43,6 +51,18 @@ def install(app, experiences, authorize, owner):
     @app.get('/v1/display/agenda', dependencies=[Depends(authorize)])
     def agenda(start: str = Query(pattern=r'^\d{4}-\d{2}-\d{2}$'), days: int = Query(default=7, ge=1, le=31)):
         return call(lambda: experiences.agenda(start, days))
+
+    @app.get('/v1/display/briefing',dependencies=[Depends(authorize)])
+    def daily_briefing(timezone:str=Query(min_length=1,max_length=80)):
+        if briefing is None:raise HTTPException(503,'Briefing unavailable')
+        return call(lambda:briefing.get(timezone))
+
+    @app.post('/v1/display/calendar/events')
+    def create_event(body:CreateEvent,principal=Depends(authorize)):
+        if writer is None:raise HTTPException(503,'Calendar creation unavailable')
+        result=call(lambda:writer.create(body.event.model_dump(),body.revision,body.request_id,principal))
+        if briefing:briefing.invalidate()
+        return result
 
     @app.get('/v1/display/cameras/{identifier}/snapshot', dependencies=[Depends(authorize)])
     def snapshot(identifier: str, request: Request):

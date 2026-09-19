@@ -23,6 +23,7 @@ from datetime import date,timedelta
 from backend.photos import Photos
 from backend.media_presets import MediaPresets
 from backend.experiences import Sources
+from backend.calendar_events import CalendarEvent
 
 
 def fixtures():
@@ -33,11 +34,12 @@ def fixtures():
     data['/v1/displays']={'items':[]}
     data['/v1/display/voice']={'available':False,'mode':'push_to_talk','message':'Silent preview.'}
     data['/v1/display/sources']={'status':'available','items':[
-        {'entity_id':'calendar.household_demo','kind':'calendar','name':'Household · sample','available':True},
+        {'entity_id':'calendar.household_demo','kind':'calendar','name':'Household · sample','available':True,'can_create':True,'writable':True},
         {'entity_id':'camera.porch_demo','kind':'camera','name':'Porch · sample','available':False}]}
     data['/v1/display/source-settings']={'revision':0,'status':'available',
-        'sources':{'calendars':['calendar.household_demo'],'cameras':['camera.porch_demo']},
+        'sources':{'calendars':['calendar.household_demo'],'cameras':['camera.porch_demo'],'writable_calendars':['calendar.household_demo']},
         'items':deepcopy(data['/v1/display/sources']['items'])}
+    data['/v1/display/sources']['revision']=0
     data['/v1/display/agenda']={'status':'available','unavailable':[], 'events':[
         {'id':'a'*32,'calendar':'calendar.household_demo','calendar_name':'Household · sample','title':'A slow Saturday',
          'start':date.today().isoformat(),'end':(date.today()+timedelta(days=1)).isoformat(),'all_day':True,'location':''},
@@ -73,6 +75,7 @@ class DisplayPreview(Preview):
     photos = Photos(None,None)
     media = MediaPresets(None,None)
     lock = RLock()
+    calendar_requests=set()
 
     def reply(self, status, body, content_type='application/json; charset=utf-8'):
         self.send_response(status)
@@ -93,6 +96,8 @@ class DisplayPreview(Preview):
                   '/assets/display/pairing.js':('display/pairing.js','text/javascript'),
                   '/assets/display/lists.js':('display/lists.js','text/javascript'),
                   '/assets/display/experiences.js':('display/experiences.js','text/javascript'),
+                  '/assets/display/briefing.js':('display/briefing.js','text/javascript'),
+                  '/assets/display/briefing.css':('display/briefing.css','text/css'),
                   '/assets/display/photos.js':('display/photos.js','text/javascript'),
                   '/assets/display/media.js':('display/media.js','text/javascript'),
                   '/assets/display/music.js':('display/music.js','text/javascript'),
@@ -106,6 +111,17 @@ class DisplayPreview(Preview):
         if path=='/v1/music/artwork/'+'a'*64:
             return self.reply(200,(ROOT/'docs/images/music-sample-cover.svg').read_bytes(),'image/svg+xml')
         with self.lock:
+            if path=='/v1/display/briefing':
+                import time
+                from datetime import datetime
+                today=date.today().isoformat()
+                events=[e for e in self.state['/v1/display/agenda']['events'] if
+                    (e['start']<=today<e['end'] if e['all_day'] else e['start'][:10]==today and datetime.fromisoformat(e['end']).timestamp()>time.time())]
+                items=self.household.snapshot()['items'];tasks=sum(i['kind']=='tasks' and not i['done'] for i in items);shopping=sum(i['kind']=='shopping' and not i['done'] for i in items)
+                return self.json_reply({'status':'complete','partial':False,'date':date.today().isoformat(),'timezone':'Local demo','generated_at':time.time(),
+                    'text':f'A little room to breathe today. It’s partly cloudy, 22°C. {len(events)} calendar events remain today. There are {shopping} things on the shopping list.',
+                    'sources':{'calendar':'available','weather':'available','reminders':'available','lists':'available'},
+                    'event_count':len(events),'reminders':[],'task_count':tasks,'shopping_count':shopping})
             if path == '/v1/display/photos': return self.json_reply(self.photos.snapshot())
             if path == '/v1/display/media': return self.json_reply(self.media.snapshot())
             if path.startswith('/v1/display/photos/'):
@@ -152,8 +168,16 @@ class DisplayPreview(Preview):
             identifiers=set(sources['calendars']+sources['cameras'])
             if not identifiers<={i['entity_id'] for i in state['items']}:raise ValueError()
             state.update(sources=sources,revision=state['revision']+1)
-            self.state['/v1/display/sources']={'status':'available' if identifiers else 'not_selected','items':[i for i in state['items'] if i['entity_id'] in identifiers]}
+            self.state['/v1/display/sources']={'status':'available' if identifiers else 'not_selected','revision':state['revision'],'items':[{**i,'writable':i['entity_id'] in sources['writable_calendars']} for i in state['items'] if i['entity_id'] in identifiers]}
             return {'sources':sources,'revision':state['revision']}
+        if path=='/v1/display/calendar/events':
+            event=CalendarEvent.model_validate(body['event']);policy=self.state['/v1/display/source-settings']
+            if body['revision']!=policy['revision'] or event.calendar not in policy['sources']['writable_calendars']:raise ValueError()
+            if body['request_id'] not in self.calendar_requests:
+                times=event.bounds();self.calendar_requests.add(body['request_id'])
+                self.state['/v1/display/agenda']['events'].append({'id':body['request_id'],'calendar':event.calendar,'calendar_name':'Household · sample','title':event.title,
+                    'start':times.get('start_date',times.get('start_date_time')),'end':times.get('end_date',times.get('end_date_time')),'all_day':event.all_day,'location':event.location})
+            return {'status':'accepted','text':'Demo event created. No real calendar was changed.'}
         if path == '/v1/display/media': return self.media.save(body)
         if path == '/v1/schedules': return self.schedules.save(body['schedule'],body['revision'])
         if path.startswith('/v1/schedules/'):

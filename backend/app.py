@@ -49,6 +49,8 @@ from .household_commands import parse as household_request
 from .display_auth import Displays,DisplayStorageUnavailable
 from .experiences import SourceStore, Experiences
 from .experience_api import install as install_experiences
+from .calendar_events import CalendarWriter
+from .daily_briefing import DailyBriefing, briefing_request
 from .photos import Photos
 from .photo_api import install as install_photos
 from .media_presets import MediaPresets, install as install_media
@@ -119,7 +121,10 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         if authorize(request).startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
     install_schedules(app,schedules,authorize)
     experiences = Experiences(home, SourceStore(runtime_root, store.protector))
-    install_experiences(app, experiences, authorize, owner)
+    briefing=DailyBriefing(experiences,home,schedules,household)
+    echo.briefing=briefing
+    install_experiences(app, experiences, authorize, owner,
+        CalendarWriter(experiences,runtime_root,store.protector,enabled=deployment_mode=='device'),briefing)
     install_photos(app, Photos(runtime_root, store.protector), authorize, owner)
     install_media(app, MediaPresets(runtime_root, store.protector), authorize, owner)
     display_voice=DisplayVoice(runtime_root,store,echo)
@@ -506,7 +511,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             if re.match(r'\s*(?:please\s+)?(?:research\b|look into\b|compare\b)',request.text,re.I):
                 task=research.start(session,request.text)
                 return {'status':'complete','capability':'research','text':'I’ll look into that. The report and sources will appear on the Tasks page.','task_id':task['id']}
-            if routine_request(request.text) or household_request(request.text):
+            if routine_request(request.text) or household_request(request.text) or briefing_request(request.text):
                 return await run_conversation(connection,app.state.speech_stop,
                     partial(echo.respond,allow_home_actions=deployment_mode=='device'),request.text,session,request.lookup)
             if deployment_mode == 'validation' or memory_request(request.text) or request.lookup or lookup_request(request.text):

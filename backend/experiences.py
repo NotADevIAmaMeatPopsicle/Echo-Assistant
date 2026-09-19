@@ -22,14 +22,20 @@ class Sources(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
     calendars: list[str] = Field(default_factory=list, max_length=12)
     cameras: list[str] = Field(default_factory=list, max_length=12)
+    writable_calendars: list[str] = Field(default_factory=list, max_length=12)
 
-    @field_validator('calendars', 'cameras')
+    @field_validator('calendars', 'cameras', 'writable_calendars')
     @classmethod
     def identifiers(cls, values, info):
-        domain = 'calendar' if info.field_name == 'calendars' else 'camera'
+        domain = 'camera' if info.field_name == 'cameras' else 'calendar'
         if len(set(values)) != len(values) or any(not re.fullmatch(domain+r'\.[a-z0-9_]{1,128}', v) for v in values):
             raise ValueError('Choose unique sources from Home Assistant')
         return values
+
+    @model_validator(mode='after')
+    def selected_writers(self):
+        if not set(self.writable_calendars)<=set(self.calendars):raise ValueError('Writable calendars must also be shared for reading')
+        return self
 
 
 class SourceStore:
@@ -97,6 +103,7 @@ class Experiences:
             name = attrs.get('friendly_name')
             items.append({'entity_id': identifier, 'kind': identifier.split('.')[0],
                           'name': name[:160] if isinstance(name, str) else identifier,
+                          'can_create':identifier.startswith('calendar.') and type(attrs.get('supported_features')) is int and bool(attrs['supported_features']&1),
                           'available': state.get('state') not in {None, 'unknown', 'unavailable'}})
         return {'status': 'available', 'items': items[:256]}
 
@@ -105,8 +112,11 @@ class Experiences:
         selected = set(checked.calendars+checked.cameras)
         # Removing all sources remains possible when Home Assistant is offline.
         if selected:
-            known = {item['entity_id'] for item in self.discovery()['items']}
+            inventory=self.discovery()['items']
+            known = {item['entity_id'] for item in inventory}
             if not selected <= known: raise ValueError('A selected source is no longer in Home Assistant')
+            if not set(checked.writable_calendars)<={i['entity_id'] for i in inventory if i['can_create']}:
+                raise ValueError('A writable calendar does not support event creation')
         return self.store.save(checked.model_dump(), revision)
 
     def sources(self):
@@ -115,10 +125,13 @@ class Experiences:
         if not any(selected.values()): return {'status': 'not_selected', 'items': []}
         known = {item['entity_id']: item for item in self.discovery()['items']}
         items = []
-        for kind, ids in selected.items():
+        for kind in ('calendars','cameras'):
+            ids=selected[kind]
             for identifier in ids:
-                items.append(known.get(identifier, {'entity_id': identifier, 'kind': kind[:-1], 'name': identifier, 'available': False}))
-        return {'status': 'available', 'items': items}
+                item=dict(known.get(identifier, {'entity_id': identifier, 'kind': kind[:-1], 'name': identifier, 'available': False}))
+                item['writable']=identifier in selected['writable_calendars'] and item.get('can_create',False)
+                items.append(item)
+        return {'status': 'available', 'items': items, 'revision':self.store.snapshot()['revision']}
 
     def agenda(self, start, days=7):
         first = date.fromisoformat(start)

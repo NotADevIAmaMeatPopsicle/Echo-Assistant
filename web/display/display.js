@@ -23,7 +23,7 @@ async function api(path, body, method = 'POST', signal) {
   let result; try { result = await response.json(); } catch { throw new Error('Echo returned an unreadable response.'); }
   if (!response.ok) {
     if (response.status === 401) { $('notice').textContent = response.headers.get('X-Echo-Display-Bridge')==='1' ? 'This display needs pairing again. Open Displays in the owner’s Echo settings to create a new pairing code.' : 'Sign in through the Echo launcher, then open Display. This screen needs an active Echo session.'; $('notice').hidden = false; }
-    throw new Error(response.status === 401 ? 'Echo sign-in required.' : typeof result.detail === 'string' ? result.detail : `The request was not accepted (${response.status}).`);
+    const error=new Error(response.status === 401 ? 'Echo sign-in required.' : typeof result.detail === 'string' ? result.detail : `The request was not accepted (${response.status}).`);error.status=response.status;throw error;
   }
   return result;
 }

@@ -172,6 +172,7 @@ class EchoAgent:
         self.home_actions = None
         self.routines = None
         self.household = None
+        self.briefing = None
         self.home_revision = None
 
     def clear(self, session=None):
@@ -250,6 +251,13 @@ class EchoAgent:
             home_revision = self.home_access.snapshot()['revision'] if self.home_access else None
             check_cancel(cancel)
             context_token, messages = self.context(session)
+            from .daily_briefing import briefing_request
+            if self.briefing and briefing_request(text):
+                if lookup:return {'status':'unavailable','capability':'briefing','text':'Turn off web lookup to read your private daily briefing.'}
+                try:reply=self.briefing.get()
+                except (ValueError,RuntimeError):return {'status':'unavailable','capability':'briefing','text':'I couldn’t assemble the briefing. Check the selected calendars and time zone on My day.'}
+                check_cancel(cancel)
+                return {'status':reply['status'],'capability':'briefing','text':reply['text'],'briefing':reply}
             household = household_request(text)
             if household and self.household:
                 if lookup or lookup_request(text):

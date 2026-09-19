@@ -11,7 +11,7 @@ card backup is separate from Git; reuse of that card is authorized.
 - [x] Detailed lights, climate modes and speaker playback controls (software; simulated devices only).
 - [x] Persistent, revocable display pairing and unattended Pi loopback bridge (software).
 - [x] Opt-in Home Assistant calendar agenda (read-only software).
-- [ ] Daily briefing composition and calendar event creation.
+- [x] Daily briefing composition, spoken/typed briefing requests and calendar event creation forms (software; actual calendar writes untested).
 - [x] Camera discovery and opt-in refreshing snapshots (software).
 - [ ] Full-motion camera streams and doorbell event cards.
 - [x] Encrypted shared photo albums and supported local/radio media playback (software).
@@ -59,6 +59,12 @@ shared typed/spoken conversation with microphone control at right. Browser check
 cover that layout, retained messages, simulated recording, delayed permission
 cancellation, and phone width. None used physical audio or home actions.
 
-Next: daily briefing/calendar creation and remaining household integrations.
+My day now includes a local daily briefing, explicit calendar creation permissions,
+and timed/all-day event forms. Seven focused Python tests cover calendar dispatch,
+restart-safe duplicate protection, clock changes, permissions and local briefing
+composition; the related source and display-voice checks also pass. Silent browser
+checks cover the form and phone layout. No real calendar events were created.
+
+Next: camera streaming/doorbell cards, announcement routing and intercom.
 Pi hands-free wake and acoustic acceptance need an identified microphone and
 speaker. No Pi wake-word or physical audio acceptance claim is made.
