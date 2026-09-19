@@ -52,6 +52,8 @@ from .experience_api import install as install_experiences
 from .calendar_events import CalendarWriter
 from .daily_briefing import DailyBriefing, briefing_request
 from .doorbells import Doorbells
+from .announcements import Announcements, AnnouncementUnavailable
+from .announcement_api import install as install_announcements
 from .photos import Photos
 from .photo_api import install as install_photos
 from .media_presets import MediaPresets, install as install_media
@@ -128,6 +130,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     def owner(request:Request):
         if authorize(request).startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
     install_schedules(app,schedules,authorize)
+    announcements=Announcements(runtime_root,store.protector,displays,schedules,
+        lambda:voice_status(runtime_root) if runtime_root else {'status':'disconnected'})
+    install_announcements(app,announcements,store,authorize,owner)
     experiences = Experiences(home, SourceStore(runtime_root, store.protector))
     doorbells=Doorbells(experiences,runtime_root,store.protector)
     briefing=DailyBriefing(experiences,home,schedules,household)
@@ -202,7 +207,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
 
     @app.get('/v1/display/session')
     def current_display_session(session=Depends(authorize)):
-        return {'role':'display' if session.startswith('display:') else 'owner'}
+        return {'role':'display' if session.startswith('display:') else 'owner',
+                'receiver_id':session.split(':',1)[1] if session.startswith('display:') else None}
 
     @app.get('/v1/household', dependencies=[Depends(authorize)])
     def household_state(): return household.snapshot()
@@ -499,9 +505,13 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         except ValueError as error:
             raise HTTPException(422, str(error)) from error
 
-    @app.get("/v1/state", dependencies=[Depends(authorize)])
-    def state():
-        return {"timers": assistant.timer_states()+schedules.timer_states(), "capabilities": ["clock", "timer", "schedules"]}
+    @app.get("/v1/state")
+    def state(request:Request,session=Depends(authorize)):
+        result={"timers": assistant.timer_states()+schedules.timer_states(), "capabilities": ["clock", "timer", "schedules"]}
+        if session=='device' and request.headers.get('x-echo-audio-receiver')=='round':
+            try:result['audio_inbox']=announcements.inbox('round','round')
+            except AnnouncementUnavailable:result['audio_inbox']={'enabled':False,'ready':False,'status':'unavailable','items':[],'active':[]}
+        return result
 
     @app.post("/v1/text")
     async def text(request: TextRequest, connection: Request, session=Depends(authorize)):

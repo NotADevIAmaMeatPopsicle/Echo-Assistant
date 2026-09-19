@@ -17,7 +17,8 @@ card backup is separate from Git; reuse of that card is authorized.
 - [x] Encrypted shared photo albums and supported local/radio media playback (software).
 - [x] Rich Spotify now-playing display: artwork, metadata, seeking, shuffle/repeat, input level and home-speaker controls (software; live listening acceptance pending).
 - [x] Persistent notification inbox and opt-in announcements on the existing audio endpoint.
-- [ ] Per-room announcement routing and intercom.
+- [x] Per-room announcement routing, opt-in display/round receivers and delivery receipts (software; physical listening pending).
+- [ ] Two-way intercom between room endpoints.
 - [x] Pi push-to-talk/ALSA adapter and request-specific reply routing (software; simulated audio only).
 - [ ] Pi hands-free wake, interruption and physical echo-control acceptance.
 - [x] Pi pairing/install/rollback client bundle; installed and OS restart verified.
@@ -65,7 +66,13 @@ restart-safe duplicate protection, clock changes, permissions and local briefing
 composition; the related source and display-voice checks also pass. Silent browser
 checks cover the form and phone layout. No real calendar events were created.
 
-Next: announcement routing and intercom. Camera/doorbell software now passes
+Next: two-way intercom. Room announcements now include room assignments, explicit
+destination selection, quiet hours, five-minute expiry, cancellation, protected
+delivery history, and receiver-reported playback. Twenty-three focused Python
+checks cover the new routing and existing timer/display-auth paths; silent browser
+checks cover sending and receiving. See [Room audio](ROOM_AUDIO.md).
+
+Camera/doorbell software now passes
 22 focused checks together with calendar and Pi bridge coverage; silent browser
 checks verify moving frames, source selection and event-to-camera navigation.
 The current Home Assistant installation has no camera entities, so physical

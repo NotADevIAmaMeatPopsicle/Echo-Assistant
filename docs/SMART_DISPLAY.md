@@ -90,7 +90,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | Timers | Multiple persisted timers and a quick one-off alarm | Delivery still needs a connected audio endpoint |
 | Planner | Recurring alarms/reminders, daily/weekday/custom repeat, IANA zones, snooze, dismiss, missed events, quiet hours | Spring gaps use the first valid minute; autumn duplicates ring once. Events over 15 minutes late remain visible without sounding |
 | Lists | Shopping, to-do, notes, edit/reorder/complete/delete, encrypted persistence | Explicit text/voice commands such as “Add coffee to my shopping list” are supported; ambiguous deletes ask for clarification |
-| Notifications | Persisted household notes; explicit spoken announcements; delivery receipts | Silent by default. Spoken announcements use the existing connected audio endpoint, respect quiet hours, and do not broadcast to room speakers |
+| Notifications & room audio | Persisted household notes; room-targeted announcements and delivery receipts | [Room receivers](ROOM_AUDIO.md) are opt-in, respect quiet hours and expire queued messages after five minutes. Two-way intercom is pending. |
 | Routines | Review and run saved routines | Existing device grants and action checks apply |
 | Echo | Existing conversation, web research, memory and cited sources; explicit home-control opt-in; server-side Stop | Push-to-talk records up to eight seconds and returns speech to this display; Pi wake words and audio hardware acceptance remain open |
 | Settings | Display preferences, encrypted shared photo album, camera/calendar selection, radio presets, display pairing and revocation | Only the owner can change sources, upload/remove shared photos, manage radios or pair displays |

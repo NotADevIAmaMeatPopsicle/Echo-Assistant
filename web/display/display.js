@@ -101,7 +101,7 @@ function renderVoice() {
     armed:['ready','Ready when you are','Say “Hey Echo” or “Okay Echo” to the audio endpoint.'],
     activation:['listening','I’m here.','Wait for the cue, then speak.'], listening:['listening','Listening…','Your connected Echo is listening.'],
     thinking:['thinking','A little thinking…','Echo is working on your request.'], speaking:['speaking','Here’s what I found.','Replying through the connected speaker.'],
-    music:['ready','Enjoy the moment.','Music is playing through Echo.'], alarm:['speaking','Time’s up.','Check your timers.'],
+    music:['ready','Enjoy the moment.','Music is playing through Echo.'], alarm:data.voice?.announcement ? ['speaking','A message for your room.','The round speaker is playing an announcement.'] : ['speaking','Time’s up.','Check your timers.'],
     cooldown:['ready','One moment…','The audio endpoint is getting ready.'], muted:['muted','A quiet moment.','The connected Echo microphone is muted.'],
     connecting:['disconnected','Round speaker offline','This display can still use chat and home controls.'], disconnected:['disconnected','Round speaker offline','This display can still use chat and home controls.']
   };

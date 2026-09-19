@@ -3,6 +3,7 @@ import time
 import re
 from .speech import synthesize
 from .speech_jobs import SpeechJobs
+from .round_announcements import RoundAnnouncements
 
 
 class Alarms:
@@ -19,9 +20,13 @@ class Alarms:
         self.available = False
         self.action_kind = None
         self.select_id = None
+        self.messages = RoundAnnouncements(client,worker)
+
+    @property
+    def is_announcement(self): return self.messages.playing
 
     def _request(self, method, path, body=None):
-        response = self.client.request(method, path, **({'json': body} if body is not None else {})); response.raise_for_status()
+        response = self.client.request(method, path, headers={'X-Echo-Audio-Receiver':'round'}, **({'json': body} if body is not None else {})); response.raise_for_status()
         return response.json()
 
     def receive(self, line):
@@ -83,37 +88,44 @@ class Alarms:
             self.action = None; self.action_id = None; self.action_kind = None; self.next_poll = 0
         if self.poll and self.poll.done():
             try:
-                self.timers = self.poll.result()['timers']; self.available = True
+                state = self.poll.result()
+                self.timers = state['timers']; self.available = True
+                self.messages.update(state.get('audio_inbox',{}))
                 if self.select_id:
                     self.index = next((i for i, timer in enumerate(self.timers) if timer['id'] == self.select_id), 0)
                     self.select_id = None
             except Exception:
-                self.timers = []; self.available = False
+                self.timers = []; self.available = False; self.messages.update({})
             self.poll = None; self.render()
         if not self.poll and now >= self.next_poll:
             self.poll = self.worker.submit(self._request, 'GET', '/v1/state'); self.next_poll = now+1
-        if not self.delivering and not self.speech and not self.action and now >= self.next_alarm:
+        if not self.delivering and not self.speech and not self.action and not self.messages.playing and not self.messages.job and now >= self.next_alarm:
             timer = next((timer for timer in self.timers if timer['finished'] and not timer['notified']), None)
             if timer:
                 self.delivering = timer['id']
                 self.index = self.timers.index(timer); self.render()
                 self.speech = self.speech_jobs.submit(synthesize, timer.get('spoken_text') or 'Your timer is ready.')
 
-    def take(self):
+    def take(self,allow_announcements=True):
+        if not allow_announcements:self.messages.cancel()
         if self.speech and self.speech.done():
             try: pcm = self.speech.result()
             except Exception:
                 self.retry(); return None
             self.speech = None
             return pcm
+        if not self.delivering and not self.action and allow_announcements:return self.messages.take()
         return None
 
-    def finished(self):
+    def finished(self,outcome='played'):
+        if self.messages.playing:
+            self.messages.finished(outcome);return
         if self.delivering and not self.action:
             self.action_id = self.delivering
             self.action_kind = 'ack'
             self.action = self.worker.submit(self._request, 'POST', '/v1/timers/'+self.delivering+'/ack')
 
     def retry(self):
+        self.messages.cancel('failed')
         if self.speech: self.speech.cancel()
         self.delivering = None; self.speech = None; self.next_alarm = time.monotonic()+5

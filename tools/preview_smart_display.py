@@ -24,6 +24,9 @@ from backend.photos import Photos
 from backend.media_presets import MediaPresets
 from backend.experiences import Sources
 from backend.calendar_events import CalendarEvent
+from backend.announcements import Announcements
+from backend.announcement_api import Send,Configure
+from types import SimpleNamespace
 
 
 def fixtures():
@@ -79,6 +82,8 @@ class DisplayPreview(Preview):
     media = MediaPresets(None,None)
     lock = RLock()
     calendar_requests=set()
+    announcements=Announcements(None,None,SimpleNamespace(snapshot=lambda:[{'id':'a'*32,'name':'Kitchen display · sample'}]),schedules,lambda:{'status':'disconnected'})
+    announcements.configure([{'id':'round','room':'Living room','enabled':True},{'id':'a'*32,'room':'Kitchen','enabled':True}],0)
 
     def reply(self, status, body, content_type='application/json; charset=utf-8'):
         self.send_response(status)
@@ -117,6 +122,8 @@ class DisplayPreview(Preview):
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
             return self.camera_sample(path.endswith('/stream'))
         assets = {'/assets/display/display.js':('display/display.js','text/javascript'),
+                  '/assets/display/announcements.js':('display/announcements.js','text/javascript'),
+                  '/assets/display/announcements.css':('display/announcements.css','text/css'),
                   '/assets/display/planner.js':('display/planner.js','text/javascript'),
                   '/assets/display/devices.js':('display/devices.js','text/javascript'),
                   '/assets/display/pairing.js':('display/pairing.js','text/javascript'),
@@ -157,6 +164,8 @@ class DisplayPreview(Preview):
                 try:return self.reply(200,self.photos.read(path.rsplit('/',1)[-1]),'image/jpeg')
                 except KeyError:return self.json_reply({'detail':'Photo not found'},404)
             if path == '/v1/state': return self.json_reply({'timers':self.timers.timer_states()+self.schedules.timer_states()})
+            if path == '/v1/audio/rooms':return self.json_reply(self.announcements.catalog())
+            if path == '/v1/audio/messages':return self.json_reply(self.announcements.reports('demo'))
             if path == '/v1/schedules': return self.json_reply(self.schedules.snapshot())
             if path == '/v1/household': return self.json_reply(self.household.snapshot())
             if path in self.state: return self.json_reply(self.state[path])
@@ -190,6 +199,13 @@ class DisplayPreview(Preview):
     do_PATCH = do_DELETE = do_PUT = do_POST
 
     def mutate(self, path, body):
+        if path=='/v1/audio/rooms' and self.command=='PUT':
+            parsed=Configure.model_validate(body)
+            return self.announcements.configure([e.model_dump() for e in parsed.endpoints],parsed.revision)
+        if path=='/v1/audio/messages' and self.command=='POST':
+            parsed=Send.model_validate(body)
+            return self.announcements.send(parsed.id,'demo',parsed.title,parsed.message,parsed.targets,parsed.revision,parsed.issued_at)
+        if path.startswith('/v1/audio/messages/') and self.command=='DELETE':return self.announcements.cancel(path.rsplit('/',1)[-1],'demo')
         if path == '/v1/display/source-settings':
             state=self.state[path]
             if body['revision']!=state['revision']:raise ScheduleConflict('Sources changed')

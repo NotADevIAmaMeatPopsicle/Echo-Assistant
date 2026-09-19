@@ -17,6 +17,9 @@ class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if method=='GET' and path in {'/v1/audio/rooms','/v1/audio/messages','/v1/audio/inbox'}:return True
+    if method=='POST' and (path in {'/v1/audio/messages','/v1/audio/receiver'} or re.fullmatch(r'/v1/audio/inbox/[a-f0-9]{32}/(?:claim|audio|receipt)',path)):return True
+    if method=='DELETE' and re.fullmatch(r'/v1/audio/messages/[a-f0-9]{32}',path):return True
     reads={'/v1/voice','/v1/home','/v1/display/home','/v1/state','/v1/household','/v1/schedules',
            '/v1/routines','/v1/memory','/v1/tasks','/v1/chat/activity','/v1/display/session',
            '/v1/display/sources','/v1/display/agenda','/v1/display/photos','/v1/display/media','/v1/display/voice','/v1/display/briefing','/v1/display/doorbells'}

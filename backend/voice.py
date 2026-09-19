@@ -278,6 +278,10 @@ def run_session(args, lifecycle, model, recovery, music):
                     elif line.startswith("EVENT mic_muted="):
                         finish_sample('cancelled')
                         status["muted"] = line.endswith("=1")
+                        if status['muted']:
+                            if phase=='alarm' and alarms.is_announcement:
+                                speaker.stop();phase,until='cooldown',now+.4
+                            alarms.messages.cancel()
                         if not status['muted'] and recognition.echo_ready:
                             port.write(b'MIC_DUPLEX 1\n')
                         last_pcm = now
@@ -287,7 +291,8 @@ def run_session(args, lifecycle, model, recovery, music):
                         if speaker.active and phase not in {'music', 'alarm'}: speaker.stop()
                     elif line == "EVENT cancelled=1":
                         finish_sample('cancelled')
-                        if phase == 'alarm': alarms.finished()
+                        if phase == 'alarm': alarms.finished('cancelled')
+                        alarms.messages.cancel()
                         phase, until = "cooldown", now+2
                         recognition.reset()
                         if pending: pending.cancel(); pending = None
@@ -296,7 +301,8 @@ def run_session(args, lifecycle, model, recovery, music):
                     elif line == "EVENT talk=1" and not status["muted"]:
                         finish_sample('cancelled')
                         last_pcm = now
-                        if phase == 'alarm': alarms.finished()
+                        if phase == 'alarm': alarms.finished('cancelled')
+                        alarms.messages.cancel()
                         if pending: pending.cancel(); pending = None
                         resume_music = activate(port, speaker, music, phase, activation) or resume_music
                         phase = "activation"
@@ -307,6 +313,8 @@ def run_session(args, lifecycle, model, recovery, music):
                             music.command(action)
                 display.pump()
                 alarms.pump()
+                if phase=='alarm' and alarms.is_announcement and alarms.messages.stop_requested:
+                    speaker.stop();alarms.finished('cancelled');phase,until='cooldown',now+.4;last_pcm=now
                 requested_music=take_music_command(ROOT,lifecycle.identity)
                 if requested_music:
                     # An explicit Pause also cancels Talk/alarm's deferred resume.
@@ -343,10 +351,11 @@ def run_session(args, lifecycle, model, recovery, music):
                 if phase == "armed" and music.status == 'playing' and not music.pcm.empty():
                     speaker.start_stream(music.read); phase = "music"
                 if phase in {'armed', 'music'}:
-                    alarm_pcm = alarms.take()
+                    alarm_pcm = alarms.take(allow_announcements=not status['muted'])
                     if alarm_pcm:
                         if phase == 'music': music.command('pause'); music.clear(); resume_music = True
-                        speaker.start(alarm_pcm, kind='A'); phase = 'alarm'
+                        if alarms.is_announcement:port.write(b'VOICE_REPLY Room announcement\n')
+                        speaker.start(alarm_pcm, kind='V' if alarms.is_announcement else 'A'); phase = 'alarm'
                 if now-last_music_ui >= 1:
                     safe = lambda text: re.sub(r'[^ -~]', ' ', str(text))[:28]
                     port.write(f"MUSIC_STATE {safe(music.status)}\nMUSIC_TITLE {safe(music.title)}\nMUSIC_ARTIST {safe(music.artist)}\n".encode())
@@ -379,7 +388,7 @@ def run_session(args, lifecycle, model, recovery, music):
                         phase, until = "cooldown", now+1
                         last_pcm = now
                     if phase in {'speaking', 'alarm'} and not speaker.active:
-                        if phase == 'alarm': alarms.finished()
+                        if phase == 'alarm': alarms.finished('played' if speaker.consumed>0 and speaker.underruns==0 else 'failed')
                         elif sample_id:
                             complete=speaker.consumed>0 and speaker.underruns==0
                             finish_sample('complete' if complete else 'failed','' if complete else 'Speaker playback was incomplete')
@@ -412,6 +421,7 @@ def run_session(args, lifecycle, model, recovery, music):
                 recognition.set_mode(recognition_mode(phase, status['muted'], recognition.echo_ready))
                 for event in recognition.poll():
                     if phase in {'armed', 'music'} and event['kind'] == 'wake':
+                        alarms.messages.cancel()
                         resume_music = activate(port, speaker, music, phase, activation) or resume_music
                         status['triggers'] += 1
                         phase = 'activation'
@@ -442,6 +452,7 @@ def run_session(args, lifecycle, model, recovery, music):
                 if now-last_pcm > 4 and not status["muted"] and phase not in {"speaking", "music", "alarm"}:
                     raise RuntimeError("Microphone stream stopped; disarming")
                 status['phase'] = phase
+                status['announcement'] = alarms.is_announcement
                 status["status"] = "muted" if status["muted"] else phase
                 if now-last_status >= 1:
                     write_status(status); last_status = now

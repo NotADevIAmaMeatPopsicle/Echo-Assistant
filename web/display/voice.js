@@ -4,6 +4,7 @@ let micStream=null,micContext=null,micNode=null,micChunks=[],micSamples=0,micOpe
 const voicePlayer=$('voice-reply');voicePlayer.volume=.02;
 function voiceButtons(){
   displayCaptureBusy=micOpening || voiceCancelling || !!micStream || !!voiceRequest || !voicePlayer.paused;
+  document.dispatchEvent(new Event('echo:audio-focus'));
   $('voice-start').dataset.unavailable=String(!data.displayVoice?.available || microphoneState==='none' || micOpening || voiceCancelling || !!micStream || !!voiceRequest || !!chatAbort);
   $('voice-send').hidden=!micStream;$('voice-cancel').hidden=!micOpening && !micStream && !voiceRequest && voicePlayer.paused;
   $('voice-start').hidden=!!micStream || !!voiceRequest;
