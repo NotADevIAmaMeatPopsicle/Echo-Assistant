@@ -33,6 +33,11 @@ preview server clears its data. Workspace links explain their live counterpart.
 
 ![Room controls, thermostat, and speaker selection with synthetic data](images/display-rooms.png)
 
+![Music player with cover art, track progress, shuffle, repeat and volume; synthetic album](images/display-music.png)
+
+See [Music on the smart display](MUSIC_DISPLAY.md) for controls, audio destinations,
+receiver upgrades and the limits of Spotify library browsing and casting.
+
 The initial layout targets **1024 × 600 landscape**, with responsive layouts for
 larger displays and phones. Its blue background, luminous ring, mint accents,
 and listening states share the round device's visual identity. Software dimming
@@ -73,7 +78,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | --- | --- | --- |
 | Home | Clock, date, weather, named rooms, next timer, live voice status | Voice status currently reflects the existing round audio endpoint |
 | Rooms | Room lights, individual brightness/colour/white temperature, thermostat mode and temperature range, speaker selection and supported playback actions | Existing Home Assistant permission grants and fresh state are required; choosing a device does not act on it |
-| Music | Existing Spotify controls; saved HTTPS radio presets; local audio/video files on the display | Radio contacts the chosen provider only when Play is pressed. Local files stay in the browser session. Codec support varies; no proprietary casting or DRM claim |
+| Music | Spotify cover art, title/artist/album, seek bar, previous/play/pause/next, shuffle, repeat and input level; home-speaker selection; saved HTTPS radio presets and local files | Spotify currently plays through the round speaker; the Pi is its remote. Library, playlists and queue browsing open Spotify. Chromecast/AirPlay receivers are not installed. Radio and local files play through the display's output |
 | My day | Selected Home Assistant calendars, all-day and timezone-aware events, selected camera snapshots | Read-only calendars; snapshots refresh every five seconds after Open view. No camera recording, microphone or camera audio |
 | Timers | Multiple persisted timers and a quick one-off alarm | Delivery still needs a connected audio endpoint |
 | Planner | Recurring alarms/reminders, daily/weekday/custom repeat, IANA zones, snooze, dismiss, missed events, quiet hours | Spring gaps use the first valid minute; autumn duplicates ring once. Events over 15 minutes late remain visible without sounding |

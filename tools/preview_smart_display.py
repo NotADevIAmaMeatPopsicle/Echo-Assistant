@@ -45,6 +45,11 @@ def fixtures():
          'start':date.today().isoformat()+'T18:30:00-04:00','end':date.today().isoformat()+'T20:00:00-04:00','all_day':False,'location':'The neighbourhood café'}]}
     data['/v1/voice'] = {'status':'armed', 'phrases':['hey echo','okay echo'],
         'music':{'status':'paused','title':'A little room to breathe','artist':'Sample track · demo only'}}
+    data['/v1/voice']['device']={'volume':2}
+    data['/v1/music/now-playing']={'available':True,'status':'paused','title':'Room to breathe',
+        'artist':'North Coast','album':'Echo Sessions · sample album','duration_ms':246000,'position_ms':83000,
+        'volume':75,'shuffle':False,'repeat':'off','explicit':False,'capabilities':['seek','shuffle','repeat','volume'],
+        'artwork':'/v1/music/artwork/'+'a'*64,'open_url':''}
     home = data['/v1/home']; home['status'] = 'configured'
     home['lights']['revision'] = revision
     for room, identifier in zip(home['lights']['rooms'], ['bedroom','living_room','dining_room','patio']): room['id'] = identifier
@@ -90,12 +95,16 @@ class DisplayPreview(Preview):
                   '/assets/display/experiences.js':('display/experiences.js','text/javascript'),
                   '/assets/display/photos.js':('display/photos.js','text/javascript'),
                   '/assets/display/media.js':('display/media.js','text/javascript'),
+                  '/assets/display/music.js':('display/music.js','text/javascript'),
+                  '/assets/display/music.css':('display/music.css','text/css'),
                   '/assets/display/voice.js':('display/voice.js','text/javascript'),
                   '/assets/display/capture-worklet.js':('display/capture-worklet.js','text/javascript'),
                   '/assets/display/display.css':('display/display.css','text/css'),
                   '/assets/icon.svg':('icon.svg','image/svg+xml')}
         if path in assets:
             name, mime = assets[path]; return self.reply(200,(WEB/name).read_bytes(),mime)
+        if path=='/v1/music/artwork/'+'a'*64:
+            return self.reply(200,(ROOT/'docs/images/music-sample-cover.svg').read_bytes(),'image/svg+xml')
         with self.lock:
             if path == '/v1/display/photos': return self.json_reply(self.photos.snapshot())
             if path == '/v1/display/media': return self.json_reply(self.media.snapshot())
@@ -191,8 +200,12 @@ class DisplayPreview(Preview):
             if command in {'up','down'}: attrs['volume_level'] = max(0,min(1,attrs['volume_level'] + (.02 if command=='up' else -.02)))
             elif command in {'mute','unmute'}: attrs['is_volume_muted'] = command=='mute'
         elif path == '/v1/music/control':
-            music = self.state['/v1/voice']['music']
+            music = self.state['/v1/music/now-playing']
             if body['action'] == 'toggle': music['status'] = 'paused' if music['status']=='playing' else 'playing'
+            elif body['action'] in {'volume','shuffle','repeat'}:music[body['action']]=body['value']
+            elif body['action']=='seek':music['position_ms']=body['value']
+            elif body['action'] in {'next','previous'}:music['position_ms']=0
+            self.state['/v1/voice']['music']['status']=music['status']
         elif path.startswith('/v1/routines/') and path.endswith('/run'): pass
         else: raise ValueError('No demo action')
         return {'text':'Demo updated. No real device was changed.'}

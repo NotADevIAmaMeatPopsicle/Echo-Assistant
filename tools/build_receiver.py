@@ -14,6 +14,7 @@ VERSION = '0.8.0'
 SETUP = '''    // Round Voice: only the parent process owns this bounded control pipe.
     player_event_handler::round_voice_event(&std::collections::HashMap::from([
         ("PLAYER_EVENT", "receiver_ready".to_owned()),
+        ("UI_VERSION", "2".to_owned()),
     ]));
     let (control_tx, mut control_rx) = tokio::sync::mpsc::channel::<String>(16);
     std::thread::spawn(move || {
@@ -36,6 +37,19 @@ BRANCH = '''            control = control_rx.recv() => {
                         "next" => receiver.next(),
                         "previous" => receiver.prev(),
                         "transfer" => receiver.transfer(None),
+                        "shuffle true" => receiver.shuffle(true),
+                        "shuffle false" => receiver.shuffle(false),
+                        "repeat off" => { let _ = receiver.repeat_track(false); receiver.repeat(false) },
+                        "repeat context" => { let _ = receiver.repeat_track(false); receiver.repeat(true) },
+                        "repeat track" => receiver.repeat_track(true),
+                        value if value.starts_with("seek ") => {
+                            let Some(position) = value[5..].parse::<u32>().ok().filter(|v| *v <= 86400000) else { continue };
+                            receiver.set_position_ms(position)
+                        },
+                        value if value.starts_with("volume ") => {
+                            let Some(volume) = value[7..].parse::<u32>().ok().filter(|v| *v <= 100) else { continue };
+                            receiver.set_volume((volume * 65535 / 100) as u16)
+                        },
                         _ => continue,
                     };
                 }

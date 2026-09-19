@@ -15,6 +15,7 @@ card backup is separate from Git; reuse of that card is authorized.
 - [x] Camera discovery and opt-in refreshing snapshots (software).
 - [ ] Full-motion camera streams and doorbell event cards.
 - [x] Encrypted shared photo albums and supported local/radio media playback (software).
+- [x] Rich Spotify now-playing display: artwork, metadata, seeking, shuffle/repeat, input level and home-speaker controls (software; live listening acceptance pending).
 - [x] Persistent notification inbox and opt-in announcements on the existing audio endpoint.
 - [ ] Per-room announcement routing and intercom.
 - [x] Pi push-to-talk/ALSA adapter and request-specific reply routing (software; simulated audio only).

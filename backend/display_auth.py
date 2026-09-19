@@ -20,6 +20,7 @@ def allowed(method,path):
     reads={'/v1/voice','/v1/home','/v1/display/home','/v1/state','/v1/household','/v1/schedules',
            '/v1/routines','/v1/memory','/v1/tasks','/v1/chat/activity','/v1/display/session',
            '/v1/display/sources','/v1/display/agenda','/v1/display/photos','/v1/display/media','/v1/display/voice'}
+    if method=='GET' and (path=='/v1/music/now-playing' or re.fullmatch(r'/v1/music/artwork/[a-f0-9]{64}',path)): return True
     if method=='GET' and re.fullmatch(r'/v1/display/photos/[a-f0-9]{32}',path): return True
     if method=='GET' and re.fullmatch(r'/v1/display/cameras/camera\.[a-z0-9_]{1,128}/snapshot',path): return True
     if method=='GET' and (path in reads or re.fullmatch(r'/v1/tasks/[a-f0-9]{32}',path)): return True

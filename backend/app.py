@@ -8,11 +8,11 @@ from typing import Literal
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, StrictInt, StrictBool, StrictStr
 from .core import Assistant, TimerStorageUnavailable
 from .home import HomeBridge, HomeConfig, HomeUnavailable
 from .home_catalog import HomeCatalog
@@ -284,12 +284,26 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
 
     class MusicAction(BaseModel):
         model_config = ConfigDict(extra='forbid')
-        action: Literal['play','pause','toggle','next','previous']
+        action: Literal['play','pause','toggle','next','previous','seek','volume','shuffle','repeat']
+        value: StrictInt | StrictBool | StrictStr | None = None
+
+    from .music_now_playing import snapshot as music_snapshot, Artwork
+    artwork=Artwork()
+
+    @app.get('/v1/music/now-playing',dependencies=[Depends(authorize)])
+    def music_now_playing():return JSONResponse(music_snapshot(runtime_root),headers={'Cache-Control':'no-store'})
+
+    @app.get('/v1/music/artwork/{key}',dependencies=[Depends(authorize)])
+    def music_artwork(key:str):
+        import re
+        if not re.fullmatch('[a-f0-9]{64}',key):raise HTTPException(404,'Cover unavailable')
+        try:return Response(artwork.get(runtime_root,key),media_type='image/jpeg',headers={'Cache-Control':'no-store'})
+        except (OSError,ValueError,KeyError):raise HTTPException(404,'Cover unavailable') from None
 
     @app.post('/v1/music/control',dependencies=[Depends(authorize)])
     def music_control(command:MusicAction):
         if deployment_mode=='validation':raise HTTPException(409,'Playback is disabled on the validation host')
-        try:return request_music(runtime_root,command.action)
+        try:return request_music(runtime_root,command.action,command.value)
         except (ValueError,OSError) as error:raise HTTPException(409,str(error)) from None
 
     class HomeAccessRequest(BaseModel):

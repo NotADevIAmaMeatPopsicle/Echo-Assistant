@@ -55,7 +55,12 @@ async function action(callback, message = 'Command accepted. Checking the curren
 const endpoints = {health:'/health', home:'/v1/home', timers:'/v1/state', household:'/v1/household', routines:'/v1/routines'};
 async function refreshVoice() {
   if (voicePolling) return; voicePolling = true;
-  try { data.voice = await api('/v1/voice',undefined,'GET',AbortSignal.timeout(3000)); received.voice = Date.now(); }
+  try {
+    await Promise.allSettled([
+      (async()=>{try {data.voice=await api('/v1/voice',undefined,'GET',AbortSignal.timeout(3000));received.voice=Date.now();}catch{delete data.voice;delete received.voice;}})(),
+      (async()=>{if($('page-music').hidden)return;try {data.nowPlaying=await api('/v1/music/now-playing',undefined,'GET',AbortSignal.timeout(3000));received.nowPlaying=Date.now();}catch{delete data.nowPlaying;delete received.nowPlaying;}})()
+    ]);
+  }
   catch { delete data.voice; delete received.voice; }
   finally { voicePolling = false; renderConnection(); renderVoice(); renderMusic(); guardButtons(); }
 }
@@ -117,15 +122,8 @@ function renderHome() {
     $('speaker').innerHTML = `<span class="eyebrow">HOME SPEAKER</span><label>Play through<select id="speaker-choice" data-requires="home" data-unavailable="${!speakers.choices?.length}">${(speakers.choices || []).map((choice,index) => `<option value="${index}" ${speakers.selected === index ? 'selected' : ''}>${esc(choice.name || choice.label || `Speaker ${index + 1}`)}</option>`).join('') || '<option>No speakers assigned</option>'}</select></label><div class="row spread"><span class="soft">${Number.isFinite(attrs.volume_level) ? Math.round(attrs.volume_level * 100) + '%' : 'Volume unavailable'}</span><div class="stepper">${[['down','−'],['up','+'],[attrs.is_volume_muted ? 'unmute' : 'mute',attrs.is_volume_muted ? 'Unmute' : 'Mute']].map(([command,label]) => `<button data-speaker="${command}" data-requires="home" data-unavailable="${!available}" aria-label="${command === 'up' ? 'Raise speaker volume' : command === 'down' ? 'Lower speaker volume' : label}">${label}</button>`).join('')}</div></div><p class="device-note">${esc(human(speakers.device?.state))} · Home Assistant speaker controls</p>`;
   }
 }
-function renderMusic() {
-  const music = data.voice?.music || {}, active = fresh('voice') && ['playing','paused','connected'].includes(music.status);
-  $('track-title').textContent = music.title || music.track?.title || 'Your next favourite.';
-  $('track-artist').textContent = music.artist || music.track?.artist || 'Choose Echo from Spotify’s device picker.';
-  $('music-status').textContent = human(music.status || 'receiver unavailable');
-  $('play-track').innerHTML = icon(music.status === 'playing' ? 'pause' : 'play');
-  $('play-track').setAttribute('aria-label', music.status === 'playing' ? 'Pause music' : 'Play music');
-  for (const id of ['play-track','previous-track','next-track']) { $(id).dataset.requires = 'voice'; $(id).dataset.unavailable = String(!active); }
-}
+function renderMusic() { if (typeof renderMusicPanel==='function') renderMusicPanel(); }
+
 function remaining(timer) { return Math.max(0, Math.ceil(timer.remaining_seconds - (Date.now() - received.timers) / 1000)); }
 function duration(seconds) { return `${Math.floor(seconds / 3600) ? `${Math.floor(seconds / 3600)}:` : ''}${String(Math.floor(seconds / 60) % 60).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`; }
 function renderTimers() {

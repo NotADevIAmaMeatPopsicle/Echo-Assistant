@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark"><title>Echo · At home</title>
-  <link rel="icon" href="/assets/icon.svg"><link rel="stylesheet" href="/assets/display/display.css">
+  <link rel="icon" href="/assets/icon.svg"><link rel="stylesheet" href="/assets/display/display.css"><link rel="stylesheet" href="/assets/display/music.css">
   <script src="/assets/display/display.js" defer></script>
   <script src="/assets/display/planner.js" defer></script>
   <script src="/assets/display/devices.js" defer></script>
@@ -11,6 +11,7 @@
   <script src="/assets/display/lists.js" defer></script>
   <script src="/assets/display/experiences.js" defer></script>
   <script src="/assets/display/photos.js" defer></script>
+  <script src="/assets/display/music.js" defer></script>
   <script src="/assets/display/media.js" defer></script>
   <script src="/assets/display/voice.js" defer></script>
 </head>
@@ -32,7 +33,7 @@
   <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 4v16M16 4v16"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
   <symbol id="i-speaker" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="15" r="4"/><path d="M11 6h2"/></symbol>
-<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8"/></symbol><symbol id="i-send" viewBox="0 0 24 24"><path d="m4 12 16-8-5 16-3-7-8-1Zm8 1 8-9"/></symbol></defs></svg>
+<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8"/></symbol><symbol id="i-send" viewBox="0 0 24 24"><path d="m4 12 16-8-5 16-3-7-8-1Zm8 1 8-9"/></symbol><symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 6h3c5 0 7 12 12 12h3m-4-4 4 4-4 4M3 18h3c2 0 4-3 6-6s4-6 6-6h3m-4-4 4 4-4 4"/></symbol><symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3"/></symbol></defs></svg>
 <aside class="rail" aria-label="Main navigation">
   <a class="brand" href="#home" aria-label="Echo home"><img src="/assets/icon.svg" alt="" width="46" height="46"></a>
   <nav id="navigation">
@@ -60,7 +61,42 @@
       </div>
     </section>
     <section id="page-rooms" class="page" hidden><div id="room-cards" class="room-grid"></div><div class="two-columns devices-row"><article class="card" id="thermostat"></article><article class="card" id="speaker"></article></div></section>
-    <section id="page-music" class="page" hidden><div class="music-layout"><article class="card now-playing"><div class="record-art"><div class="record"><span>e·</span></div></div><span class="eyebrow">SPOTIFY CONNECT</span><h2 id="track-title">Your next favourite.</h2><p id="track-artist" class="soft">Choose Echo from Spotify’s device picker.</p><div class="transport"><button id="previous-track" class="icon-button" aria-label="Previous track"><svg class="flipped"><use href="#i-next"/></svg></button><button id="play-track" class="play-button" aria-label="Play music"><svg><use href="#i-play"/></svg></button><button id="next-track" class="icon-button" aria-label="Next track"><svg><use href="#i-next"/></svg></button></div><span id="music-status" class="soft tiny">Checking receiver</span></article><article class="card music-side"><svg class="large-icon"><use href="#i-speaker"/></svg><h2>Music, where you want it.</h2><p class="soft">Echo’s Spotify receiver and your Home Assistant speakers keep their existing controls.</p><button class="pill" data-page="rooms">Choose a home speaker</button><div class="divider"></div><h3>More ways to listen</h3><p class="soft">Radio, podcasts, local libraries, and grouped playback are on the integration plan. Native Chromecast and AirPlay are not included.</p></article></div></section>
+    <section id="page-music" class="page" hidden>
+      <div class="music-tabs segmented" role="tablist" aria-label="Music source">
+        <button id="tab-spotify" role="tab" aria-selected="true" aria-controls="spotify-panel" class="selected" data-music-tab="spotify">Spotify</button>
+        <button id="tab-local" role="tab" aria-selected="false" aria-controls="local-panel" tabindex="-1" data-music-tab="local">Radio & files</button>
+        <button id="tab-speakers" role="tab" aria-selected="false" aria-controls="speakers-panel" tabindex="-1" data-music-tab="speakers">Speakers & casting</button>
+      </div>
+      <div id="spotify-panel" role="tabpanel" aria-labelledby="tab-spotify">
+        <article class="card spotify-player">
+          <div class="album-column">
+            <div class="album-art"><img id="track-cover" alt="" hidden><div id="cover-placeholder"><img src="/assets/icon.svg" alt="Echo"><span>A little room for music.</span></div></div>
+            <div class="listening-on"><svg><use href="#i-speaker"/></svg><span>Output <strong>Echo round speaker</strong></span></div>
+          </div>
+          <div class="track-column">
+            <div class="row spread"><span class="eyebrow spotify-label">SPOTIFY CONNECT</span><span id="music-status" class="music-badge">Checking receiver</span></div>
+            <h2 id="track-title">Your next favourite.</h2><p id="track-artist" class="soft">Choose Echo from Spotify’s device picker.</p>
+            <p class="album-line"><span id="track-explicit" class="explicit-mark" hidden aria-label="Explicit content">E</span><span id="track-album">Make yourself at home.</span></p>
+            <div class="track-timeline"><label class="sr-only" for="track-seek">Track position</label><input id="track-seek" type="range" min="0" max="1" value="0" step="1000" disabled><div class="row spread tiny soft"><span id="track-elapsed">0:00</span><span id="track-duration">0:00</span></div></div>
+            <div class="transport spotify-transport">
+              <button id="shuffle-track" class="icon-button" aria-label="Shuffle" aria-pressed="false"><svg><use href="#i-shuffle"/></svg></button>
+              <button id="previous-track" class="icon-button" aria-label="Previous track"><svg class="flipped"><use href="#i-next"/></svg></button>
+              <button id="play-track" class="play-button" aria-label="Play music"><svg><use href="#i-play"/></svg></button>
+              <button id="next-track" class="icon-button" aria-label="Next track"><svg><use href="#i-next"/></svg></button>
+              <button id="repeat-track" class="icon-button repeat-control" aria-label="Repeat: off" aria-pressed="false"><svg><use href="#i-repeat"/></svg><small id="repeat-one" hidden>1</small></button>
+            </div>
+            <div class="spotify-volume"><svg><use href="#i-speaker"/></svg><label for="spotify-volume">Spotify level</label><input id="spotify-volume" type="range" min="0" max="100" value="0" disabled><output id="spotify-volume-label" for="spotify-volume">—</output></div>
+            <p id="music-output-note" class="tiny soft">Music plays on the round speaker. This screen is its remote.</p>
+          </div>
+          <div class="music-library row spread"><span class="soft">Playlists, podcasts & your queue<br><small>Browse your library in Spotify, then choose Echo.</small></span><a id="open-spotify" class="pill" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open Spotify <span aria-hidden="true">↗</span></a></div>
+        </article>
+      </div>
+      <div id="local-panel" role="tabpanel" aria-labelledby="tab-local" hidden></div>
+      <div id="speakers-panel" role="tabpanel" aria-labelledby="tab-speakers" hidden>
+        <div class="two-columns"><article class="card"><span class="eyebrow">AROUND THE HOME</span><h2>Pick your speaker.</h2><div id="music-speakers"></div><button class="text-button" data-page="rooms">More room controls →</button></article>
+        <article class="card cast-info"><span class="eyebrow">SEND SOMETHING GOOD</span><h2>From your favourite app.</h2><div class="capability-row"><strong>Spotify Connect</strong><span>Echo receiver</span></div><div class="capability-row"><strong>Chromecast / AirPlay</strong><span>Not installed on Echo</span></div><p class="soft">Use a Cast-enabled speaker’s own app picker to start a stream. Its available Home Assistant controls appear here once it is assigned.</p><p class="tiny soft">This display can also play saved radio stations and local audio or video files.</p></article></div>
+      </div>
+    </section>
     <section id="page-timers" class="page" hidden><div class="two-columns"><article class="card"><span class="eyebrow">MAKE A LITTLE TIME</span><h2>Set a timer</h2><div class="presets"><button data-minutes="1">1 min</button><button data-minutes="5">5 min</button><button data-minutes="10">10 min</button><button data-minutes="25">25 min</button></div><form id="timer-form"><label>Minutes<input id="timer-minutes" type="number" min="1" max="1440" value="5" required inputmode="numeric"></label><label>Name<input id="timer-label" maxlength="80" placeholder="Tea, pasta, a quiet moment…"></label><button class="pill primary" type="submit">Start timer</button></form><div class="divider"></div><form id="alarm-form"><label>One-off alarm<input id="alarm-time" type="time" required></label><button class="pill" type="submit">Set next alarm</button></form><p class="tiny soft">Uses this screen’s time zone. Alarms share Echo’s existing timer delivery; an audio endpoint must be connected to hear them.</p></article><article class="card"><div class="row spread"><h2>On the go</h2><span class="tiny soft">Up to 16 timers</span></div><div id="timer-list"></div></article></div></section>
     <section id="page-lists" class="page" hidden><div class="row spread section-head"><div class="segmented" id="list-tabs"><button data-kind="shopping" class="selected">Shopping</button><button data-kind="tasks">To-do</button><button data-kind="notes">Notes</button></div><span id="list-storage" class="tiny soft">Private household board</span></div><article class="card"><form id="list-form" class="inline-form"><input id="list-text" maxlength="500" placeholder="Something to pick up…" required aria-label="New list item"><button class="pill primary" type="submit">Add</button></form><div id="household-items"></div><p class="tiny soft">Only what you add is saved. Live lists are encrypted on your Echo host.</p></article></section>
     <section id="page-routines" class="page" hidden><div class="section-head row spread"><p class="soft">Small rituals. One intentional tap.</p><a class="text-button" href="/routines">Manage routines ↗</a></div><div id="routine-cards" class="routine-grid"></div><p class="tiny soft">Each routine uses its saved devices and current permissions. Nothing runs automatically from this page.</p></section>

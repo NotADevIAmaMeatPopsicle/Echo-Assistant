@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#617f92"/><stop offset=".52" stop-color="#d7b9a7"/><stop offset="1" stop-color="#305c64"/></linearGradient><linearGradient id="water" x2="0" y2="1"><stop stop-color="#709c9c"/><stop offset="1" stop-color="#132f43"/></linearGradient></defs>
+<path fill="url(#sky)" d="M0 0h640v640H0z"/><circle cx="416" cy="202" r="67" fill="#f4d7ae" opacity=".9"/>
+<path fill="#315867" d="M0 373 163 213l84 82 99-125 155 171 139-79v378H0z"/>
+<path fill="#537c80" d="m0 373 163-160-30 146 114-64 99-125-56 175 89-53 122 49 139-79v185H0z" opacity=".6"/>
+<path fill="url(#water)" d="M0 395q169-24 317 5t323-12v252H0z"/><g fill="none" stroke="#b6d6c8" opacity=".3"><path d="M304 432h191m-150 20h207M157 479h263m-316 51h294m-33 30h211"/></g>
+<text x="42" y="61" fill="#f2eee5" font-size="16" font-family="sans-serif" letter-spacing="7">ECHO SESSIONS</text>
+<text x="42" y="566" fill="#f2eee5" font-size="42" font-family="sans-serif">Room to breathe</text><text x="44" y="602" fill="#bfd1d2" font-size="14" font-family="sans-serif" letter-spacing="3">NORTH COAST · DEMO ARTWORK</text></svg>

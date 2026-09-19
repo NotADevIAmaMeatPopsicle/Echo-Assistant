@@ -16,15 +16,19 @@ fn round_voice_json_string(value: &str) -> String {
 pub fn round_voice_event(fields: &std::collections::HashMap<&str, String>) {
     let Some(kind) = fields.get("PLAYER_EVENT") else { return };
     if !matches!(kind.as_str(), "receiver_ready" | "track_changed" | "playing" | "paused"
-        | "stopped" | "session_connected" | "session_disconnected" | "volume_changed") { return; }
+        | "stopped" | "session_connected" | "session_disconnected" | "volume_changed"
+        | "seeked" | "position_correction" | "shuffle_changed" | "repeat_changed") { return; }
     let Ok(key) = std::env::var("ROUND_VOICE_EVENT_KEY") else { return };
     if key.len() < 32 || key.len() > 128 { return; }
     let Some(port) = std::env::var("ROUND_VOICE_EVENT_PORT").ok()
         .and_then(|value| value.parse::<u16>().ok()).filter(|port| *port >= 1024) else { return };
     let mut body = format!("{{\"key\":{},\"event\":{}", round_voice_json_string(&key), round_voice_json_string(kind));
-    // Deliberately exclude account, connection, track IDs and all other environment fields.
+    // Current-track presentation only. Never forward account, connection or local file paths.
     for (source, target) in [("NAME", "name"), ("ARTISTS", "artists"), ("DURATION_MS", "duration_ms"),
-        ("POSITION_MS", "position_ms"), ("VOLUME", "volume")] {
+        ("POSITION_MS", "position_ms"), ("VOLUME", "volume"), ("UI_VERSION", "ui_version"),
+        ("ALBUM", "album"), ("COVERS", "covers"), ("URI", "uri"), ("ITEM_TYPE", "item_type"),
+        ("SHOW_NAME", "show_name"), ("IS_EXPLICIT", "is_explicit"), ("SHUFFLE", "shuffle"),
+        ("REPEAT", "repeat"), ("REPEAT_TRACK", "repeat_track")] {
         if let Some(value) = fields.get(source) {
             body.push_str(&format!(",\"{target}\":{}", round_voice_json_string(value)));
         }

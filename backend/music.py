@@ -38,6 +38,29 @@ class Music:
         self.pause_after_transfer = False
         self.credential_store = None
         self.next_credential_check = 0.
+        self.album = self.cover = self.uri = self.item_type = ''
+        self.explicit = False
+        self.volume = self.shuffle = self.repeat = None
+        self.capabilities = []
+        self.next_metadata = 0.
+
+    def _publish_metadata(self):
+        from .music_now_playing import publish
+        position=self.position_ms
+        if self.status=='playing' and self.position_at:position+=round((time.monotonic()-self.position_at)*1000)
+        publish(self.root,{'status':self.status,'title':self.title,'artist':self.artist,
+            'album':self.album,'cover':self.cover,'uri':self.uri,'item_type':self.item_type,'explicit':self.explicit,
+            'duration_ms':self.duration_ms,'position_ms':min(position,self.duration_ms),
+            'volume':self.volume,'shuffle':self.shuffle,'repeat':self.repeat,'capabilities':self.capabilities})
+
+    def _clear_metadata(self):
+        from .music_now_playing import state_path
+        self.title = self.artist = self.album = self.cover = self.uri = self.item_type = ''
+        self.duration_ms = self.position_ms = 0
+        self.volume = self.shuffle = self.repeat = None
+        self.explicit = False
+        try:state_path(self.root).unlink(missing_ok=True)
+        except OSError:pass
 
     def start(self):
         self.status = 'not_configured'
@@ -176,7 +199,12 @@ class Music:
         while self.read() is not None: pass
 
     def command(self, command):
-        if command not in {'play', 'pause', 'toggle', 'next', 'previous', 'transfer'}: raise ValueError('Unsupported music control')
+        from .music_commands import wire_command
+        if command not in {'play', 'pause', 'toggle', 'next', 'previous', 'transfer'}:
+            action,_,value=command.partition(' ')
+            if action in {'seek','volume'}:value=int(value)
+            elif action=='shuffle':value={'true':True,'false':False}.get(value)
+            if wire_command(action,value)!=command:raise ValueError('Unsupported music control')
         if not self.process or self.process.poll() is not None: return False
         if command in {'play', 'toggle'} and self.status == 'connected':
             # A newly authenticated receiver is not yet Spotify's active device.
@@ -220,18 +248,32 @@ class Music:
             return
         if not self.socket: return
         for _ in range(16):
-            try: data, _ = self.socket.recvfrom(4096)
+            try: data, _ = self.socket.recvfrom(16384)
             except BlockingIOError: break
             try:
                 event = json.loads(data)
                 if not isinstance(event.get('key'), str) or not compare_digest(event['key'], self.key): continue
                 kind = event.get('event')
-                if kind not in {'receiver_ready', 'track_changed', 'playing', 'paused', 'stopped', 'session_connected', 'session_disconnected', 'volume_changed'}: continue
+                if kind not in {'receiver_ready', 'track_changed', 'playing', 'paused', 'stopped', 'session_connected', 'session_disconnected', 'volume_changed','seeked','position_correction','shuffle_changed','repeat_changed'}: continue
                 self.event_count += 1
                 self.last_event = kind
                 if kind == 'track_changed':
                     self.title, self.artist = str(event.get('name', ''))[:200], str(event.get('artists', ''))[:200]
                     self.duration_ms = max(0, int(event.get('duration_ms', 0)))
+                    from .music_now_playing import cover_url
+                    self.album=str(event.get('album') or event.get('show_name') or '')[:200]
+                    self.cover=next((url for url in str(event.get('covers','')).splitlines() if cover_url(url)), '')
+                    self.uri=str(event.get('uri',''));self.item_type=str(event.get('item_type',''))
+                    self.explicit=event.get('is_explicit')=='true'
+                    self.position_ms=0;self.position_at=now
+                elif kind=='receiver_ready':
+                    self.capabilities=['seek','shuffle','repeat','volume'] if event.get('ui_version')=='2' else []
+                elif kind in {'seeked','position_correction'}:
+                    self.position_ms=max(0,int(event.get('position_ms',0)));self.position_at=now
+                    if kind=='seeked':self.clear()
+                elif kind=='volume_changed':self.volume=round(max(0,min(65535,int(event['volume'])))*100/65535)
+                elif kind=='shuffle_changed':self.shuffle=event.get('shuffle')=='true'
+                elif kind=='repeat_changed':self.repeat='track' if event.get('repeat_track')=='true' else 'context' if event.get('repeat')=='true' else 'off'
                 elif kind in {'playing', 'paused', 'stopped'}:
                     self.status = kind
                     if kind == 'playing':
@@ -258,8 +300,12 @@ class Music:
                 elif kind == 'session_disconnected':
                     self.play_after_transfer = False
                     self.pause_pending = self.pause_after_transfer = False; self.discard_pcm = True
-                    self.status = 'discoverable'; self.clear(); self.title = self.artist = ''
-            except (ValueError, TypeError, AttributeError): self.errors += 1
+                    self.status = 'discoverable'; self.clear(); self._clear_metadata()
+            except (ValueError, TypeError, AttributeError, KeyError, OverflowError): self.errors += 1
+        if now>=self.next_metadata:
+            self.next_metadata=now+1
+            try:self._publish_metadata()
+            except OSError:pass
 
     def close(self):
         self.stop_event.set()
@@ -281,6 +327,7 @@ class Music:
         self.process = self.socket = None
         self.threads = []
         self.clear(); self.status = 'disconnected'; self.title = self.artist = ''
+        self._clear_metadata();self.capabilities=[]
 
     def _save_credentials(self):
         if self.credential_store:
