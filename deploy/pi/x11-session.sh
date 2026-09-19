@@ -1,6 +1,7 @@
 #!/bin/sh
 # Managed by Echo display setup
 # Optional session entry for an existing dedicated X11 kiosk service.
+export ECHO_DEDICATED_X11=1
 if command -v xset >/dev/null 2>&1; then
     xset s off || true
     xset -dpms || true

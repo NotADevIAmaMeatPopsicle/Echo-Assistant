@@ -10,10 +10,22 @@ from backend.app import create_app
 from backend.household import HouseholdStore, HouseholdConflict, HouseholdUnavailable
 from backend.linux_protection import LinuxProtector
 from backend.settings import SettingsStore
-from deploy.pi.kiosk import validate_url
+from deploy.pi.kiosk import validate_url, x11_geometry, dedicated_x11_flags
 
 
 class SmartDisplayTests(unittest.TestCase):
+    def test_dedicated_kiosk_uses_active_primary_bounds(self):
+        listing = ('Screen 0: current 2944 x 1080\n'
+                   'HDMI-1 connected primary 1024x600+1920+0 (normal)\n'
+                   '   1920x1200 60.00\n'
+                   'HDMI-2 connected 1920x1080+0+0 (normal)\n')
+        self.assertEqual(x11_geometry(listing), ['--window-size=1024,600','--window-position=1920,0'])
+        self.assertEqual(x11_geometry(listing.replace('primary ', '')), [])
+        self.assertEqual(x11_geometry('HDMI-1 disconnected\n'), [])
+        with patch.dict(os.environ, {'ECHO_DEDICATED_X11':'0','DISPLAY':':0'}), patch('deploy.pi.kiosk.subprocess.run') as run:
+            self.assertEqual(dedicated_x11_flags(), [])
+            run.assert_not_called()
+
     def test_kiosk_rejects_credentials_and_insecure_remote_urls(self):
         for url in ('https://echo.example/display','http://127.0.0.1:8768/display','http://[::1]:8768/display'):
             self.assertEqual(validate_url(url),url)

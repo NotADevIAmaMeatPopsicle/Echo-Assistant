@@ -125,7 +125,9 @@ class DisplayPreview(Preview):
             return self.reply(200, (WEB/'display/index.html').read_bytes(), 'text/html; charset=utf-8')
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
             return self.camera_sample(path.endswith('/stream'))
-        assets = {'/assets/display/pi-voice.js':('display/pi-voice.js','text/javascript'),
+        assets = {'/assets/display/polish.css':('display/polish.css','text/css'),
+                  '/assets/fonts/Manrope-Variable.ttf':('fonts/Manrope-Variable.ttf','font/ttf'),
+                  '/assets/display/pi-voice.js':('display/pi-voice.js','text/javascript'),
                   '/assets/display/alerts.js':('display/alerts.js','text/javascript'),
                   '/assets/display/alerts.css':('display/alerts.css','text/css'),
                   '/assets/display/display.js':('display/display.js','text/javascript'),

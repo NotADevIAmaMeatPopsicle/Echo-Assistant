@@ -35,7 +35,7 @@ Prioritize the Pi audio path before extending round intercom. See
 - [x] Pi Spotify receiver, direct ALSA playback, output attenuation and endpoint-specific naming (software; real Spotify/audio acceptance pending).
 - [x] Pi alarm/reminder chimes, saved destination routing and visible snooze/dismiss controls (software; physical audio pending).
 - [x] Pi pairing/install/rollback client bundle; installed and OS restart verified.
-- [ ] Pi display visual polish after wake/alarm implementation: verify native resolution and Chromium scaling, then refine typography, spacing, icons and motion.
+- [x] Pi display visual polish: bundled typography, smooth status ring, contrast and touch spacing; deployed with dedicated kiosk sizing. Owner visual acceptance of this pass remains open.
 - [ ] Integrated software verification and refreshed screenshots/documentation.
 
 ## Hardware acceptance when the owner returns
@@ -80,8 +80,8 @@ restart-safe duplicate protection, clock changes, permissions and local briefing
 composition; the related source and display-voice checks also pass. Silent browser
 checks cover the form and phone layout. No real calendar events were created.
 
-Next: the requested Pi display polish, then audio hardware acceptance when its
-microphone and speaker are attached.
+Next: owner visual acceptance of the polish pass, then audio hardware acceptance
+when the Pi microphone and speaker are attached.
 The round intercom adapter remains planned as an optional endpoint.
 
 The host and paired-display call UI
@@ -110,15 +110,23 @@ speaker. Software coverage does not establish physical audio performance.
 
 Pi timers, scheduled reminders and audible household messages now retain their
 creating endpoint. Native Pi chimes, quiet hours, playback receipts and snooze
-controls are implemented. See [Pi alerts](PI_ALERTS.md). Local wake software is implemented; the requested display visual polish is next. Physical microphone/speaker acceptance remains separate.
+controls are implemented. See [Pi alerts](PI_ALERTS.md). Local wake software and the requested display visual polish are implemented. Physical microphone/speaker acceptance remains separate.
 
 Display sharpness baseline: the connected panel advertises 1024 × 600 as its
 preferred HDMI timing and X11 is using that mode. Chromium is in kiosk mode.
-Confirm browser zoom/pixel mapping during polish; a higher accepted input mode
-does not establish a higher native panel resolution.
+The dedicated kiosk now explicitly uses scale factor 1 and active monitor bounds.
+A higher accepted input mode does not establish a higher native panel resolution.
 
 The native Pi wake listener and pinned Vosk runtime are installed with listening
 disabled and software mute on. A synthetic Linux pipe check exercised the cue,
 command capture, reply attenuation and mute cleanup. Silent browser checks cover
 native state, conversation, Talk/Send/Stop and stale-adapter handling. See
 [Pi voice](PI_VOICE.md) for setup and the explicit echo-cancelled input requirement.
+
+The first Pi polish pass is deployed: locally served Manrope, larger text and
+controls, stronger blue/mint contrast, a fixed four-pixel ring with an animated
+underglow, and X11 kiosk bounds that remove the default ten-pixel frame. Six
+synthetic gallery images were refreshed; native-state and phone layouts were
+checked. The live Pi capture confirms the new font and positioning. See
+[Display design](DISPLAY_DESIGN.md) for the remaining one-pixel Chromium inset
+and physical-acceptance limits. No audio or home actions were used.

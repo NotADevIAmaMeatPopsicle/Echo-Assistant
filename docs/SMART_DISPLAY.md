@@ -51,6 +51,9 @@ and listening states share the round device's visual identity. Software dimming
 and reduced-motion support are included; software dimming does not switch off
 an LCD backlight.
 
+The [display design guide](DISPLAY_DESIGN.md) covers the bundled typeface,
+smooth status ring, touch sizing and native-resolution kiosk configuration.
+
 ## One assistant, independent devices
 
 ```mermaid

@@ -1,0 +1,112 @@
+/* A consistent, locally served typeface and crisp strokes at the Pi's native size. */
+@font-face {
+  font-family: "Echo Manrope";
+  src: url("/assets/fonts/Manrope-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+:root {
+  font-family: "Echo Manrope", system-ui, sans-serif;
+  --bg: #081426;
+  --surface: #14263a;
+  --line: #a0d7ef24;
+  --text: #f0f7ff;
+  --soft: #b1c5d9;
+  --mint: #a0eee0;
+}
+body {
+  font-size: 16px;
+  font-weight: 450;
+  background: radial-gradient(ellipse at 95% 0%, #18435d80, transparent 62%),
+              radial-gradient(ellipse at 5% 100%, #153d5680, transparent 60%), #081426;
+}
+h1, h2, h3, strong { font-weight: 650; }
+h1 { font-size: 24px; letter-spacing: -.6px; }
+h2 { font-size: 21px; letter-spacing: -.4px; }
+.tiny { font-size: 12px; line-height: 1.55; }
+.eyebrow { font-weight: 650; letter-spacing: .17em; color: #b3cadf; }
+.card { border-color: var(--line); box-shadow: inset 0 1px 0 #ffffff05, 0 8px 24px #020a151a; }
+.pill { font-weight: 600; }
+.pill.primary { background: linear-gradient(135deg, #b5f7e7, #80d9dc); color: #092c38; border-color: #d8fff24a; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #aff8e7; outline-offset: 3px;
+}
+.rail { background: #061222d9; border-color: #89bbd524; }
+.rail button { font-size: 11px; font-weight: 550; gap: 5px; }
+.rail button.selected { background: linear-gradient(125deg, #a0eee019, #77c9eb10); box-shadow: inset 2px 0 #a0eee0; }
+.rail svg { width: 23px; height: 23px; stroke-width: 1.8; }
+.workspace footer { color: #9bb5cd; }
+.message-text { font-size: 15px; }
+.chat-composer input { font-size: 14px; }
+.voice-composer-status p { font-size: 11px; }
+.wake-phrases small, .voice-volume-label, .echo-controls .check-label { font-size: 12px; }
+.stepper button[data-speaker=mute], .stepper button[data-speaker=unmute] { font-size: 12px; }
+.status-pill { color: #c1d8e9; border-color: #a0d7ef30; font-size: 12px; }
+.big-clock { font-weight: 400; letter-spacing: -4px; }
+.hero { background: radial-gradient(ellipse at 100% 40%, #31858e24, transparent 75%), linear-gradient(120deg, #18334a, #12273d); }
+.orb {
+  --ring-a: #77d5fb;
+  --ring-b: #9aefd6;
+  border: 4px solid transparent;
+  background: linear-gradient(#112b40, #0b2033) padding-box,
+              linear-gradient(135deg, var(--ring-a), var(--ring-b)) border-box;
+  box-shadow: 0 0 14px #83e3dd24, inset 0 0 18px #6bdddf0d;
+  animation: none !important;
+  transform: none;
+}
+.orb::before {
+  content: ""; position: absolute; inset: -10px; border-radius: 50%; z-index: -1;
+  border: 8px solid var(--ring-b); filter: blur(12px); opacity: .16;
+  animation: echo-underglow 4s ease-in-out infinite;
+}
+.orb::after { inset: 7px; border-color: #aeecf524; transform: none; }
+.orb-core { opacity: .65; }
+.orb[data-state=listening], .orb[data-state=activation], .orb[data-state=opening] { --ring-a: #8ddcff; --ring-b: #b6fff1; }
+.orb[data-state=listening]::before, .orb[data-state=activation]::before { animation-duration: 1.5s; }
+.orb[data-state=thinking] { --ring-a: #97b9ff; --ring-b: #cbbafb; }
+.orb[data-state=thinking]::before { animation-duration: 2.2s; }
+.orb[data-state=speaking] { --ring-a: #72dacb; --ring-b: #c0f8d7; }
+.orb[data-state=speaking]::before { animation-duration: .9s; }
+.orb[data-state=muted] { --ring-a: #d9b68e; --ring-b: #f3d1aa; }
+.orb[data-state=disconnected], .orb[data-state=connecting] { --ring-a: #718da9; --ring-b: #8ea5be; }
+.orb[data-state=muted]::before, .orb[data-state=disconnected]::before, .orb[data-state=connecting]::before { animation: none; opacity: .07; }
+@keyframes echo-underglow { 50% { opacity: .29; } }
+.echo-presence { border-color: #b0e9ed30; background: radial-gradient(ellipse at 15% 0%, #38798b36, transparent 80%), #132b40; }
+.echo-presence > strong { font-size: 13px; font-weight: 650; }
+.echo-presence > p { font-size: 13px; line-height: 1.5; }
+.conversation-heading h2 { font-size: 18px; }
+.conversation-heading .tiny { font-size: 12px; }
+.conversation-privacy { font-size: 11px !important; color: #a3bdd0; }
+#pi-voice-mute { width: 100%; min-height: 38px; font-size: 12px; margin-top: 7px; }
+.wake-phrases:has(#pi-voice-mute:not([hidden])) #wake-word-status { display: none; }
+.album-line, .track-times, .listening-on { color: #b0c9dc; }
+.listening-on { font-size: 12px; }
+.listening-on strong { font-size: 14px; }
+.track-column #track-artist { font-size: 17px; }
+.album-line { font-size: 13px; }
+.music-badge { font-size: 11px; }
+.spotify-label { font-size: 11px; font-weight: 650; }
+@media (min-width: 780px) and (max-height: 680px) {
+  .rail { padding-top: 8px; padding-bottom: 8px; }
+  .rail button { min-height: 46px; }
+  .workspace { padding-right: 22px; padding-left: 22px; }
+  header { height: 80px; min-height: 80px; }
+  h1 { font-size: 23px; }
+  .echo-layout { height: calc(100dvh - 124px); }
+  .chat-layout { gap: 14px; }
+  .echo-presence { padding: 16px; gap: 5px 11px; }
+  .echo-presence h2 { font-size: 18px; }
+  .echo-presence > p { margin-top: 5px; }
+  .conversation-heading { padding-bottom: 12px; }
+  .conversation-privacy { margin-top: 7px !important; }
+}
+@media (max-width: 779px) {
+  h1 { font-size: 20px; }
+  .rail button { font-size: 10px; }
+  .rail svg { width: 21px; height: 21px; }
+  .rail button.selected { box-shadow: inset 0 2px #a0eee0; }
+  .status-pill { font-size: 10px; }
+  .conversation-privacy { font-size: 10px !important; }
+}
+@media (prefers-reduced-motion: reduce) { .orb::before { animation: none !important; } }

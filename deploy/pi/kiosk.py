@@ -8,7 +8,9 @@ import ipaddress
 import json
 import os
 from pathlib import Path
+import re
 import shutil
+import subprocess
 import sys
 from urllib.parse import urlsplit
 
@@ -36,6 +38,31 @@ def inventory():
         'note':'Read-only inventory. No microphone capture, playback, or service changes.'}
 
 
+def x11_geometry(output):
+    """Use the active primary monitor, not the virtual desktop or an EDID mode."""
+    monitors = re.findall(r'^\S+ connected (primary )?(\d+)x(\d+)([+-]\d+)([+-]\d+)\b', output, re.M)
+    primary = [item for item in monitors if item[0]]
+    selected = primary or (monitors if len(monitors) == 1 else [])
+    if len(selected) != 1:
+        return []
+    _, width, height, left, top = selected[0]
+    return [f'--window-size={width},{height}', f'--window-position={int(left)},{int(top)}']
+
+
+def dedicated_x11_flags():
+    # A bare startx session has no window manager to honor Chromium's fullscreen
+    # request. Explicit bounds remove its default 10px inset. Desktop/Wayland
+    # sessions keep their own monitor selection and accessibility scaling.
+    if os.environ.get('ECHO_DEDICATED_X11') != '1' or not os.environ.get('DISPLAY'):
+        return []
+    try:
+        result = subprocess.run(['xrandr', '--query'], capture_output=True, text=True, check=True, timeout=5)
+        bounds = x11_geometry(result.stdout)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return ['--ozone-platform=x11', '--force-device-scale-factor=1', *bounds] if bounds else []
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',type=Path,default=Path.home()/'.config/echo-display/config.json')
@@ -52,7 +79,7 @@ def main():
     profile.mkdir(parents=True,exist_ok=True,mode=0o700)
     profile.chmod(0o700)
     browser = report['chromium']
-    os.execv(browser,[browser,'--kiosk','--no-first-run','--noerrdialogs',f'--user-data-dir={profile}',url])
+    os.execv(browser,[browser,'--kiosk','--no-first-run','--noerrdialogs',*dedicated_x11_flags(),f'--user-data-dir={profile}',url])
 
 
 if __name__ == '__main__':
