@@ -203,6 +203,14 @@ no built-in microphone, and HDMI/headphone outputs do not provide one.
    It uses a separate private Chromium profile and preserves TLS and sandbox
    checks. If the host is offline, the display reports it and continues retrying.
    If its access was revoked, create a new code and use `connect.py --replace`.
+
+   **Display connected** means the screen can reach the authenticated Echo API.
+   The round speaker has its own connection: **Round speaker offline** on the
+   music page does not mean the Pi is offline. Spotify currently plays through
+   that speaker, so check its power and Wi-Fi. Text chat and home controls remain
+   available on a connected display. **Host unreachable · retrying** reports a
+   server connection failure; **Pairing / sign-in needed** reports expired or
+   revoked access. Both recover automatically when access is restored.
 8. To switch back after a client update:
 
    ```bash

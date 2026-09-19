@@ -8,7 +8,7 @@ const human = value => String(value || 'unavailable').replaceAll('_', ' ');
 const data = {}, received = {};
 const extensions = [];
 const pageEndpoints = {};
-let busy = false, polling = false, voicePolling = false, displayCaptureBusy = false, kind = 'shopping', chatAbort, lastInput = Date.now(), photos = [], photoIndex = 0, previousFocus;
+let busy = false, polling = false, voicePolling = false, displayCaptureBusy = false, signInRequired = false, kind = 'shopping', chatAbort, lastInput = Date.now(), photos = [], photoIndex = 0, previousFocus;
 let preferences = {clock24:false, idle:300, dim:false};
 try { const saved = JSON.parse(localStorage.getItem('echo-display-preferences') || '{}');
   preferences = {clock24:saved.clock24 === true, idle:[0,60,300,900].includes(saved.idle) ? saved.idle : 300, dim:saved.dim === true};
@@ -22,9 +22,10 @@ async function api(path, body, method = 'POST', signal) {
     signal:signal || AbortSignal.timeout(10000), cache:'no-store'});
   let result; try { result = await response.json(); } catch { throw new Error('Echo returned an unreadable response.'); }
   if (!response.ok) {
-    if (response.status === 401) { $('notice').textContent = response.headers.get('X-Echo-Display-Bridge')==='1' ? 'This display needs pairing again. Open Displays in the owner’s Echo settings to create a new pairing code.' : 'Sign in through the Echo launcher, then open Display. This screen needs an active Echo session.'; $('notice').hidden = false; }
+    if (response.status === 401) { signInRequired = true; $('notice').textContent = response.headers.get('X-Echo-Display-Bridge')==='1' ? 'This display needs pairing again. Open Displays in the owner’s Echo settings to create a new pairing code.' : 'Sign in through the Echo launcher, then open Display. This screen needs an active Echo session.'; $('notice').hidden = false; }
     const error=new Error(response.status === 401 ? 'Echo sign-in required.' : typeof result.detail === 'string' ? result.detail : `The request was not accepted (${response.status}).`);error.status=response.status;throw error;
   }
+  if (path === '/v1/state') signInRequired = false;
   return result;
 }
 function page(name) {
@@ -44,7 +45,7 @@ function guardButtons() {
     $(form).querySelector('button[type="submit"]').disabled = busy || !fresh(source);
   }
   document.querySelectorAll('[data-minutes]').forEach(b => b.disabled = busy || !fresh('timers'));
-  $('send-chat').disabled = !!chatAbort || displayCaptureBusy || !fresh('voice');
+  $('send-chat').disabled = !!chatAbort || displayCaptureBusy || !fresh('timers') || signInRequired;
 }
 async function action(callback, message = 'Command accepted. Checking the current state…') {
   if (busy) return; busy = true; guardButtons();
@@ -76,20 +77,24 @@ async function refresh() {
   } finally { polling = false; }
 }
 function renderConnection() {
-  const online = fresh('voice'), demo = data.health?.display_demo;
-  $('connection').textContent = demo ? 'Demo · sample home' : online ? 'Echo connected' : 'Offline / sign in';
-  $('connection').classList.toggle('online', !!online);
+  // A responding voice service can still be waiting for the separate speaker.
+  // Use an authenticated core request to describe this display's connection.
+  const online = fresh('timers') && !signInRequired, demo = data.health?.display_demo;
+  $('connection').textContent = demo ? 'Demo · sample home' : signInRequired ? 'Pairing / sign-in needed' : online ? 'Display connected' : 'Host unreachable · retrying';
+  $('connection').classList.toggle('live', !!online);
+  $('connection').title = online ? 'This display can reach your Echo server.' : 'Checking this display’s connection to your Echo server.';
   if (online) { $('notice').hidden = true; $('last-update').textContent = demo ? 'Synthetic data · no devices connected' : 'Live state just refreshed'; }
   else { $('last-update').textContent = 'Live state unavailable · controls paused'; }
   $('privacy-status').textContent = demo ? 'Local preview · no sound or home actions' : 'Your Echo host · Your choice of assistant';
 }
 function render() {
-  const demo = data.health?.display_demo, online = fresh('voice');
+  const demo = data.health?.display_demo;
   renderConnection();
   renderVoice(); renderHome(); renderMusic(); renderTimers(); renderLists(); renderRoutines(); guardButtons();
   extensions.forEach(renderExtension => renderExtension()); guardButtons();
-  $('capability-notes').innerHTML = [['Audio endpoint', online ? human(data.voice.status) : 'unavailable'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Display audio', 'Uses connected Echo endpoint']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
+  $('capability-notes').innerHTML = [['Echo server', fresh('timers') && !signInRequired ? 'connected' : 'unavailable'], ['Round speaker', roundSpeakerConnected() ? human(data.voice.status) : 'offline'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Display audio', 'Tap-to-talk replies and radio play here; Spotify uses the round speaker']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
 }
+function roundSpeakerConnected() { return fresh('voice') && ['armed','activation','listening','thinking','speaking','music','alarm','cooldown','muted'].includes(data.voice.status); }
 function renderVoice() {
   const state = fresh('voice') ? data.voice.status : 'disconnected';
   const phases = {
@@ -98,9 +103,9 @@ function renderVoice() {
     thinking:['thinking','A little thinking…','Echo is working on your request.'], speaking:['speaking','Here’s what I found.','Replying through the connected speaker.'],
     music:['ready','Enjoy the moment.','Music is playing through Echo.'], alarm:['speaking','Time’s up.','Check your timers.'],
     cooldown:['ready','One moment…','The audio endpoint is getting ready.'], muted:['muted','A quiet moment.','The connected Echo microphone is muted.'],
-    connecting:['offline','Finding Echo…','Waiting for the audio endpoint.'], disconnected:['offline','Text is still welcome.','No live audio endpoint is connected.']
+    connecting:['disconnected','Round speaker offline','This display can still use chat and home controls.'], disconnected:['disconnected','Round speaker offline','This display can still use chat and home controls.']
   };
-  const p = phases[state] || phases.disconnected;
+  const p = !fresh('timers') || signInRequired ? ['disconnected','Reconnecting to Echo…','Checking this display’s connection to the server.'] : !fresh('voice') ? ['disconnected','Speaker status unavailable','This display is connected. Checking the round speaker.'] : phases[state] || phases.disconnected;
   document.querySelectorAll('[data-orb]').forEach(orb => orb.dataset.state = p[0]);
   $('voice-caption').textContent = p[1]; $('voice-detail').textContent = p[2];
   document.dispatchEvent(new Event('echo:voice-state'));
@@ -197,7 +202,7 @@ function finishChatMessage(message,result) {
 }
 function conversationChanged(){document.dispatchEvent(new Event('echo:conversation'));}
 $('chat-form').onsubmit = async event => {
-  event.preventDefault(); if (chatAbort || displayCaptureBusy || !fresh('voice')) return;
+  event.preventDefault(); if (chatAbort || displayCaptureBusy || !fresh('timers') || signInRequired) return;
   const text=$('chat-text').value.trim();if(!text)return;
   const allow=$('allow-home').checked;$('allow-home').checked=false;
   chatAbort=new AbortController();$('stop-chat').hidden=false;guardButtons();conversationChanged();
@@ -233,7 +238,8 @@ function tick() {
   $('ambient').classList.toggle('dim', preferences.dim);
   if (preferences.idle && Date.now() - lastInput > preferences.idle * 1000 && !chatAbort && !displayCaptureBusy && !busy && !document.querySelector('dialog[open]') && $('ambient').hidden) ambient(true);
   renderTimers(); guardButtons();
-  if (received.voice && !fresh('voice')) { renderVoice(); $('connection').textContent = 'State is stale'; }
+  renderConnection();
+  if (!fresh('voice') || !fresh('timers') || signInRequired) renderVoice();
 }
 async function start() {
   const initial = location.hash.slice(1), ticket = new URLSearchParams(initial).get('ticket');

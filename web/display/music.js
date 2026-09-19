@@ -27,7 +27,7 @@ function renderMusicPanel(){
   $('track-artist').textContent=(state.artist||'Choose Round Voice from Spotify’s device picker.').replaceAll('\n',', ');
   $('track-album').textContent=state.album|| (state.title ? 'Spotify' : 'Start something good in Spotify.');
   $('track-explicit').hidden=!state.explicit;
-  $('music-status').textContent=!speakerReady&&['connected','playing','paused'].includes(status)?'Waiting for speaker':human(status);$('music-status').classList.toggle('is-playing',active&&status==='playing');
+  $('music-status').textContent=!fresh('timers')?'Host unreachable':!fresh('voice')?'Speaker status unavailable':!roundSpeakerConnected()?'Round speaker offline':!speakerReady?'Speaker busy':human(status);$('music-status').classList.toggle('is-playing',active&&status==='playing');
   $('play-track').innerHTML=icon(status==='playing'?'pause':'play');$('play-track').setAttribute('aria-label',status==='playing'?'Pause music':'Play music');
   for(const id of ['play-track','previous-track','next-track']){$(id).dataset.requires='voice';$(id).dataset.unavailable=String(!active);}
   for(const [id,command] of [['track-seek','seek'],['shuffle-track','shuffle'],['repeat-track','repeat'],['spotify-volume','volume']]){$(id).dataset.requires='nowPlaying';$(id).dataset.unavailable=String(!has(command));}
@@ -40,7 +40,7 @@ function renderMusicPanel(){
   const repeat=state.repeat||'off';$('repeat-track').setAttribute('aria-label',`Repeat: ${state.repeat||'unknown'}`);$('repeat-track').setAttribute('aria-pressed',String(repeat!=='off'));$('repeat-one').hidden=repeat!=='track';
   if(!musicDrags.has('spotify-volume')){$('spotify-volume').value=String(state.volume??0);$('spotify-volume-label').textContent=state.volume==null?'—':`${state.volume}%`;}
   const deviceVolume=Number(data.voice?.device?.volume);
-  $('music-output-note').textContent=Number.isFinite(deviceVolume) ? `Round speaker volume: ${deviceVolume}%. Spotify level adjusts the incoming music only.` : 'Music plays on the round speaker. This screen is its remote.';
+  $('music-output-note').textContent=fresh('timers')&&fresh('voice')&&!roundSpeakerConnected() ? 'This display is connected. Check the round speaker’s power and Wi-Fi for Spotify audio.' : Number.isFinite(deviceVolume) ? `Round speaker volume: ${deviceVolume}%. Spotify level adjusts the incoming music only.` : 'Music plays on the round speaker. This screen is its remote.';
   const art=typeof state.artwork==='string'&&/^\/v1\/music\/artwork\/[a-f0-9]{64}$/.test(state.artwork)?state.artwork:'';
   if(art!==coverSource){coverSource=art;const image=$('track-cover');image.hidden=true;$('cover-placeholder').hidden=false;
     image.onload=()=>{if(image.getAttribute('src')===coverSource){image.hidden=false;$('cover-placeholder').hidden=true;}};
