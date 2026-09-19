@@ -9,9 +9,10 @@ Say **“Hey Echo”** or **“Okay Echo”**, hear a warm activation cue, and w
 screen respond as it listens, thinks, and replies. A companion web app puts
 conversation, devices, memory, and customization in one place.
 
-**In development:** a larger Raspberry Pi smart display now shares Echo's
-backend. The repository is private while both builds are completed as one
-package. See the [smart-display preview, feature map, and build plan](docs/SMART_DISPLAY.md)
+**In development:** a Raspberry Pi smart display with its own microphone and
+speaker shares Echo's backend. The round speaker is a separate build option.
+See [build options](docs/BUILD_OPTIONS.md) for Pi, round-device and browser setups.
+The repository is private while both primary builds are completed as one package. See the [smart-display preview, feature map, and build plan](docs/SMART_DISPLAY.md)
 for implemented pages and the remaining hardware and integration work.
 
 [![CI](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/actions/workflows/ci.yml)

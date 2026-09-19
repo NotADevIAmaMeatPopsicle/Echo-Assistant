@@ -51,13 +51,13 @@ and listening states share the round device's visual identity. Software dimming
 and reduced-motion support are included; software dimming does not switch off
 an LCD backlight.
 
-## One system, two front ends
+## One assistant, independent devices
 
 ```mermaid
 flowchart LR
   R[Round ESP32-S3 speaker] <-->|existing audio and control transport| H[Echo host]
   P[Pi 4 touchscreen / Chromium] <-->|authenticated HTTPS /display and APIs| H
-  A[Pi push-to-talk microphone] --> H
+  A[Microphone and speaker attached to Pi] <--> P
   H <--> E[Hermes or configured model]
   H <--> S[Local speech services]
   H <--> HA[Home Assistant]
@@ -65,16 +65,20 @@ flowchart LR
   H <--> D[Encrypted explicit memory, lists and routines]
 ```
 
-The Pi is the touchscreen computer. The existing host runs the assistant,
-speech models, integrations, and shared storage. This keeps the Pi responsive
-and preserves the working round device. Pi push-to-talk uses the same assistant with its own endpoint identity. Its
-spoken reply returns only to the requesting display. Hands-free Pi wake words
-and physical echo-cancellation acceptance remain a later integration.
+The Pi is a smart display with its **own microphone and speaker**. It does not
+need the round speaker for voice. The host runs the assistant, speech models,
+integrations and shared storage. Pi push-to-talk uses its own endpoint identity,
+and its spoken reply returns only to that display.
 
-The initial display reflects the connected Echo audio endpoint. Text entry
-works without a Pi microphone. Showing “listening” is driven by live backend
-state; it does not mean this browser is recording. Stale or missing state is
-shown as unavailable and related controls are disabled.
+The home and Echo rings show this display's capture, processing and reply state.
+Another device being offline does not put the Pi into an offline voice state.
+Text entry works without a microphone. Local wake words, Pi Spotify playback and
+Pi alarm delivery still need integration; physical audio acceptance remains open.
+The round speaker retains its separate voice path and existing Spotify receiver.
+
+[Build options](BUILD_OPTIONS.md) explains the Pi, round-speaker, browser/phone
+and future adapter choices. Audio must be explicitly assigned to an endpoint;
+a missing microphone must not silently redirect listening to another room.
 
 ## Implemented software
 
@@ -83,7 +87,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 
 | Page | What works | Boundaries |
 | --- | --- | --- |
-| Home | Clock, date, weather, named rooms, next timer, live voice status | Voice status currently reflects the existing round audio endpoint |
+| Home | Clock, date, weather, named rooms, next timer, live voice status | Voice status reflects this display; the round speaker is optional |
 | Rooms | Room lights, individual brightness/colour/white temperature, thermostat mode and temperature range, speaker selection and supported playback actions | Existing Home Assistant permission grants and fresh state are required; choosing a device does not act on it |
 | Music | Spotify cover art, title/artist/album, seek bar, previous/play/pause/next, shuffle, repeat and input level; home-speaker selection; saved HTTPS radio presets and local files | Spotify currently plays through the round speaker; the Pi is its remote. Library, playlists and queue browsing open Spotify. Chromecast/AirPlay receivers are not installed. Radio and local files play through the display's output |
 | My day | Local daily briefing; selected calendars; timed/all-day event creation with separate write grants; selected camera streams/snapshots; silent doorbell cards | Creation requires a compatible calendar and owner permission. Live MJPEG depends on the camera integration. No recording or camera audio |
@@ -140,7 +144,7 @@ a stream already opened directly in a browser; press Stop to end playback.
 
 Push-to-talk capture, request cancellation and reply routing are implemented.
 The next voice stage is hands-free wake, interruption and hardware echo control. Further integrations include calendar event editing and natural-language drafting,
-room intercom/grouped audio, calling,
+grouped audio, round-endpoint intercom, external calling,
 and household/guest profiles. These are not working features yet. Commercial
 video and proprietary casting depend on supported providers and licensing.
 

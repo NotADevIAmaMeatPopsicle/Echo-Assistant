@@ -40,7 +40,7 @@ function renderMusicPanel(){
   const repeat=state.repeat||'off';$('repeat-track').setAttribute('aria-label',`Repeat: ${state.repeat||'unknown'}`);$('repeat-track').setAttribute('aria-pressed',String(repeat!=='off'));$('repeat-one').hidden=repeat!=='track';
   if(!musicDrags.has('spotify-volume')){$('spotify-volume').value=String(state.volume??0);$('spotify-volume-label').textContent=state.volume==null?'—':`${state.volume}%`;}
   const deviceVolume=Number(data.voice?.device?.volume);
-  $('music-output-note').textContent=fresh('timers')&&fresh('voice')&&!roundSpeakerConnected() ? 'This display is connected. Check the round speaker’s power and Wi-Fi for Spotify audio.' : Number.isFinite(deviceVolume) ? `Round speaker volume: ${deviceVolume}%. Spotify level adjusts the incoming music only.` : 'Music plays on the round speaker. This screen is its remote.';
+  $('music-output-note').textContent='This Spotify receiver plays on the optional round speaker. Spotify playback on this display is not set up yet; radio and files play here.'+(Number.isFinite(deviceVolume)?` Round volume: ${deviceVolume}%.`:'');
   const art=typeof state.artwork==='string'&&/^\/v1\/music\/artwork\/[a-f0-9]{64}$/.test(state.artwork)?state.artwork:'';
   if(art!==coverSource){coverSource=art;const image=$('track-cover');image.hidden=true;$('cover-placeholder').hidden=false;
     image.onload=()=>{if(image.getAttribute('src')===coverSource){image.hidden=false;$('cover-placeholder').hidden=true;}};

@@ -92,22 +92,11 @@ function render() {
   renderConnection();
   renderVoice(); renderHome(); renderMusic(); renderTimers(); renderLists(); renderRoutines(); guardButtons();
   extensions.forEach(renderExtension => renderExtension()); guardButtons();
-  $('capability-notes').innerHTML = [['Echo server', fresh('timers') && !signInRequired ? 'connected' : 'unavailable'], ['Round speaker', roundSpeakerConnected() ? human(data.voice.status) : 'offline'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Display audio', 'Tap-to-talk replies and radio play here; Spotify uses the round speaker']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
+  $('capability-notes').innerHTML = [['Echo server', fresh('timers') && !signInRequired ? 'connected' : 'unavailable'], ['Optional round speaker', roundSpeakerConnected() ? human(data.voice.status) : 'not connected'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Voice and audio', 'This device’s microphone and speakers'], ['Spotify on this display', 'Not set up yet; the round receiver is separate']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
 }
 function roundSpeakerConnected() { return fresh('voice') && ['armed','activation','listening','thinking','speaking','music','alarm','cooldown','muted'].includes(data.voice.status); }
 function renderVoice() {
-  const state = fresh('voice') ? data.voice.status : 'disconnected';
-  const phases = {
-    armed:['ready','Ready when you are','Say “Hey Echo” or “Okay Echo” to the audio endpoint.'],
-    activation:['listening','I’m here.','Wait for the cue, then speak.'], listening:['listening','Listening…','Your connected Echo is listening.'],
-    thinking:['thinking','A little thinking…','Echo is working on your request.'], speaking:['speaking','Here’s what I found.','Replying through the connected speaker.'],
-    music:['ready','Enjoy the moment.','Music is playing through Echo.'], alarm:data.voice?.announcement ? ['speaking','A message for your room.','The round speaker is playing an announcement.'] : ['speaking','Time’s up.','Check your timers.'],
-    cooldown:['ready','One moment…','The audio endpoint is getting ready.'], muted:['muted','A quiet moment.','The connected Echo microphone is muted.'],
-    connecting:['disconnected','Round speaker offline','This display can still use chat and home controls.'], disconnected:['disconnected','Round speaker offline','This display can still use chat and home controls.']
-  };
-  const p = !fresh('timers') || signInRequired ? ['disconnected','Reconnecting to Echo…','Checking this display’s connection to the server.'] : !fresh('voice') ? ['disconnected','Speaker status unavailable','This display is connected. Checking the round speaker.'] : phases[state] || phases.disconnected;
-  document.querySelectorAll('[data-orb]').forEach(orb => orb.dataset.state = p[0]);
-  $('voice-caption').textContent = p[1]; $('voice-detail').textContent = p[2];
+  // Each display owns its capture/reply state; another endpoint is optional.
   document.dispatchEvent(new Event('echo:voice-state'));
 }
 function renderHome() {

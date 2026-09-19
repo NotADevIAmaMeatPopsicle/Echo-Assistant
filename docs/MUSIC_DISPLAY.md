@@ -11,8 +11,13 @@ Open **Music** in the display sidebar. The page separates three destinations:
 
 ![Spotify now-playing layout, with synthetic music and artwork](images/display-music.png)
 
-Spotify Connect currently sends audio to the **round Echo speaker**. The Pi controls
-that receiver; it does not yet become a separate Spotify audio destination. The
+The Pi build is intended to play music through its **own attached speaker**.
+Radio and local files already use its browser output. Pi Spotify playback is an
+open implementation item, not a reason to require a second Echo device.
+
+The existing Spotify Connect receiver currently sends audio to the **optional
+round Echo speaker**. Its controls remain available for that separate build; the
+Pi does not yet have its own Spotify destination. The
 Spotify level attenuates its incoming stream, independently of the round speaker's
 hardware volume. The page displays both when the hardware reports its volume.
 

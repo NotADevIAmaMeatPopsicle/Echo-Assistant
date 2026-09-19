@@ -12,10 +12,21 @@ function voiceButtons(){
   $('voice-wave').hidden=!micStream;$('chat-text').disabled=displayCaptureBusy;guardButtons();renderDisplayPresence();
 }
 function renderDisplayPresence(){
-  const active=micStream ? 'listening' : micOpening ? 'opening' : voiceCancelling ? 'stopping' : voiceRequest || chatAbort ? 'thinking' : !voicePlayer.paused ? 'speaking' : 'ready';
-  const states={ready:['Ready when you are.','Type a thought, or tap to talk.'],opening:['A moment…','Opening this display’s microphone.'],listening:['I’m listening.','Speak naturally, then send your recording.'],thinking:['On it.','A little thinking. I’ll be right with you.'],speaking:['Here’s what I found.','Replying on this display.'],stopping:['Stopping…','Closing the microphone and request.']};
-  $('assistant-orb').dataset.state=active; $('assistant-phase').textContent=states[active][0];$('assistant-detail').textContent=states[active][1];
-  $('wake-word-status').textContent=data.health?.display_demo ? 'Voice preview · microphone off' : microphoneState==='none' ? 'Connect a microphone for voice. Pi wake words are not enabled yet.' : ['armed','activation','listening','thinking','speaking'].includes(data.voice?.status) ? 'Wake words available on the round speaker. Tap to talk here.' : 'Tap to talk here. Pi wake words are not enabled yet.';
+  const inCall=typeof intercomIsBusy==='function'&&intercomIsBusy();
+  let active=inCall ? 'intercom' : micStream ? 'listening' : micOpening ? 'opening' : voiceCancelling ? 'stopping' : voiceRequest || chatAbort ? 'thinking' : !voicePlayer.paused ? 'speaking' : 'ready';
+  const states={ready:['Ready when you are.','Type a thought, or tap to talk.'],opening:['A moment…','Opening this device’s microphone.'],listening:['I’m listening.','Speak naturally, then send your recording.'],thinking:['On it.','A little thinking. I’ll be right with you.'],speaking:['Here’s what I found.','Replying on this device.'],stopping:['Stopping…','Closing the microphone and request.'],intercom:['Room call','Use Room audio to answer, mute or hang up.'],disconnected:['Reconnecting to Echo…','Checking this display’s connection to the server.']};
+  let detail=states[active];
+  if(active==='ready'){
+    if(!fresh('timers')||signInRequired){active='disconnected';detail=states.disconnected;}
+    else if(data.health?.display_demo)detail=['Ready when you are.','Try the preview. Microphone and sound are off.'];
+    else if(microphoneState==='none')detail=['Ready when you are.','Type to Echo. Connect a microphone to talk here.'];
+    else if(!fresh('displayVoice')||!data.displayVoice?.available)detail=['Ready for a conversation.','Type to Echo. Speech service is unavailable.'];
+  }
+  const ringState=active==='intercom'?'thinking':active;
+  $('assistant-orb').dataset.state=ringState;$('assistant-phase').textContent=detail[0];$('assistant-detail').textContent=detail[1];
+  document.querySelectorAll('[data-orb]').forEach(orb=>orb.dataset.state=ringState);
+  $('voice-caption').textContent=detail[0];$('voice-detail').textContent=detail[1];
+  $('wake-word-status').textContent=data.health?.display_demo ? 'Voice preview · microphone off' : microphoneState==='none' ? 'Connect a microphone to this device. Local wake words are not enabled yet.' : 'Tap to talk with this device’s microphone. Local wake words are not enabled yet.';
 }
 async function detectMicrophone(){
   if(!navigator.mediaDevices?.enumerateDevices)return;
