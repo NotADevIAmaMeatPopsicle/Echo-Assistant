@@ -21,6 +21,7 @@
 #include "screen_idle.h"
 #include "intercom_state.h"
 #include "intercom_scene.h"
+#include "calendar_scene.h"
 
 // CO5300 setup from YouAndEye's accepted AMOLED surface. See THIRD_PARTY_NOTICES.md.
 static Arduino_DataBus* bus=new Arduino_ESP32QSPI(Board::lcdCs,Board::lcdClock,Board::lcdD0,Board::lcdD1,Board::lcdD2,Board::lcdD3);
@@ -53,6 +54,11 @@ using Page=ControlScene::Page;
 static Page page=Page::Voice;
 static Page touchPage=Page::Voice;
 static TouchGesture touchGesture;
+static CalendarReview calendarReview;
+static void cancelCalendar() {
+    if(calendarReview.id[0])Host.printf("EVENT calendar_cancel=%s\n",calendarReview.id);
+    calendarReview.clear();if(page==Page::Calendar)page=Page::Voice;
+}
 static Page upperPressPage=Page::Voice,lowerPressPage=Page::Voice;
 static Preferences preferences;
 static int brightness=120;
@@ -246,14 +252,16 @@ static void draw() {
     m.musicConnected=wakeArmed && millis()-musicAt<5000;m.musicTitle=musicTitle.c_str();m.musicArtist=musicArtist.c_str();m.musicState=musicState.c_str();
     m.lightsFresh=wakeArmed && lightsAt && millis()-lightsAt<20000;
     m.lightsReady=lightsReady;m.lightsOn=lightsOn;m.lightsMixed=lightsMixed;m.lightsConfigured=lightsConfigured;
-    VoiceSurface surface;ControlScene::render(surface,m);finishFrame(started);
+    VoiceSurface surface;
+    if(page==Page::Calendar)CalendarScene::render(surface,m,calendarReview);else ControlScene::render(surface,m);
+    finishFrame(started);
 
 }
 static void report(unsigned query=0) {
     auto s=audioStatus();
     auto net=networkStats();
     auto usb=usbStats();
-    Host.printf("STATUS product=round-voice version=0.16.0 protocol=1 duplex=1 intercom=1 timed_audio=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
+    Host.printf("STATUS product=round-voice version=0.17.0 protocol=1 duplex=1 intercom=1 timed_audio=1 calendar_review=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
         displayReady,touchReady,ESP.getPsramSize(),sdReady,(unsigned long)sdMegabytes,pmuReady,
         batteryPresent,batteryPercent,charging,s.micReady,s.speakerReady,unsigned(s.mode),
         (unsigned long)s.recordedSamples,s.peak,s.volume,(unsigned long)s.errors,ESP.getFreeHeap(),
@@ -325,6 +333,33 @@ static void pollMuteButton() {
 }
 static void handleCommand(const String& command) {
     if (!networkConnected() && networkCommand(command)) return;
+    if(command=="CAL_CLEAR"){calendarReview.clear();if(page==Page::Calendar)page=Page::Voice;return;}
+    if(command.startsWith("CAL_BEGIN ")) {
+        char id[33],extra;unsigned count,allowed,ttl;unsigned long digest;
+        if(wakeArmed&&!wakeMuted&&!intercom.busy()&&sscanf(command.c_str()+10,"%32s %u %u %u %lu %c",id,&count,&allowed,&ttl,&digest,&extra)==5)
+            calendarReview.begin(id,count,allowed,ttl,digest,millis());
+        return;
+    }
+    if(command.startsWith("CAL_ROW ")) {
+        char id[33];unsigned index;int offset=0;
+        if(sscanf(command.c_str()+8,"%32s %u :%n",id,&index,&offset)==2&&offset>0)
+            calendarReview.row(id,index,command.c_str()+8+offset);
+        return;
+    }
+    if(command.startsWith("CAL_COMMIT ")) {
+        if(wakeArmed&&!wakeMuted&&!intercom.busy()&&calendarReview.valid(millis())&&calendarReview.commit(command.c_str()+11)){
+            wakeScreen();page=Page::Calendar;Host.printf("EVENT calendar_ready=%s\n",calendarReview.id);
+        }
+        return;
+    }
+    if(command.startsWith("CAL_RESULT ")) {
+        char id[33],result[16],extra;
+        if(sscanf(command.c_str()+11,"%32s %15s %c",id,result,&extra)==2&&calendarReview.pending&&strcmp(id,calendarReview.id)==0){
+            calendarReview.result=strcmp(result,"accepted")==0?CalendarReview::Accepted:strcmp(result,"rejected")==0?CalendarReview::Rejected:CalendarReview::Unconfirmed;
+            calendarReview.pending=false;calendarReview.started=millis();calendarReview.ttl=30000;
+        }
+        return;
+    }
     if(command=="CALL_RESET") {endIntercom(true);return;}
     if(command.startsWith("CALL_LIST ")) {
         char binding[17],notice[33];unsigned count;int enabled,ready;
@@ -361,7 +396,7 @@ static void handleCommand(const String& command) {
     else if (command.startsWith("STATUS ")) report(strtoul(command.c_str()+7,nullptr,10));
     else if (command=="VOICE_ARM") { wakeArmed=true; wakeHeartbeat=millis(); if (!wakeMuted && !intercom.busy()) audioCommand(AudioCommand::StreamOn); report(); }
     else if (command=="VOICE_PING") { wakeHeartbeat=millis(); }
-    else if (command=="VOICE_OFF") { wakeArmed=false; endIntercom(true); cuePending=false; thinking=false; listenUntil=0; audioRemoteStop(); audioCommand(AudioCommand::StreamOff); }
+    else if (command=="VOICE_OFF") { cancelCalendar();wakeArmed=false; endIntercom(true); cuePending=false; thinking=false; listenUntil=0; audioRemoteStop(); audioCommand(AudioCommand::StreamOff); }
     else if (command=="MUTE") setWakeMuted(true);
     else if (command=="UNMUTE" && wakeArmed) setWakeMuted(false);
     else if(command.startsWith("HOME_SELECTED ")) {
@@ -442,11 +477,12 @@ static void handleCommand(const String& command) {
     else if (command.startsWith("TIMER_STATE ")) {
         int count,remaining,finished;
         if (sscanf(command.c_str()+12,"%d %d %d",&count,&remaining,&finished)==3 && count>=0 && count<=16 && remaining>=0 && remaining<=86400) {
-            if (finished && !timerFinished) {wakeScreen();page=Page::Timer;}
+            if (finished && !timerFinished) {cancelCalendar();wakeScreen();page=Page::Timer;}
             timerCount=count; timerSeconds=remaining; timerFinished=finished==1; timerAt=millis(); timerAvailable=true;
         }
     }
     else if ((command=="WAKE" || command.startsWith("WAKE ")) && wakeArmed && !wakeMuted && !intercom.busy() && !listenUntil) {
+        cancelCalendar();
         wakeScreen();
         page=Page::Voice; thinking=false;
         cueRequest=command=="WAKE"?1:strtoul(command.c_str()+5,nullptr,10);
@@ -461,7 +497,7 @@ static void handleCommand(const String& command) {
         if(sscanf(command.c_str()+12,"%lu %c",&nonce,&extra)==1&&nonce)
             Host.printf("EVENT group_clock=%lu device_us=%llu\n",nonce,(unsigned long long)esp_timer_get_time());
     }
-    else if(command.startsWith("GROUP_BEGIN ")&&wakeArmed&&!intercom.busy()&&!cuePending&&!listenUntil&&!thinking){
+    else if(command.startsWith("GROUP_BEGIN ")&&wakeArmed&&!intercom.busy()&&!cuePending&&!listenUntil&&!thinking&&!calendarReview.id[0]){
         unsigned long session;unsigned ceiling;char extra;
         if(sscanf(command.c_str()+12,"%lu %u %c",&session,&ceiling,&extra)==2&&session&&ceiling<=20&&audioGroupBegin(ceiling)){
             audioSession=session;remoteIsMusic=true;remoteIsAlarm=remoteIsIntercom=false;page=Page::Music;
@@ -484,8 +520,8 @@ static void handleCommand(const String& command) {
         remoteIsAlarm=alarm;
         bool callAllowed=intercom.enabled && intercom.phase==IntercomState::Active && strcmp(intercom.id,intercom.consent)==0;
         if (audioSession && (remoteIsIntercom?callAllowed:!intercom.busy()) && (!wakeMuted||remoteIsMusic||alarm) && audioRemoteBegin(remoteIsIntercom)) {
-            if (remoteIsMusic) page=Page::Music;
-            if (alarm) page=Page::Timer;
+            if (remoteIsMusic) {cancelCalendar();page=Page::Music;}
+            if (alarm) {cancelCalendar();page=Page::Timer;}
             Host.printf("EVENT audio_ready=%lu capacity=%lu\n",(unsigned long)audioSession,(unsigned long)remoteCapacity);
         }
         else Host.println("ERROR audio_begin");
@@ -517,6 +553,7 @@ static uint32_t crc32(const uint8_t* bytes,size_t count) {
 static void receiveHost() {
     unsigned currentEpoch=networkEpoch();
     if (currentEpoch!=transportEpoch) {
+        calendarReview.clear();if(page==Page::Calendar)page=Page::Voice;
         homeActionState.tick(millis(),false);
         transportEpoch=currentEpoch; wakeArmed=false; endIntercom(true); cuePending=false; thinking=false; listenUntil=0;
         serialLine=""; incomingSize=0; discardLine=false; audioSession=0;
@@ -671,13 +708,17 @@ void loop() {
     // Incoming wake/music/physical-key navigation invalidates the old surface.
     if(touchPage!=page)gesture.kind=TouchGesture::Kind::None;
     bool swiped=gesture.kind==TouchGesture::Kind::Left || gesture.kind==TouchGesture::Kind::Right;
-    if(swiped && !intercom.busy())page=ControlScene::swipePage(page,gesture.kind==TouchGesture::Kind::Left);
+    if(swiped && !intercom.busy()){
+        if(page==Page::Calendar)calendarReview.move(gesture.kind==TouchGesture::Kind::Left);
+        else page=ControlScene::swipePage(page,gesture.kind==TouchGesture::Kind::Left);
+    }
     bool touchBegan=gesture.kind==TouchGesture::Kind::Tap;
     if (touchBegan) {
         int x=gesture.x,y=gesture.y;
         auto s=audioStatus();
         if (y>=333 && y<=375) {
             if(intercom.busy())return;
+            if(page==Page::Calendar)cancelCalendar();
             if (page==Page::Voice && VoiceScene::busy(VoiceScene::resolve(voiceInput(s)))) {
                 if(!TouchTargets::navTalk.contains(x,y)) return;
                 audioRemoteStop(); audioCommand(AudioCommand::Stop); cuePending=false; listenUntil=0; thinking=false;
@@ -687,6 +728,17 @@ void loop() {
             else if (TouchTargets::navTalk.contains(x,y)) { page=Page::Voice; if (!wakeMuted && wakeArmed && s.micReady) Host.println("EVENT talk=1"); }
         } else if (y>=382 && y<=424 && ((x>=154 && x<=199) || (x>=267 && x<=312))) {
             audioCommand(x<233?AudioCommand::VolumeDown:AudioCommand::VolumeUp); preferenceAt=millis();
+        } else if(page==Page::Calendar && y>=282 && y<=324 && calendarReview.valid(millis()) && !calendarReview.pending) {
+            if(calendarReview.result!=CalendarReview::None){if(x>=125&&x<=341)cancelCalendar();}
+            else if(x>=95&&x<=227){
+                if(calendarReview.confirming)calendarReview.confirming=false;
+                else if(calendarReview.page)calendarReview.move(false);else cancelCalendar();
+            }else if(x>=239&&x<=371){
+                if(calendarReview.confirming){if(calendarReview.submit())Host.printf("EVENT calendar_create=%s\n",calendarReview.id);}
+                else if(calendarReview.page+1<calendarReview.pages())calendarReview.move(true);
+                else if(!calendarReview.allowed)cancelCalendar();
+                else if(calendarReview.confirm())Host.printf("EVENT calendar_reviewed=%s\n",calendarReview.id);
+            }
         } else if (page==Page::Intercom) {
             if(intercom.busy()) {
                 if(y>=275 && y<=317 && x>=239 && x<=371)endIntercom();
@@ -829,6 +881,7 @@ void loop() {
     }
     if (millis()-lastPower>=5000) { lastPower=millis(); updatePower(); }
     auto currentAudio=audioStatus();
+    if(calendarReview.id[0]&&(!wakeArmed||wakeMuted||intercom.busy()||!calendarReview.valid(millis())))cancelCalendar();
     bool engaged=cuePending || listenUntil || thinking || intercom.busy() || currentAudio.mode==AudioMode::Recording || currentAudio.mode==AudioMode::Chime || currentAudio.mode==AudioMode::Playback || (currentAudio.mode==AudioMode::Remote && !remoteIsMusic);
     screenIdle.update(millis(),engaged);applyScreenBrightness();
     // Full-frame QSPI flushes are expensive; leave USB enough time to refill

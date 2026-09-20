@@ -88,6 +88,10 @@ class CalendarDraftTests(unittest.TestCase):
             body={'text':'Lunch tomorrow at noon','timezone':'UTC'}
             self.assertEqual(client.post('/v1/display/calendar/draft',json=body).status_code,401)
             client.headers['Authorization']='Bearer '+'d'*40
+            mini=client.post('/v1/text',json={'text':'Add lunch tomorrow to my calendar','calendar_review':True})
+            self.assertEqual(mini.status_code,200);self.assertIn('calendar_draft',mini.json())
+            legacy=client.post('/v1/text',json={'text':'Add lunch tomorrow to my calendar'})
+            self.assertEqual(legacy.status_code,200);self.assertNotIn('calendar_draft',legacy.json())
             code=client.post('/v1/displays/pairing',json={'name':'Synthetic draft screen'}).json()['code']
             credential=client.post('/v1/displays/enroll',json={'code':code}).json()['credential']
             client.headers['Authorization']='Display '+credential

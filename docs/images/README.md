@@ -27,6 +27,10 @@
   geometry and reference electronics. They are separate from the prototype
   photographs above.
 
+`round-calendar.png` combines the synthetic draft and confirmation scenes produced
+by `tools/preview_firmware.py`, using `tools/readme_gallery.py`. It uses the firmware's real font bitmaps and renderer;
+it is not a photo of installed firmware or a real calendar event.
+
 To refresh the screen galleries on Windows with MSVC C++ tools and Pillow:
 
 ```text

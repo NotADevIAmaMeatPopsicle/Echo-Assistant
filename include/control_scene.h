@@ -5,7 +5,7 @@
 
 namespace ControlScene {
 constexpr int brightnessMinimum=20,brightnessMaximum=255;
-enum class Page { Voice, Home, Thermostat, ThermostatMode, Soundbar, SoundbarVolume, Weather, Music, Settings, Network, Timer, NewTimer, Lights, SpeakerPicker, Intercom, Screen };
+enum class Page { Voice, Home, Thermostat, ThermostatMode, Soundbar, SoundbarVolume, Weather, Music, Settings, Network, Timer, NewTimer, Lights, SpeakerPicker, Intercom, Screen, Calendar };
 inline Page swipePage(Page page,bool left) {
     Page parent=page==Page::ThermostatMode?Page::Thermostat:page==Page::SoundbarVolume || page==Page::SpeakerPicker?Page::Soundbar:page==Page::Network || page==Page::Screen?Page::Settings:page==Page::NewTimer?Page::Timer:page;
     if(!left && parent!=page)return parent;
@@ -42,7 +42,7 @@ struct Model {
     const char *connection="Connection unavailable",*timerLabel="",*timerResult="",*musicTitle="",*musicArtist="",*musicState="";
 };
 inline const char* name(Page p) {
-    static const char* names[]={"voice","home","thermostat","thermostat-modes","bose","bose-volume","weather","music-controls","settings","connection","timers","new-timer","lights","speakers","intercom"};
+    static const char* names[]={"voice","home","thermostat","thermostat-modes","bose","bose-volume","weather","music-controls","settings","connection","timers","new-timer","lights","speakers","intercom","screen","calendar"};
     return names[unsigned(p)];
 }
 template<class Surface> void fitted(Surface& g,const char* value,int cx,int y,unsigned size,uint16_t color,int width) {

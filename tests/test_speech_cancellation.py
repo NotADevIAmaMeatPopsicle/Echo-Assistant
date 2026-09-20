@@ -53,6 +53,9 @@ class ChildCancellationTests(unittest.TestCase):
     def launcher(self,script):
         original=subprocess.Popen; children=[]; launched=threading.Event()
         def launch(*_,**kwargs):
+            # The fake uses this test interpreter, not the separate deployed TTS
+            # runtime. Its Python home/library path must match that interpreter.
+            if 'env' in kwargs:kwargs['env']={k:v for k,v in kwargs['env'].items() if k not in {'PYTHONHOME','LD_LIBRARY_PATH'}}
             child=original([sys.executable,'-u','-c',script],**kwargs)
             children.append(child); launched.set()
             return child
@@ -123,6 +126,8 @@ class ReplyRequestTests(unittest.TestCase):
         self.assertEqual(str(calls[0].url),'http://127.0.0.1:8768/v1/text')
         self.assertEqual(json.loads(calls[0].content),{'text':'Synthetic text'})
         self.assertEqual(calls[0].headers['Authorization'],'Bearer test-token')
+        post_text('Synthetic draft','test-token',transport=httpx.MockTransport(handler),calendar_review=True)
+        self.assertEqual(json.loads(calls[-1].content),{'text':'Synthetic draft','calendar_review':True})
 
 
 if __name__=='__main__': unittest.main()

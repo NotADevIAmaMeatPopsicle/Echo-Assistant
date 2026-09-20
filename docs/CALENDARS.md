@@ -100,5 +100,7 @@ that a particular external calendar integration supports every operation.
 The implementation follows Home Assistant's
 [calendar entity API](https://developers.home-assistant.io/docs/core/entity/calendar/)
 and [calendar WebSocket handlers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/calendar/__init__.py).
-Invitations, master-event editing, counted-series rescheduling, and the Mini's
-calendar review screen remain planned work.
+Invitations, master-event editing and counted-series rescheduling remain planned
+work. [Mini calendar review](ROUND_CALENDAR.md) supports paginated drafts and a
+separate creation confirmation; its firmware installation and physical acceptance
+remain pending.

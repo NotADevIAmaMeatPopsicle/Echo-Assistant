@@ -26,7 +26,7 @@ from backend.settings import EchoSettings, SettingsStore
 
 
 class MusicConversationTests(unittest.TestCase):
-    def conversation(self, pause):
+    def conversation(self, pause, calendar=False):
         with TemporaryDirectory() as directory, ExitStack() as stack:
             root=Path(directory); (root/'local').mkdir()
             token='x'*40; (root/'local/api-token').write_text(token)
@@ -76,14 +76,17 @@ class MusicConversationTests(unittest.TestCase):
                 except (FileNotFoundError,ValueError):return {}
             class Port:
                 is_open=False
-                def __init__(self): self.lines=[]; self.sequence=0; self.checked=False
+                def __init__(self): self.lines=[]; self.sequence=0; self.checked=False;self.review_id=None;self.review_cancelled=False
                 def open(self): self.is_open=True
                 def close(self): self.is_open=False
                 def write(self, data):
                     if data==b'STATUS\n':
-                        self.lines.append(b'STATUS product=round-voice protocol=1 duplex=1 cue_ready=1 volume=2 muted=0 audio_errors=0\n')
+                        self.lines.append(b'STATUS product=round-voice protocol=1 duplex=1 cue_ready=1 volume=2 muted=0 audio_errors=0'+(b' calendar_review=1' if calendar else b'')+b'\n')
                     elif data.startswith(b'WAKE '):
                         self.lines.append(b'EVENT listening_ready='+data.split()[1]+b'\n')
+                    elif data.startswith(b'CAL_COMMIT '):
+                        self.review_id=data.split()[1]
+                        self.lines.append(b'EVENT calendar_ready='+self.review_id+b'\n')
                 def read(self, count):
                     time.sleep(.005)
                     state=current()
@@ -93,6 +96,10 @@ class MusicConversationTests(unittest.TestCase):
                             result=api.post('/v1/music/control',headers={'Authorization':'Bearer '+token},json={'action':'pause'})
                             requests.append(result.status_code)
                         release.set()
+                    if self.review_id and state.get('status')=='armed' and not self.review_cancelled:
+                        assert 'play' not in calls, 'Music resumed before draft dismissal'
+                        self.review_cancelled=True
+                        self.lines.append(b'EVENT calendar_cancel='+self.review_id+b'\n')
                     data=b''.join(self.lines)+encode_pcm(bytes(512),self.sequence)
                     self.lines.clear(); self.sequence+=1
                     return data
@@ -112,7 +119,7 @@ class MusicConversationTests(unittest.TestCase):
                 states.append(dict(status)); return original_write(status)
             alarms=Mock(is_announcement=False); alarms.receive.return_value=False; alarms.take.return_value=None
             replacements={
-                'ROOT':root,'load_wifi':Mock(return_value={ 'enabled':True }),
+                'ROOT':root,'MAC':'020000000001','load_wifi':Mock(return_value={ 'enabled':True }),
                 'WifiTransport':Mock(return_value=port),'Recognition':Mock(return_value=recognition),
                 'EchoCleaner':Mock(),'Speaker':Speaker,'HomeDisplay':Mock(),'Alarms':Mock(return_value=alarms),
                 'speech_settings':Mock(return_value=EchoSettings()),'selected_status':Mock(return_value='ready'),
@@ -120,6 +127,17 @@ class MusicConversationTests(unittest.TestCase):
                 'post_text':Mock(return_value=httpx.Response(200,json={'status':'complete','text':'Synthetic reply.'},
                     request=httpx.Request('POST','http://localhost/v1/text'))),'write_status':publish,
             }
+            calendar_requests=[]
+            if calendar:
+                draft={'event':{'title':'Lunch with Sam','calendar':'calendar.shared','start':'2026-09-21T12:00',
+                    'end':'2026-09-21T13:00','timezone':'UTC'},'questions':[],'expires_at':time.time()+900}
+                replacements['post_text'].return_value=httpx.Response(200,json={'status':'complete','text':'Draft prepared.','calendar_draft':draft},request=httpx.Request('POST','http://localhost/v1/text'))
+                def calendar_service(request):
+                    calendar_requests.append(request.method)
+                    return httpx.Response(200,json={'revision':1,'items':[{'kind':'calendar','entity_id':'calendar.shared','name':'Shared calendar','writable':True,'available':True}]})
+                calendar_client=stack.enter_context(httpx.Client(base_url='http://test',transport=httpx.MockTransport(calendar_service)))
+                original_calendar=voice.RoundCalendar
+                replacements['RoundCalendar']=lambda client,worker,write:original_calendar(calendar_client,worker,write)
             for name,value in replacements.items(): stack.enter_context(patch.object(voice,name,value))
             stack.enter_context(patch.object(owner,'stopped',side_effect=stopped))
             with redirect_stdout(io.StringIO()):
@@ -127,6 +145,9 @@ class MusicConversationTests(unittest.TestCase):
             self.assertTrue(port.checked); self.assertEqual(emitted,{'wake','command'})
             self.assertTrue(any(s.get('spoken_replies')==1 for s in states))
             self.assertTrue(all(s.get('playback_errors')==0 for s in states))
+            if calendar:
+                self.assertTrue(port.review_cancelled);self.assertEqual(calendar_requests,['GET'])
+                self.assertTrue(replacements['post_text'].call_args.kwargs['calendar_review'])
             return calls,requests,states
 
     def test_pause_during_answer_finishes_speech_and_prevents_music_resumption(self):
@@ -137,6 +158,10 @@ class MusicConversationTests(unittest.TestCase):
     def test_unpaused_conversation_still_resumes_interrupted_music(self):
         calls,requests,_=self.conversation(pause=False)
         self.assertEqual(requests,[]); self.assertEqual(calls.count('play'),1)
+
+    def test_calendar_review_keeps_music_paused_until_explicit_dismissal(self):
+        calls,requests,_=self.conversation(pause=False,calendar=True)
+        self.assertEqual(requests,[]);self.assertEqual(calls.count('play'),1)
 
 
 if __name__=='__main__':unittest.main()

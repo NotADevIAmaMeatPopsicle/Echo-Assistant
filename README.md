@@ -254,6 +254,11 @@ weather, timers, lights, music, and settings. On the speaker page, the physical
 buttons adjust volume; on the thermostat page, they adjust temperature. On
 Home/Echo, the upper button toggles software microphone mute.
 
+The new [Mini calendar review](docs/ROUND_CALENDAR.md) presents spoken event drafts
+page by page, then requires a separate Create confirmation. It shares the Deck's
+calendar permissions and duplicate protection. Firmware 0.17.0 installation and
+physical touch acceptance are pending.
+
 <table>
 <tr>
 <td width="50%" valign="top"><a href="docs/images/prototype-front.jpg"><img src="docs/images/prototype-front.jpg" alt="Actual assembled Echo prototype with powered round display, translucent stand, and salvaged speaker" width="460"></a><br><strong>Echo on the desk</strong><br>The powered prototype in its Crescent stand.</td>

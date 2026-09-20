@@ -24,6 +24,20 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Mini calendar checkpoint:** the private host now supports paginated draft review
+and a separate Create confirmation on firmware 0.17.0. Full field previews include
+UTC offsets, all-day bounds and repeat rules. Partial transfers, unresolved questions,
+unsupported characters, stale confirmations and revoked grants cannot create an event.
+Cancellation/expiry clears unsent drafts; music stays held during review.
+
+Thirty-one focused checks pass on Windows; the corresponding Linux checks pass
+with one Windows-only speech check skipped. The actual C++ state and circular
+screen rendering pass, and firmware 0.17.0 builds with a verified four-image bundle.
+The host deployment preserved settings, pairing and source grants. The Deck's
+unchanged bundle remains armed at 2%, with Spotify discoverable. No real calendar
+event, home device or audio was used. Mini firmware installation and physical
+touch/creation acceptance remain open. See [Mini calendar review](ROUND_CALENDAR.md).
+
 **Guest home voice checkpoint:** owner-enabled local guest commands are deployed
 to the private host and current Pi bundle. Guests can name shared devices or room
 lights for state, power, brightness, explicit-unit temperature and basic speaker
@@ -105,7 +119,8 @@ platform-specific skips; 34 focused Linux tests passed. Browser checks cover
 calendar changes, repeat forms, existing drafts and guest restrictions. The Pi
 serves matching assets and remains armed at 2%; settings and pairing were preserved.
 No real calendar events, home-device state or audio were changed. The occurrence
-checkpoint above extends this work; invitations and Mini review remain open.
+checkpoint above extends this work; invitations remain open. Mini review software
+is covered by its newer checkpoint above.
 
 **Display access checkpoint:** owner-assigned Household/Guest profiles are deployed
 to the private host and current Pi client. Guests receive only selected devices
@@ -168,7 +183,7 @@ or human-speech pickup. The next test needs someone speaking near the microphone
 - [x] Persistent, revocable display pairing and unattended Pi loopback bridge (software).
 - [x] Opt-in Home Assistant calendar agenda (read-only software).
 - [x] Daily briefing composition, spoken/typed briefing requests and calendar event creation forms (software; actual calendar writes untested).
-- [x] Model-assisted calendar drafts from smart-display text/voice and the event form; explicit review, date validation and existing write grants (software; real calendar creation and Mini review UI remain open).
+- [x] Model-assisted calendar drafts from smart-display text/voice and the event form; explicit review, date validation and existing write grants (software; real calendar creation and Mini firmware acceptance remain open).
 - [x] Camera discovery and opt-in refreshing snapshots (software).
 - [x] Live MJPEG camera streams and persistent silent doorbell event cards (software; real camera/doorbell acceptance pending).
 - [x] Encrypted shared photo albums and supported local/radio media playback (software).
@@ -221,7 +236,8 @@ parity. Known gaps documented in the smart-display guide remain:
 
 - [x] Supported single-event editing/deletion and bounded recurring creation, with separate owner permissions and explicit review (software; external calendar writes untested).
 - [x] Explicit occurrence/following edits and occurrence/following/whole-series deletion, preserving repeat patterns (software; live provider writes untested).
-- [ ] Calendar master-event editing, counted-series rescheduling, invitations and a calendar-review path for the Mini.
+- [x] Mini calendar draft review, explicit creation, cancellation and expiry (host deployed; firmware built, installation and physical acceptance pending).
+- [ ] Calendar master-event editing, counted-series rescheduling and invitations.
 - [ ] Synchronized grouped music across endpoints.
       Music Assistant connection, library/queue selection, shared-output permissions,
       the native Pi player, private stream transport and local voice coordination

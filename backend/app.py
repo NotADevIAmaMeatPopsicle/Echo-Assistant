@@ -608,7 +608,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
                 return {'status':'complete','capability':'research','text':'I’ll look into that. The report and sources will appear on the Tasks page.','task_id':task['id']}
             if routine_request(request.text) or household_request(request.text) or briefing_request(request.text) or draft_request(request.text):
                 return await run_conversation(connection,app.state.speech_stop,
-                    partial(echo.respond,allow_home_actions=deployment_mode=='device'),request.text,session,request.lookup)
+                    partial(echo.respond,allow_home_actions=deployment_mode=='device',calendar_review=request.calendar_review),request.text,session,request.lookup)
             if deployment_mode == 'validation' or memory_request(request.text) or request.lookup or lookup_request(request.text):
                 return await run_conversation(connection,app.state.speech_stop,echo.respond,request.text,session,request.lookup)
             # Home/timer actions already accepted cannot be undone by disconnect.

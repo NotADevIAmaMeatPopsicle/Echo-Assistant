@@ -36,6 +36,7 @@ from .lifecycle import Lifecycle, request_stop
 from .transport import load_wifi, WifiTransport
 from .round_intercom import RoundIntercom
 from .round_group_music import RoundGroupMusic, ForegroundWire
+from .round_calendar import RoundCalendar
 
 ROOT = Path(__file__).resolve().parents[1]
 MAC = __import__('os').environ.get('ECHO_DEVICE_MAC', '').lower()
@@ -184,14 +185,19 @@ def run_session(args, lifecycle, model, recovery, music):
                 return outcome, reply, pcm
 
             def answer(text, *, cancel=None):
+                prepared=None
                 try:
-                    response = post_text(text,token,cancel=cancel)
+                    response = post_text(text,token,cancel=cancel,calendar_review=calendar.supported)
                     response.raise_for_status()
                     data = response.json()
                     outcome, reply = data.get("status", "unavailable"), str(data.get("text", "Assistant unavailable"))
+                    if data.get('calendar_draft') and calendar.supported:
+                        prepared=calendar.prepare(data['calendar_draft'])
+                        reply='Review every draft page on the Mini, then confirm Create. Nothing is saved yet.' if prepared and prepared['allowed'] else 'Open My day on the Deck and prepare the event there. Nothing has been saved.'
                 except (httpx.HTTPError, ValueError):
                     outcome, reply = "unavailable", "The local assistant is unavailable right now."
-                return spoken_result(outcome, reply,cancel=cancel)
+                result=spoken_result(outcome, reply,cancel=cancel)
+                return (*result,prepared) if prepared else result
 
             speaker = Speaker(port.write)
             def finish_sample(result,reason=''):
@@ -203,6 +209,7 @@ def run_session(args, lifecycle, model, recovery, music):
             display = HomeDisplay(client, worker, port.write)
             alarms = Alarms(client, worker, port.write,speech_jobs)
             calls = RoundIntercom(client,port.write)
+            calendar = RoundCalendar(client,worker,port.write)
             pending = None
             port.write(b"STATUS\n")
             deadline = time.monotonic()+5
@@ -213,7 +220,7 @@ def run_session(args, lifecycle, model, recovery, music):
             else:
                 raise RuntimeError("Voice-capable firmware did not identify itself")
             if lifecycle.stopped(): return
-            for line in lines:group.receive(line)
+            for line in lines:group.receive(line);calendar.receive(line)
             if any(re.search(r'\bintercom=1\b',line) for line in lines):port.write(b'CALL_RESET\n')
             duplex = any(re.search(r'\bduplex=1\b', line) for line in lines if line.startswith('STATUS '))
             activation = Activation(any(re.search(r'\bcue_ready=1\b', line) for line in lines if line.startswith('STATUS ')))
@@ -253,6 +260,7 @@ def run_session(args, lifecycle, model, recovery, music):
                     recognition.reset()
                 for line in lines:
                     group.receive(line)
+                    calendar.receive(line)
                     calls.receive(line)
                     if phase == 'activation': activation.receive(line)
                     display.receive(line)
@@ -287,6 +295,7 @@ def run_session(args, lifecycle, model, recovery, music):
                             key: int(fields[key]) for key in ('last_us', 'max_us', 'frames', 'compose_us', 'flush_us', 'cache_pixels', 'background')
                             if fields.get(key, '').isdigit()}}
                     elif line.startswith("EVENT mic_muted="):
+                        calendar.clear()
                         finish_sample('cancelled')
                         status["muted"] = line.endswith("=1")
                         if status['muted']:
@@ -301,6 +310,7 @@ def run_session(args, lifecycle, model, recovery, music):
                         if pending: pending.cancel(); pending = None
                         if speaker.active and phase not in {'music', 'alarm'}: speaker.stop()
                     elif line == "EVENT cancelled=1":
+                        calendar.clear()
                         if calls.busy:calls.disable('Call stopped')
                         finish_sample('cancelled')
                         if phase == 'alarm': alarms.finished('cancelled')
@@ -311,6 +321,7 @@ def run_session(args, lifecycle, model, recovery, music):
                         if speaker.active: speaker.stop()
                         resume_music = False
                     elif line == "EVENT talk=1" and not status["muted"] and not calls.busy:
+                        calendar.clear()
                         finish_sample('cancelled')
                         last_pcm = now
                         if phase == 'alarm': alarms.finished('cancelled')
@@ -325,9 +336,11 @@ def run_session(args, lifecycle, model, recovery, music):
                             if group.selected:group.submit_control(worker,action)
                             else:music.command(action)
                 display.pump()
+                calendar.pump()
                 alarms.pump()
                 calls.tick(status,phase)
                 if calls.busy and phase!='intercom':
+                    calendar.clear()
                     finish_sample('cancelled');alarms.messages.cancel()
                     if phase=='music':music.command('pause');music.clear()
                     if speaker.active:speaker.stop()
@@ -382,10 +395,12 @@ def run_session(args, lifecycle, model, recovery, music):
                     status['playback_errors'] += 1
                     phase, until = 'cooldown', now+1; last_pcm = now
                 if phase == "armed" and music.status == 'playing' and not music.pcm.empty():
+                    calendar.clear()
                     speaker.start_stream(music.read); phase = "music"
                 if phase in {'armed', 'music'}:
                     alarm_pcm = alarms.take(allow_announcements=not status['muted'])
                     if alarm_pcm:
+                        calendar.clear()
                         if phase == 'music': music.command('pause'); music.clear(); resume_music = True
                         if alarms.is_announcement:port.write(b'VOICE_REPLY Room announcement\n')
                         speaker.start(alarm_pcm, kind='V' if alarms.is_announcement else 'A'); phase = 'alarm'
@@ -396,7 +411,10 @@ def run_session(args, lifecycle, model, recovery, music):
                     status['music'] = music.health()
                     last_music_ui = now
                 if pending and pending.done():
-                    try: outcome, reply, pcm = pending.result()
+                    prepared=None
+                    try:
+                        result=pending.result();outcome,reply,pcm=result[:3]
+                        if len(result)==4:prepared=result[3]
                     except Exception:
                         outcome, reply, pcm = "unavailable", "Local reply unavailable", None
                     pending = None
@@ -412,6 +430,7 @@ def run_session(args, lifecycle, model, recovery, music):
                         status["playback_errors"] += 1
                         finish_sample('failed','Local speech generation failed')
                         phase, until = "cooldown", now+1
+                    if prepared and not status['muted']:calendar.offer(prepared)
                 if phase in {"speaking", "music", "alarm"}:
                     try: speaker.pump()
                     except RuntimeError:
@@ -450,12 +469,13 @@ def run_session(args, lifecycle, model, recovery, music):
                     phase, until = "cooldown", now+1
                 if phase == "cooldown" and now >= until:
                     phase = "armed"
-                    if resume_music:
-                        music.command('play'); resume_music = False
-                group.pump(phase,speaker_busy=speaker.active,spotify_busy=music.status=='playing',calls_busy=calls.busy)
+                if phase=='armed' and resume_music and calendar.draft is None:
+                    music.command('play'); resume_music = False
+                group.pump(phase,speaker_busy=speaker.active or calendar.draft is not None,spotify_busy=music.status=='playing',calls_busy=calls.busy)
                 recognition.set_mode(recognition_mode('music' if phase=='armed' and group.active else phase, status['muted'], recognition.echo_ready))
                 for event in recognition.poll():
                     if phase in {'armed', 'music'} and event['kind'] == 'wake':
+                        calendar.clear()
                         alarms.messages.cancel()
                         resume_music = activate(port, speaker, music, phase, activation) or resume_music
                         status['triggers'] += 1

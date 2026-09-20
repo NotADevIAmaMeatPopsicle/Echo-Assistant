@@ -19,6 +19,7 @@
 #include "../include/mute_button.h"
 #include "../include/touch_gesture.h"
 #include "../include/screen_idle.h"
+#include "../include/calendar_scene.h"
 
 struct Raster {
     std::vector<uint16_t> pixels=std::vector<uint16_t>(466*466,0);
@@ -191,6 +192,49 @@ int main(int argc,char** argv) {
         puts("PASS: mute button bounce, startup, hold, repeat, bus-fault and rollover cases");
     }
     const char* directory=argc>1?argv[1]:".";
+    {
+        CalendarReview draft;const char* id="cccccccccccccccccccccccccccccccc";
+        const char* other="dddddddddddddddddddddddddddddddd";
+        std::vector<std::string> rows={"TITLE","Lunch with Sam","CALENDAR","Shared calendar","START",
+            "2026-09-21T12:00-04:00","END","2026-09-21T13:00-04:00","TIME ZONE","America/New_York",
+            "REPEAT","Does not repeat","LOCATION","Cafe","NOTES","Bring the project notes."};
+        auto digest=[](const std::vector<std::string>& lines,bool allowed){uint32_t n=2166136261u;
+            auto byte=[&](char c){n=(n^uint8_t(c))*16777619u;};byte(allowed?'1':'0');byte('\n');
+            for(auto& s:lines){for(char c:s)byte(c);byte('\n');}return n;};
+        auto load=[&](bool allowed){assert(draft.begin(id,unsigned(rows.size()),allowed,60,digest(rows,allowed),100));
+            for(unsigned i=0;i<rows.size();++i)assert(draft.row(id,i,rows[i].c_str()));assert(draft.commit(id));};
+        assert(!draft.begin("wrong",1,1,60,0,100));assert(!draft.begin(id,129,1,60,0,100));
+        assert(!draft.begin(id,1,1,901,0,100));assert(!draft.begin(id,1,2,60,0,100));
+        assert(draft.begin(id,unsigned(rows.size()),1,60,digest(rows,true),100));
+        assert(!draft.commit(id));assert(!draft.row(other,0,"wrong"));assert(!draft.row(id,0,"bad\nrow"));
+        assert(!draft.row(id,0,"1234567890123456789012345"));assert(!draft.row(id,128,"wrong"));
+        for(unsigned i=0;i<rows.size();++i)assert(draft.row(id,i,rows[i].c_str()));
+        assert(!draft.commit(other));assert(draft.row(id,0,"Altered"));assert(!draft.commit(id));
+        assert(draft.row(id,0,rows[0].c_str()));assert(draft.commit(id));assert(!draft.commit(id));
+        assert(!draft.row(id,0,"Late mutation"));assert(!draft.confirm());assert(!draft.submit());
+        ControlScene::Model model;model.page=ControlScene::Page::Calendar;model.system.connected=true;
+        model.system.state=VoiceScene::State::Ready;
+        auto render=[&](const char* suffix){Raster r;CalendarScene::render(r,model,draft);r.checkBounds();
+            char file[1024];snprintf(file,sizeof(file),"%s/calendar-%s.ppm",directory,suffix);r.save(file);};
+        render("draft");
+        for(unsigned i=1;i<draft.pages();++i)draft.move(true);
+        assert(draft.reviewed());assert(draft.confirm());render("confirm");
+        assert(draft.submit());assert(!draft.submit());render("pending");
+        for(auto result:{CalendarReview::Accepted,CalendarReview::Rejected,CalendarReview::Unconfirmed}){
+            draft.pending=false;draft.result=result;assert(!draft.submit());
+            render(result==CalendarReview::Accepted?"accepted":result==CalendarReview::Rejected?"rejected":"unconfirmed");}
+        load(false);for(unsigned i=1;i<draft.pages();++i)draft.move(true);assert(!draft.confirm());
+        rows={"REVIEW ON THE DECK","This draft needs a","larger display or","additional characters.","Nothing is saved here."};
+        load(false);render("deck");draft.clear();assert(!draft.commit(id)&&!draft.submit());
+        rows=std::vector<std::string>(128,"WWWWWWWWWWWWWWWWWWWWWWWW");load(true);
+        for(unsigned i=1;i<32;++i){assert(!draft.reviewed());draft.move(true);}
+        assert(draft.reviewed()&&draft.confirm());draft.confirming=false;render("wide");
+        assert(draft.begin(id,1,1,1,0,0xfffffff0));assert(draft.valid(0x10));assert(!draft.valid(0x400));
+        assert(strcmp(ControlScene::name(ControlScene::Page::Screen),"screen")==0);
+        assert(strcmp(ControlScene::name(ControlScene::Page::Calendar),"calendar")==0);
+        assert(strcmp(ControlScene::physicalAction(ControlScene::Page::Calendar,true),"mic_toggle")==0);
+        puts("PASS: calendar transfer integrity, complete review, one confirmation, expiry and circular layout");
+    }
     {
         ScreenIdle screen;
         assert(screen.update(119999,false)==ScreenIdle::Level::Awake);

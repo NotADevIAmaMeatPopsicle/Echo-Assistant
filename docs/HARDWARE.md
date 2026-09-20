@@ -34,6 +34,10 @@ acceptance remain required; there is no configured presence sensor.
 
 ### Firmware installation
 
+Firmware 0.17.0 adds [calendar review](ROUND_CALENDAR.md), retaining screen protection,
+intercom and timed group audio. The host detects the review capability explicitly.
+Installation and physical acceptance of these additions are still required.
+
 After the host setup has created `.venv`, install and run PlatformIO there:
 
 ```powershell

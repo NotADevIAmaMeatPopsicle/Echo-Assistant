@@ -48,8 +48,9 @@ Hermes is selected for conversation. It is a separate extraction call without
 agent tools, web search, saved memories or prior conversation. Only the description,
 current time and reference time zone go to that provider. A local compatible model
 can keep that extraction on the configured local server. If drafting is unavailable,
-the manual form still works. Clients without the review form, including the current
-Mini firmware, direct calendar requests to the smart display.
+the manual form still works. Older Mini firmware directs calendar requests to the
+smart display. [Mini firmware 0.17.0](ROUND_CALENDAR.md) adds paginated review and
+explicit creation; its installation and physical acceptance remain pending.
 
 ![An editable calendar draft with synthetic event details](images/display-calendar-draft.png)
 

@@ -6,6 +6,15 @@ behavior or physical fit. Those remain in the [build queue](BUILD_QUEUE.md).
 
 ## Host and firmware
 
+Mini calendar checks use synthetic HTTP, voice and playback:
+
+```text
+python -m unittest tests.test_round_calendar tests.test_calendar_drafts tests.test_daily_calendar tests.test_speech_cancellation tests.test_music_conversation
+```
+
+`python tools/preview_firmware.py` checks the actual C++ review state
+and circular layout on Windows using existing MSVC tools; it does not flash a board.
+
 From the checkout with the pinned host requirements installed:
 
 ```text
