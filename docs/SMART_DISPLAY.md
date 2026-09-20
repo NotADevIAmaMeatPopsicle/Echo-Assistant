@@ -212,8 +212,9 @@ no built-in microphone, and HDMI/headphone outputs do not provide one.
 
    **Display connected** means the screen can reach the authenticated Echo API.
    The round speaker has its own connection: **Round speaker offline** on the
-   music page does not mean the Pi is offline. Spotify currently plays through
-   that speaker, so check its power and Wi-Fi. Text chat and home controls remain
+   music page does not mean the Pi is offline. **This display** selects the Pi's
+   own Spotify receiver; **Round speaker** selects the optional round receiver.
+   Check the selected receiver's output and connection. Text chat and home controls remain
    available on a connected display. **Host unreachable · retrying** reports a
    server connection failure; **Pairing / sign-in needed** reports expired or
    revoked access. Both recover automatically when access is restored.

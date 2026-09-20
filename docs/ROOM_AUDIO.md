@@ -15,8 +15,9 @@ or the round speaker bridge.
 3. On each paired display, open **Settings → Sound on this display** and press
    **Enable announcements here**. This allows browser audio for that session.
    Receiving starts off again after a reload. The initial level is 2%.
-4. Keep the round speaker powered and connected. Its microphone mute and speaker
-   volume also apply to announcements. Existing timers retain their own behavior.
+4. If you enabled the round receiver, keep that speaker powered and connected.
+   Its microphone mute and speaker volume also apply to announcements. Pi/display
+   receivers work independently. Existing timers retain their own behavior.
 
 An enabled receiver may be offline, busy, muted, or in quiet hours. Browser
 receiving pauses while recording a voice message, chatting, playing other display

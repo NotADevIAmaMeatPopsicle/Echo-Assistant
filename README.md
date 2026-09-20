@@ -2,184 +2,238 @@
 
 <img src="web/icon.svg" alt="Echo blue-green ring" width="64">
 
-### A smart speaker and display you can build, understand, and make your own.
+### A smart speaker and smart display you can build, understand, and make your own.
 
-Echo brings an AI voice assistant, music, and home control to a round AMOLED
-smart speaker or a Raspberry Pi touchscreen with its own microphone and speaker.
-Say **“Hey Echo”** or **“Okay Echo”**, hear a warm activation cue, and watch the
-screen respond as it listens, thinks, and replies. A companion web app puts
-conversation, devices, memory, and customization in one place.
+Echo brings conversational AI, music, home control, and everyday planning to a
+compact round speaker or a Raspberry Pi touchscreen. A shared host runs the
+assistant and speech models; each device has its own screen and audio. A web
+workspace puts conversations, memory, research, and configuration within reach
+from a computer or phone.
 
-Choose a compact speaker or a larger view of your rooms, music and day.
-Each device has its own audio path; the Pi does not need the round speaker.
-See [build options](docs/BUILD_OPTIONS.md) for Pi, round-device and browser setups.
-The repository is private while both primary builds are completed as one package. See the [smart-display preview, feature map, and build plan](docs/SMART_DISPLAY.md)
-for implemented pages and the remaining hardware and integration work.
+**Current stage: private alpha.** Both primary builds are being completed as one
+package. The Pi display is running on hardware; its audio and the new intercom
+paths still need physical validation. See [current status](#current-status) for
+what is implemented, what has been exercised, and what remains.
 
 [![CI](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/actions/workflows/ci.yml)
-![Board](https://img.shields.io/badge/ESP32--S3-AMOLED_1.75-2274c7)
-![Speech](https://img.shields.io/badge/speech-local-79d8bc)
-![Status](https://img.shields.io/badge/status-alpha-orange)
+![Round speaker](https://img.shields.io/badge/ESP32--S3-AMOLED_1.75-2274c7)
+![Smart display](https://img.shields.io/badge/Raspberry_Pi_4B-smart_display-2274c7)
+![Status](https://img.shields.io/badge/status-private_alpha-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
-**[Prototype](#the-built-prototype)** · **[Web app](#the-web-workspace)** · **[Smart display](#on-the-smart-display)** · **[Round screens](#on-the-device)** ·
-**[Build your own](#build-your-own)** · **[Enclosure](#the-crescent-enclosure)** ·
-**[Documentation](#documentation)**
+**[Choose a build](#two-builds-one-echo)** · **[Smart display](#the-smart-display)** ·
+**[Web workspace](#the-web-workspace)** · **[Round speaker](#the-round-smart-speaker)** ·
+**[Try the UI](#try-the-ui)** · **[Build guide](#build-your-own)** ·
+**[Status](#current-status)** · **[Documentation](#documentation)**
 
-## The built prototype
+![Echo smart-display home with a clock, weather, room shortcuts, and next timer; sample data](docs/images/display-home.png)
 
-The Crescent stand, printed and assembled: a working round display above a
-repurposed Google Home Mini speaker, with the board and cable route accessible
-from the back. Click either photo for a closer look.
+*Screenshots show the working software with synthetic data. The prototype photos
+below show the actual round build. [Image sources and provenance](docs/images/README.md).*
+
+## Two builds, one Echo
+
+| Build | Hardware and experience | Start here |
+| --- | --- | --- |
+| **Round smart speaker** | Waveshare ESP32-S3-Touch-AMOLED-1.75, 466 × 466 touch display, onboard microphones, attached speaker, swipe navigation, and contextual physical buttons. Printable Crescent stand included. | [Board and firmware](docs/HARDWARE.md) · [Enclosure](#the-crescent-enclosure) |
+| **Pi smart display** | Raspberry Pi 4B, touchscreen, and its own attached microphone and speaker. A larger view of conversation, rooms, music, calendars, and household tasks. Current display layout targets 1024 × 600. | [Pi bring-up and pairing](docs/SMART_DISPLAY.md#pi-hardware-and-bring-up) · [Pi voice](docs/PI_VOICE.md) |
+| **Browser companion** | Open the workspace on a computer or phone. A paired browser can also use push-to-talk and room calls with microphone permission. Mobile background listening is not verified. | [Build options](docs/BUILD_OPTIONS.md) · [Private remote access](docs/TAILNET_ACCESS.md) |
+
+The Pi **does not require the round speaker** for voice, music, or alarms. Choose
+the input and output for each device explicitly. General support for other ESP32
+boards and pairing a separate screen with a spare audio device remain future work.
+
+## What Echo includes
+
+| Experience | Current software |
+| --- | --- |
+| **Talk or type** | “Hey Echo” / “Okay Echo,” a warm activation cue, push-to-talk, visible listening/thinking/replying states, software mute, and request cancellation. |
+| **Ask, research, remember** | A configured model or Hermes agent, supported web lookup with citations, longer research tasks, and explicitly saved facts you can review, edit, export, or delete. |
+| **Control your home** | Home Assistant room lights, individual brightness/colour controls, thermostat modes and temperatures, speaker selection, and saved routines with device permissions. |
+| **Play music** | Spotify Connect with artwork, track details, seeking, shuffle/repeat, and volume controls; HTTPS radio presets and supported local media on the display. |
+| **Plan the day** | A daily briefing, selected calendars, timed/all-day event creation, shopping lists, tasks, and notes. |
+| **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
+| **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, and answered two-way intercom. |
+| **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
+
+Home Assistant, Spotify, and Hermes are optional integrations. Features that need
+an account, a selected source, or an audio device report their availability. The
+[build queue](docs/BUILD_QUEUE.md) separates software coverage from physical and
+live-service acceptance.
+
+## The smart display
+
+### A conversation with room to breathe
+
+Echo's status panel and settings sit beside the conversation. Type a message,
+press the microphone, or enable local wake words after configuring the Pi's
+microphone and speaker. Replies return to the device that heard the request.
+The blue-green ring changes with listening, thinking, speaking, and connection
+state; Stop and mute remain accessible.
+
+![Echo status, reply settings, microphone control, and a sample conversation on the Pi layout](docs/images/display-echo.png)
+
+The display uses locally served Manrope, vector icons, a smooth ring with a soft
+glow, and a dark blue palette. Its kiosk uses the active panel bounds without
+unnecessary browser scaling. The [design guide](docs/DISPLAY_DESIGN.md) covers
+native sizing, touch spacing, reduced motion, and remaining physical checks.
+
+### Music and home control
+
+Choose a room, adjust its lights, change a supported thermostat setting, or select
+a Home Assistant speaker. Device grants and fresh state govern the available
+controls. Google Home devices become controllable through their corresponding
+Home Assistant integrations; Echo does not import Google Home's device graph.
 
 <table>
 <tr>
-<td width="50%" valign="top"><a href="docs/images/prototype-front.jpg"><img src="docs/images/prototype-front.jpg" alt="Assembled Echo prototype with its live ready screen, translucent Crescent stand, speaker and battery" width="460"></a><br><strong>Echo on the desk</strong><br>The actual display running the ready screen.</td>
-<td width="50%" valign="top"><a href="docs/images/prototype-wiring-rear.jpg"><img src="docs/images/prototype-wiring-rear.jpg" alt="Rear of the assembled prototype showing the exposed board, wiring down the arm, speaker housing and battery cradle" width="460"></a><br><strong>Inside the build</strong><br>Open access to the board, wiring and battery cradle.</td>
+<td width="50%" valign="top"><strong>Your rooms</strong><br>Named lights, thermostat, and home-speaker controls.<br><a href="docs/images/display-rooms.png"><img src="docs/images/display-rooms.png" alt="Room-light cards, thermostat, and selected home speaker with sample data" width="460"></a></td>
+<td width="50%" valign="top"><strong>Your music</strong><br>Artwork, track progress, transport, shuffle, repeat, and level.<br><a href="docs/images/display-music.png"><img src="docs/images/display-music.png" alt="Spotify player with synthetic cover art, track information, and playback controls" width="460"></a></td>
 </tr>
 </table>
 
-These are photographs of the current prototype, including its temporary cable
-restraints. The [assembly walkthrough](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md)
-pairs close-ups with printable models and fitting instructions.
+The Pi has a separately named **Spotify Connect receiver** that plays through its
+selected output. The round speaker is another explicit destination. Spotify
+Premium is required. **Connect with phone** shows a QR link to Spotify so you
+can choose Echo from the phone's device picker; it is not an account-linking code.
+Playlists, search, and queue browsing stay in Spotify. Chromecast, AirPlay, and
+Bluetooth audio receivers are not included.
 
-## What you can do with Echo
+Pi Spotify pauses before microphone capture and remains paused afterward until
+you resume it. Wake-word interruption during playback requires an echo-cancelled
+microphone input. See [display music](docs/MUSIC_DISPLAY.md), [Pi receiver
+setup](docs/PI_SPOTIFY.md), and [voice setup](docs/PI_VOICE.md).
 
-| Experience | What it includes |
-| --- | --- |
-| **Talk naturally** | Wake words, local speech recognition and synthesis, spoken replies, visible listening/thinking states, and a Stop control. |
-| **Ask, explore, remember** | Conversation through a chosen model or Hermes, web lookup with sources, research tasks, and explicitly saved facts you can edit or delete. |
-| **Control the room** | Home Assistant lights, thermostat, speakers, and named routines, with per-device permissions and action results. |
-| **Play your music** | A Spotify Connect receiver, track controls, speaker selection, and voice interruption/resume. Spotify Premium is required. |
-| **Use it at a glance** | Swipeable pages for weather, timers, lights, music, settings, connection, and battery status. |
-| **Plan and share** | The Pi display adds calendar views, reminders, lists, selected cameras, photo albums, room announcements and answered intercom calls. |
-| **Make it yours** | Provider and model selection, editable personality, local voice choices, an open firmware/host stack, and printable enclosure source. |
+### Your day, lists, and reminders
 
-Echo is a **device-and-host system**: each endpoint handles its screen and audio;
-a separate computer runs speech and the assistant. Start with a Windows host,
-then add remote hosting and integrations at your own pace. The Pi's audio and
-the new intercom paths still need physical acceptance; the [build queue](docs/BUILD_QUEUE.md)
-distinguishes implemented software from verified hardware.
-Home Assistant, Spotify, and Hermes are optional additions to the basic setup.
+**My day** combines weather, upcoming calendar events, reminders, tasks, and
+shopping-list counts into a local briefing. Ask for the same briefing by voice or
+text. **Planner** adds recurring alarms and reminders, quiet hours, snooze, and a
+notification inbox. **Lists** keeps shopping, to-dos, and notes editable across
+paired displays, with encrypted host storage.
+
+<table>
+<tr>
+<td width="50%" valign="top"><strong>The day ahead</strong><br>Briefing and selected calendar sources.<br><a href="docs/images/display-daily.png"><img src="docs/images/display-daily.png" alt="Daily briefing showing sample weather, calendar, and household counts" width="460"></a></td>
+<td width="50%" valign="top"><strong>A little structure</strong><br>Recurring reminders and household notifications.<br><a href="docs/images/display-planner.png"><img src="docs/images/display-planner.png" alt="Planner with a saved sample schedule and notification controls" width="460"></a></td>
+</tr>
+</table>
+
+Calendars connect through Home Assistant. The owner selects which calendars to
+share and separately permits event creation. The touch form supports timed and
+all-day events; calendar editing, invitations, and natural-language event drafting
+are not implemented. [Daily briefing and calendar guide](docs/DAILY_BRIEFING.md).
+
+### Cameras, doorbells, and room audio
+
+Show a selected Home Assistant camera as a live MJPEG view or refreshing
+snapshots. Doorbell presses create silent cards with a **View camera** action.
+Camera audio, recording, and two-way doorbell talk are not included.
+
+Send a short announcement to selected rooms and check its delivery result, or
+call another paired endpoint. Intercom requires the other person to **Answer**
+before sending microphone audio. Calls and announcements are opt-in; quiet hours,
+mute, cancellation, and connection loss are handled explicitly.
+
+<table>
+<tr>
+<td width="50%" valign="top"><strong>A view of home</strong><br>Selected camera and agenda, using generated sample frames.<br><a href="docs/images/display-camera-live.png"><img src="docs/images/display-camera-live.png" alt="Sample camera stream alongside a synthetic calendar agenda" width="460"></a></td>
+<td width="50%" valign="top"><strong>Room to room</strong><br>An answered call with local mute and hang-up.<br><a href="docs/images/display-intercom.png"><img src="docs/images/display-intercom.png" alt="Intercom screen with a simulated call to a sample kitchen receiver" width="460"></a></td>
+</tr>
+</table>
+
+See [cameras and doorbells](docs/CAMERAS_AND_DOORBELLS.md),
+[room audio](docs/ROOM_AUDIO.md), and [round intercom](docs/ROUND_INTERCOM.md).
+Camera/calendar acceptance needs configured integrations; Pi and round intercom
+still need physical listening and feedback checks.
+
+<details>
+<summary><strong>The quiet screen: clock and photos</strong></summary>
+
+![Ambient clock with a smaller mint PM marker and date, using sample data](docs/images/display-ambient.png)
+
+Choose a 12/24-hour clock, idle timeout, and software dimming, or use photos.
+Session-only photos stay in that browser. Shared albums are stored encrypted on
+the host; uploaded images are resized and stripped of metadata. Software dimming
+does not turn off an LCD backlight.
+
+</details>
 
 ## The web workspace
 
-Talk to Echo quietly, organize its memory, connect devices, and shape its
-personality from a browser. The workspace is available beside the device or
-through [private access from selected Tailscale devices](docs/TAILNET_ACCESS.md).
+The companion web app is where you manage Echo as well as talk to it. Review a
+conversation and its sources, organize explicit memories, run research tasks,
+assign home devices to rooms, and configure the assistant without reflashing a board.
 
-![Echo web app showing a conversation and the round assistant display](docs/images/web-conversation.png)
+![Echo web workspace with a sample conversation and round-device representation](docs/images/web-conversation.png)
 
-*The working web interface, shown with sample data. Web screenshots come from
-the included app; device galleries use its shared firmware renderer.*
-
-### Conversation and home control
-
-Ask a question, request an answer with web sources, or enable home actions for a
-particular message. **Devices** brings room-light controls, device inventory,
-room assignments, and Read / Control / Hidden permissions together. Echo checks
-the permitted targets and reports what it can confirm.
-
-![Echo Devices page with room light cards and Home Assistant access settings](docs/images/web-devices.png)
-
-Room requests resolve all the room's bulbs. Home Assistant is the device source;
-existing Google Home devices need their corresponding HA integration before Echo
-can control them.
-
-### Personality, voice, and memory
-
-Choose **OpenAI, Azure OpenAI / Foundry, Claude / Anthropic, or a compatible local
-endpoint**. Use a direct model connection or the optional **Hermes agent**.
-Give Echo your own tone and response preferences, then choose a local voice.
-Saved facts appear in Memory, where you can review, edit, export, or delete them.
+Select **OpenAI, Azure OpenAI / Foundry, Claude / Anthropic, or a compatible local
+endpoint**, using either the direct conversation adapter or optional **Hermes**.
+Edit the personality and response preferences in Settings. Tool and web-search
+availability depends on the selected provider or configured Hermes tools; the
+direct web-lookup path currently supports OpenAI and Azure.
 
 <table>
 <tr>
 <td width="50%" valign="top"><strong>Choose the brain</strong><br>Provider, model, and agent settings.<br><a href="docs/images/web-models-detail.png"><img src="docs/images/web-models-detail.png" alt="Provider and model settings with an empty API-key field" width="460"></a></td>
-<td width="50%" valign="top"><strong>Keep useful context</strong><br>Explicit memories with edit and delete controls.<br><a href="docs/images/web-memory-detail.png"><img src="docs/images/web-memory-detail.png" alt="Memory page with three example preferences" width="460"></a></td>
+<td width="50%" valign="top"><strong>Keep useful context</strong><br>Explicit saved facts with review and delete controls.<br><a href="docs/images/web-memory-detail.png"><img src="docs/images/web-memory-detail.png" alt="Memory page containing fictional example preferences" width="460"></a></td>
 </tr>
 </table>
 
-![Editable Echo personality instructions and reply length](docs/images/web-personality.png)
-
-Local speech options include **Vosk or faster-whisper** for recognition and
+Local speech options include **Vosk or faster-whisper** for transcription and
 **Pocket TTS, Kokoro, or Windows voices** for replies, depending on the host.
-Speech stays on the host; conversation uses the provider you select.
+Model downloads are explicit. The optional Docker-hosted Hermes instance has both
+an alternate WebUI and its native dashboard, connected to the same agent gateway.
 
 <details>
-<summary><strong>See the voice controls</strong></summary>
+<summary><strong>Devices, personality, routines, and research</strong></summary>
 
-![Local voice engine, voice selection, pace, and speech recognition settings](docs/images/web-voice.png)
+![Web device inventory, room assignments, and Read / Control / Hidden permissions](docs/images/web-devices.png)
 
-</details>
-
-### Routines and research
-
-Bundle familiar device settings into a named routine, review its steps, and run
-it when wanted. For longer questions, start a research task and return to a
-report with sources and a download button. Ongoing work has visible status and
-cancellation controls where applicable.
+![Editable personality and response length settings](docs/images/web-personality.png)
 
 <table>
 <tr>
-<td width="50%" valign="top"><strong>Everyday routines</strong><br>Named, inspectable actions for permitted devices.<br><a href="docs/images/web-routines-detail.png"><img src="docs/images/web-routines-detail.png" alt="Evening reading and lights-out example routines" width="460"></a></td>
-<td width="50%" valign="top"><strong>Research with sources</strong><br>A task, its report, and links to follow further.<br><a href="docs/images/web-tasks-detail.png"><img src="docs/images/web-tasks-detail.png" alt="Research page showing a sample build report and source" width="460"></a></td>
+<td width="50%" valign="top"><strong>Everyday routines</strong><br>Review a saved sequence before running it.<br><a href="docs/images/web-routines-detail.png"><img src="docs/images/web-routines-detail.png" alt="Example reading and lights-out routines" width="460"></a></td>
+<td width="50%" valign="top"><strong>Research with sources</strong><br>Task progress, reports, and links to follow.<br><a href="docs/images/web-tasks-detail.png"><img src="docs/images/web-tasks-detail.png" alt="Sample research task and report with sources" width="460"></a></td>
 </tr>
 </table>
 
-### Try the UI before buying hardware
+[Browse the web UI gallery](docs/WEB_UI.md) for the remaining pages and preview workflow.
 
-The read-only preview uses Python's standard library and sample data. It loads
-the actual web UI without keys, model downloads, a board, or a home connection:
+</details>
 
-```powershell
-git clone https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant.git
-cd Echo-Assistant
-py -3 tools/preview_web.py
-```
+## The round smart speaker
 
-Open **[http://127.0.0.1:8778/](http://127.0.0.1:8778/)** and browse the pages.
-Press **Ctrl+C** in the terminal when finished. Changes and device actions are
-disabled in the preview. Follow the build steps below for a connected assistant.
+The original build combines a **466 × 466 AMOLED**, microphones, an attached
+speaker, and a host connection over USB or paired Wi-Fi. Swipe between Echo,
+weather, timers, lights, music, and settings. On the speaker page, the physical
+buttons adjust volume; on the thermostat page, they adjust temperature. On
+Home/Echo, the upper button toggles software microphone mute.
 
-## On the smart display
+<table>
+<tr>
+<td width="50%" valign="top"><a href="docs/images/prototype-front.jpg"><img src="docs/images/prototype-front.jpg" alt="Actual assembled Echo prototype with powered round display, translucent stand, and salvaged speaker" width="460"></a><br><strong>Echo on the desk</strong><br>The powered prototype in its Crescent stand.</td>
+<td width="50%" valign="top"><a href="docs/images/prototype-wiring-rear.jpg"><img src="docs/images/prototype-wiring-rear.jpg" alt="Rear of the actual prototype showing board, cable route, speaker housing, and battery cradle" width="460"></a><br><strong>Inside the build</strong><br>Accessible board, wiring, and adjustable mounts.</td>
+</tr>
+</table>
 
-The larger touch layout puts Echo's status and microphone controls beside a
-shared conversation. Rooms, Music and My day have space for richer controls;
-Planner holds alarms, reminders and household messages. The idle screen becomes
-a quiet clock or photo display.
+These are photographs of the assembled prototype, including temporary cable
+restraints. The screen galleries below use the firmware's shared renderer with
+sample data. The newer intercom firmware is built but still awaits installation
+and physical acceptance.
 
-![Echo conversation and microphone controls on the Pi layout, with synthetic data](docs/images/display-echo.png)
-
-![Smart-display home with weather, room cards and upcoming reminders, using synthetic data](docs/images/display-home.png)
-
-These are captures of the working interface with sample data. The current Pi
-installation runs at 1024 × 600 with locally served fonts and vector icons.
-See the [smart-display guide](docs/SMART_DISPLAY.md) for pairing, supported media,
-privacy controls and the remaining hardware checks.
-
-## On the device
-
-The **466 × 466 AMOLED** uses a deep blue background, a softly glowing ring,
-and distinct colours and motion for each voice state. Listening, thinking,
-replying, software mute, and an offline host each have a clear visual treatment.
-
-![Ready, listening, thinking, replying, software-muted, and offline screens](docs/images/voice-states.png)
-
-Swipe between pages or use the touch navigation. Tap the speaker name to choose
-a speaker; the physical buttons adjust its volume. On the thermostat page,
-those buttons adjust temperature. On Home/Echo, the upper button toggles
-software microphone mute.
-
-![Home, room lights, thermostat, speaker controls, speaker selection, and music](docs/images/home-controls.png)
+![Round display states for ready, listening, thinking, replying, software mute, and lost connection](docs/images/voice-states.png)
 
 <details>
-<summary><strong>Weather, timers, settings, and connection screens</strong></summary>
+<summary><strong>Room controls, music, weather, timers, and battery screens</strong></summary>
 
-![Weather, timers, timer creation, settings, connection, and battery status](docs/images/everyday-tools.png)
+![Round home, room lights, thermostat, music, and speaker selection screens](docs/images/home-controls.png)
 
-The battery image is a simulated charging state. Battery operation and charging
-still require physical acceptance with a compatible attached battery.
+![Round weather, timers, settings, connection, and simulated battery status](docs/images/everyday-tools.png)
+
+Battery charging in this gallery is simulated. Battery runtime and charging still
+need physical validation with a compatible attached battery.
 
 </details>
 
@@ -187,208 +241,242 @@ still require physical acceptance with a compatible attached battery.
 
 ```mermaid
 flowchart LR
-    Board["Round ESP32-S3 device<br/>Display · touch · mic · speaker"]
-    Host["Echo host<br/>Local speech · tools · web app"]
-    Browser["Browser workspace"]
-    Agent["Direct model or Hermes<br/>Local endpoint or cloud provider"]
-    HA["Home Assistant<br/>Optional home controls"]
-    Music["Spotify Connect<br/>Optional music receiver"]
-    Board <-->|"USB or paired Wi-Fi"| Host
-    Browser <-->|"Local or private remote access"| Host
-    Host <--> Agent
+    Round["Round ESP32-S3 speaker<br/>Touch display · microphones · speaker"]
+    Pi["Pi smart display<br/>Chromium · local wake · attached audio"]
+    Web["Web workspace<br/>Conversation · settings · memory"]
+    Host["Echo host<br/>Speech · tools · shared storage"]
+    Brain["Direct model or Hermes<br/>Local endpoint or cloud provider"]
+    HA["Home Assistant<br/>Devices · calendars · cameras"]
+    Spotify["Spotify Connect"]
+    Round <-->|"USB or paired Wi-Fi"| Host
+    Pi <-->|"Paired HTTPS connection"| Host
+    Web <-->|"Authenticated browser access"| Host
+    Host <--> Brain
     Host <--> HA
-    Music --> Host
+    Spotify -->|"Pi receiver"| Pi
+    Spotify -->|"Round receiver"| Host
 ```
 
-The firmware handles the interface and streams audio to the host. Speech
-recognition and synthesis run locally. The host coordinates conversations,
-explicit memory, home tools, timers, and music. An always-on Docker deployment
-can run `echo-api` and the optional `echo-agent` together; browsers open the
-hosted UI.
+The host handles transcription, speech synthesis, conversations, tools, and shared
+storage. The Pi handles its kiosk, local wake detector, capture/playback, and
+Spotify receiver; the round firmware handles its own interface and audio transport.
+The host can run on a Windows computer or in the documented Linux/x86-64 Docker
+stack. Managed remote provisioning currently targets **Windows with Docker
+Desktop and OpenSSH**; native-Linux provisioning is not packaged as a one-command install.
 
-Cloud conversation sends text and relevant context to the selected provider.
-Web lookup and Spotify also use their services. A local conversation endpoint
-is available for builds that keep the language model on their own hardware.
+### Privacy and access
+
+A Pi receives its own revocable pairing credential. Its local bridge keeps that
+credential out of the browser and limits access to display features. Owner-only
+settings include provider keys, source selection, and display administration.
+Optional Tailscale access can be restricted to explicitly selected devices.
+
+Saved facts, credentials, lists, schedules, and shared photos use encrypted host
+storage. Explicit memory is separate from temporary conversation context. Local
+speech runs on your hardware; a cloud conversation provider receives the text and
+context needed for the request. Web lookup, Spotify, and configured integrations
+use their respective services. Software mute closes Echo's capture path; it does
+not electrically disconnect the microphone.
+
+## Try the UI
+
+The read-only web preview needs Python 3 and uses the standard library. From a
+checkout you can browse the actual UI without a board, account, model, or home connection:
+
+```powershell
+git clone https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant.git
+cd Echo-Assistant
+py -3 tools/preview_web.py
+```
+
+Open **[http://127.0.0.1:8778/](http://127.0.0.1:8778/)**. Repository access is
+required while the project is private. Press **Ctrl+C** to stop the preview.
+
+<details>
+<summary><strong>Try the interactive smart-display preview</strong></summary>
+
+The larger preview uses the host's pinned Python dependencies, but needs no model
+downloads. On Windows, from the checkout:
+
+```powershell
+py -3.13 -m venv .venv
+./.venv/Scripts/python.exe -m pip install -r backend/requirements-windows.lock.txt
+./.venv/Scripts/python.exe tools/preview_smart_display.py
+```
+
+Open **[http://127.0.0.1:8788/display](http://127.0.0.1:8788/display)**. Timers,
+lists, forms, and simulated controls use in-memory sample data; closing the server
+clears it. No real devices, microphone, speaker, or accounts are connected.
+
+</details>
 
 ## Build your own
 
-Choose the **round speaker** or **Pi smart display**, then prepare the shared
-host. Get the screen and audio working on the desk before adding an enclosure,
-battery or remote hosting. Each build works independently of the other.
+Choose an endpoint, prepare the host, and get it working on the desk before adding
+an enclosure or battery. The [build-options guide](docs/BUILD_OPTIONS.md) explains
+the supported configurations and future adapter ideas.
 
 ### Parts and tools
 
-| Item | Needed for | Notes |
+| Part | Round speaker | Pi smart display |
 | --- | --- | --- |
-| **Waveshare ESP32-S3-Touch-AMOLED-1.75** | Round speaker | Exact supported board: 16 MB flash, 8 MB PSRAM, touch AMOLED, ES7210 microphones, ES8311 audio, and AXP2101 power management. |
-| **Raspberry Pi 4B, touchscreen and storage** | Pi smart display | A supported Chromium desktop; the current layout targets 1024 × 600. Use a reliable 5.1 V / 3 A Pi supply and the panel's required supply. |
-| **Pi microphone and speaker** | Pi voice and music | A supported USB capture device and explicitly selected output. The Pi 4 has no built-in microphone. Wake during playback requires an echo-cancelled input. |
-| **Compatible speaker and connector** | Spoken replies and music | Use the board's speaker output and the vendor's electrical specification. Check whether the purchased kit includes a speaker. |
-| **USB-C data cable** | Power, backup/flash, and initial connection | Use a data-capable cable. |
-| **Windows computer** | Speech and assistant host | 64-bit Python 3.13 is the recommended start. Local speech runs on CPU; local language-model requirements depend on the model. |
-| **Git and PlatformIO** | Checkout and firmware build | Firmware is built from source. The hardware guide covers setup and backup. |
-| **2.4 GHz Wi-Fi** | Optional wireless operation | Pair through USB first; the host must remain reachable. |
-| **Home Assistant / Spotify Premium** | Optional home control / music | Configure these after the core device works. |
-| **Printed parts and fasteners** | Optional enclosure | Models, fit gauges, and the complete hardware list are included below. |
-| **Compatible battery / microSD card** | Optional hardware | USB power is sufficient for the first build. The Crescent holder establishes mechanical dimensions, not battery electrical compatibility. |
+| **Core board** | Waveshare ESP32-S3-Touch-AMOLED-1.75; 16 MB flash and 8 MB PSRAM. This is the exact supported ESP32 target. | Raspberry Pi 4B, preferably 4 GB RAM or more, with a 64-bit Linux OS and Chromium. |
+| **Display** | Integrated 1.75-inch touch AMOLED. | Supported touchscreen; current layout targets 1024 × 600 landscape. Confirm its model and touch connection. |
+| **Microphone and speaker** | Onboard microphone hardware and a speaker matching the board's electrical/connector requirements. | Attached USB microphone/audio interface and a selected speaker output. The Pi has no built-in microphone. Playback wake needs echo cancellation. |
+| **Power and storage** | USB-C data cable; optional compatible battery and microSD. | Reliable 5.1 V / 3 A Pi supply, panel supply when required, cooling, and preferably a 32 GB or larger microSD. |
+| **Host and tools** | Windows host, 64-bit Python 3.13, Git, and PlatformIO. | Shared Windows host with Python 3.13 and Git; PlatformIO is unnecessary for a Pi-only build. |
+| **Network** | USB first; optional paired 2.4 GHz Wi-Fi. | Wi-Fi or Ethernet with access to the Echo host. |
+
+The [Docker guide](docs/DEPLOYMENT.md) covers advanced hosting. Home Assistant and
+Spotify Premium are optional; set them up after the basic device works.
 
 ### 1. Prepare the host
 
-Clone the repo if you have not already done so. From its directory in PowerShell:
+From the repository directory in PowerShell:
 
 ```powershell
 py -3.13 -m venv .venv
 ./tools/setup.ps1
 ```
 
-This installs pinned host dependencies and a Vosk model into the project.
-[Local setup](docs/SETUP.md) covers optional echo cancellation, neural voices,
-and platform requirements. Speech model downloads are explicit.
+Reuse an existing `.venv` if you already prepared the preview. Setup installs the
+pinned host dependencies and verifies a Vosk model download. See
+[local setup](docs/SETUP.md) for neural voices and optional echo cancellation.
 
-### 2. Set up your device
+### 2. Set up the endpoint
 
-**Round speaker:** connect by USB and follow **[hardware and firmware setup](docs/HARDWARE.md)**:
-identify the board, preserve its full original-flash backup, build with
-PlatformIO, and use the identity-checked flashing command.
+**Round speaker:** follow [hardware and firmware setup](docs/HARDWARE.md) to
+identify the board, preserve its original full-flash backup, build, and flash.
+Set `ECHO_DEVICE_MAC` locally to the verified identity; the repository supplies
+no paired device identity. Add Wi-Fi through the [USB pairing flow](docs/WIRELESS.md).
 
-Set `ECHO_DEVICE_MAC` to the board identity verified during setup. This value
-belongs to your local build and is not supplied by the repository.
-
-**Pi display:** preserve the original SD card with a verified backup, then follow
-**[Pi bring-up and pairing](docs/SMART_DISPLAY.md#pi-hardware-and-bring-up)**.
-An existing supported desktop can be converted in place. Choose the Pi's own
-input and output using [Pi voice](docs/PI_VOICE.md) and [Pi music](docs/PI_SPOTIFY.md).
-No ESP32 flash or round-board identity is required for this build.
+**Pi display:** preserve and verify the original SD-card backup, then follow
+[Pi bring-up](docs/SMART_DISPLAY.md#pi-hardware-and-bring-up). Start the host in the
+next step before pairing. The installer adds a versioned client and loopback bridge
+to a supported desktop; it does not require reflashing the card. Select the Pi's
+own input/output in [voice setup](docs/PI_VOICE.md), then configure
+[Spotify](docs/PI_SPOTIFY.md) and [alerts](docs/PI_ALERTS.md) if wanted.
 
 ### 3. Start Echo and open its workspace
+
+For a **Pi-only local host**:
+
+```powershell
+./tools/run.ps1 start -DisplayOnly
+./.venv/Scripts/python.exe tools/open_ui.py --display
+```
+
+For the **round speaker**:
 
 ```powershell
 ./tools/run.ps1 start
 ./.venv/Scripts/python.exe tools/open_ui.py
 ```
 
-For a **Pi-only local host**, use `./tools/run.ps1 start -DisplayOnly` and
-`./.venv/Scripts/python.exe tools/open_ui.py --display`. This starts the API
-without starting a round-board listener. Pair the Pi from the owner workspace.
+The launcher opens an authenticated session; the local host defaults to
+`http://127.0.0.1:8768/`. In Settings choose the provider, model, voice, and
+personality. The conversation provider can stay disabled while you configure
+timers, lists, and home integrations. Pair a Pi from **Display → Settings → Your
+displays**, then complete its client installation. Start audible tests at **2%**.
 
-The launcher opens the authenticated local UI at `http://127.0.0.1:8768/`.
-In **Settings**, select a provider and model, add the corresponding key, choose
-the voice, and edit the personality. The provider can stay disabled while you
-bring up the built-in clock, timers, and configured home controls.
+### 4. Connect the services you want
 
-Start speaker checks at low volume. Software mute stops microphone streaming;
-it does not electrically disconnect the microphones.
-
-### 4. Add the features you want
-
-| Next step | Guide |
+| Add | Guide |
 | --- | --- |
-| Give Echo its own Wi-Fi connection | [USB pairing and wireless operation](docs/WIRELESS.md) |
-| Connect lights, thermostat, and speakers | [Home Assistant and device permissions](docs/HOME_CONTROL.md) |
-| Select Echo from the Spotify app | [Spotify Connect setup](docs/MUSIC.md) |
-| Use an always-on host; add Hermes | [Docker deployment and browser access](docs/DEPLOYMENT.md) |
-| Open the UIs from selected devices | [Private Tailscale access](docs/TAILNET_ACCESS.md) |
-| Assemble the screen and speaker stand | [Crescent print and assembly guide](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md) |
+| Lights, climate, speakers, and routines | [Home Assistant and permissions](docs/HOME_CONTROL.md) |
+| Music from the Spotify app | [Round receiver](docs/MUSIC.md) · [Pi receiver](docs/PI_SPOTIFY.md) |
+| Calendar agenda and event creation | [Daily briefing and calendars](docs/DAILY_BRIEFING.md) |
+| Camera views and doorbell cards | [Cameras and doorbells](docs/CAMERAS_AND_DOORBELLS.md) |
+| Announcements and answered calls | [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) |
+| An always-on host and Hermes | [Docker deployment and UIs](docs/DEPLOYMENT.md) |
+| Access from selected phones/computers | [Private Tailscale access](docs/TAILNET_ACCESS.md) |
 
 ## The Crescent enclosure
 
-An open desk stand brings the screen, speaker, and wiring together. The display
-sits in a removable snap ring above adjustable speaker posts. Two guided button
-plungers keep the controls accessible, while a rear channel routes the cables
-past the battery cradle.
+Crescent is the printable stand for the **round speaker build**. A removable snap
+ring holds the display above adjustable speaker posts. Guided button plungers
+keep both physical controls accessible, and a rear channel routes wiring past
+the battery cradle.
 
-![Crescent v1 CAD render showing the front and rear of the printable enclosure](enclosure/crescent-v1/preview/Crescent-print-model-overview.png)
+![Crescent CAD views showing the round-display carrier, speaker base, and cable route](enclosure/crescent-v1/preview/Crescent-print-model-overview.png)
 
-**[Get the models](enclosure/crescent-v1/STL)** ·
-**[Assembly walkthrough](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md)** ·
-**[Edit the geometry](enclosure/crescent-v1/source)**
+**[STL models](enclosure/crescent-v1/STL)** ·
+**[Print and assembly walkthrough](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md)** ·
+**[Editable geometry](enclosure/crescent-v1/source)**
 
-The package includes **12 STL designs**, optional post sizes and spacers, a
-display fit kit, clearance gauges, and suggested **Photon Mono M7** orientations.
-Editable Python geometry and digital verification records accompany the meshes.
+The package includes **12 STL designs**, optional posts/spacers, display fit gauges,
+editable Python geometry, and suggested Photon Mono M7 print orientations.
 
-1. **Print the fit kit:** carrier `09` × 1, ring `02` × 1, plungers `03` × 2,
-   and keepers `04` × 2. About **9.66 mL** of model volume before supports.
-2. **Check the actual parts:** cured display fit, USB plug clearance, free
-   button travel, and gentle ring engagement.
-3. **Print the stand and mounts:** about **42.08 mL** for the standard complete
-   assembly, excluding supports, optional pieces, and fit tests.
-4. **Assemble with the guide:** M2/M3 screws and nuts secure the button keepers
-   and adjustable mounts; soft restraints support the cables and battery.
+1. Print the display fit kit and check cured dimensions against the actual board.
+2. Check USB clearance, free button travel, and gentle snap-ring engagement.
+3. Print the stand and selected speaker/battery mounts.
+4. Assemble with the documented M2/M3 fasteners and support the cables without
+   loading the connectors.
 
-<table>
-<tr>
-<td width="50%"><img src="enclosure/crescent-v1/preview/03-carrier-board-fit.png" alt="CAD detail of the display carrier, board, and button guides" width="460"><br><strong>Display and button fit</strong></td>
-<td width="50%"><img src="enclosure/crescent-v1/preview/02-printable-assembly-rear.png" alt="Rear CAD view showing the cable channel and battery cradle" width="460"><br><strong>Serviceable rear access</strong></td>
-</tr>
-</table>
+The demonstrated build uses a salvaged Google Home Mini speaker in its acoustic
+housing. The battery holder's dimensions do not establish electrical compatibility.
+The assembly guide includes quantities, print volumes, and close-up photographs.
+Repeatable fit, durability, thermal behavior, and acoustic performance still need
+broader physical validation. A matching Pi enclosure is not included.
 
-The enclosure images in this section are CAD renders; the photographs above
-show the assembled prototype. The design targets a salvaged Google Home Mini
-speaker module in its original acoustic housing and a CS-MSX200SL-size battery.
-Speaker mounting is adjustable. Check fit with your own parts and cured resin;
-long-term strength, stability, and acoustic performance remain unverified.
-Add supports and slice for your printer; no sliced print job is supplied.
+## Current status
 
-## Build status and boundaries
+**Private alpha; the complete two-build package has not been released.** Older
+release assets predate the Pi expansion and new room-audio work. The current
+checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
+[release history](docs/RELEASE.md) identifies the earlier source package.
 
-**Alpha, under active development.** The firmware and host have been exercised
-on the supported board. Touch navigation, core voice flow, home integrations,
-and the companion UI are implemented. Fresh-install coverage, long playback
-sessions, room-distance wake performance, battery operation, and repeatable
-enclosure fit remain areas for further testing.
-[Release status](docs/RELEASE.md) tracks details.
+| Area | Evidence and remaining work |
+| --- | --- |
+| **Round speaker** | Physical prototype, existing voice/music path, and touch navigation exercised. New intercom firmware compiled; installation and physical call checks remain. Sustained playback, distant wake, battery operation, and repeatable enclosure fit need broader acceptance. |
+| **Pi display** | Installed and running at 1024 × 600. Pairing, OS restart, live revocation/re-enrollment, and recovery after a 90-second Echo connection outage verified. Exact panel identification, complete touch calibration, cold power-on, and Wi-Fi/router restart checks remain. |
+| **Pi audio and room calls** | Native wake, push-to-talk, reply routing, Spotify, alarms, announcements, and intercom implemented and checked with synthetic audio. Attached microphone/speaker setup and physical audibility, feedback, and interruption tests remain. |
+| **Home and daily tools** | Controls, lists, reminders, briefing, calendar forms, camera relay, and doorbell UI implemented. Live calendar writes and camera/doorbell behavior need configured integrations and acceptance. |
+| **Packaging** | Host tests, firmware build, fresh Docker build, Linux Pi checks, browser flows, and source/privacy guards exercised. Broader fresh-install/provider coverage and a complete live disaster restore remain open. |
 
-Home controls use explicit permissions and report action results. Saved facts
-and provider credentials are encrypted at rest. Keep configuration, keys,
-recordings, and flash backups in the ignored local directories. The optional
-Hermes UI provides another view of the agent; Echo's voice/chat interface
-provides the request scope for home actions.
+Further work includes generic audio-endpoint adapters, synchronized grouped playback,
+calendar editing/invitations, household profiles, and external calling. Proprietary
+casting and commercial streaming-video services are not implemented. The project
+does not claim complete Nest Hub or Echo Show feature parity.
 
 ## Documentation
 
-| Guide | What you will find |
+| Guide | What it covers |
 | --- | --- |
-| [Local setup](docs/SETUP.md) | Environment, startup, speech options, and sign-in |
-| [Choose a build](docs/BUILD_OPTIONS.md) | Pi, round speaker and browser options |
-| [Pi smart display](docs/SMART_DISPLAY.md) | Touchscreen setup, pairing and complete feature map |
-| [Pi voice](docs/PI_VOICE.md) / [Spotify](docs/PI_SPOTIFY.md) / [alerts](docs/PI_ALERTS.md) | The Pi's independent microphone and speaker paths |
-| [Room audio](docs/ROOM_AUDIO.md) / [round intercom](docs/ROUND_INTERCOM.md) | Opt-in announcements, calls and physical acceptance |
-| [Hardware and flashing](docs/HARDWARE.md) | Board identity, pins, backup, build, and flash |
-| [Wireless connection](docs/WIRELESS.md) | USB pairing, Wi-Fi, and remote USB setup |
-| [Home Assistant](docs/HOME_CONTROL.md) | Inventory, rooms, permissions, and routines |
-| [Spotify](docs/MUSIC.md) | Receiver build, discovery, and playback |
-| [Docker deployment](docs/DEPLOYMENT.md) | Always-on host, Hermes, UIs, and recovery |
-| [Private remote access](docs/TAILNET_ACCESS.md) | HTTPS access for selected devices |
-| [Crescent assembly](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md) | Printing, fasteners, fitting, and wiring routes |
-| [Web UI gallery](docs/WEB_UI.md) | Browser pages and the screenshot preview workflow |
-| [Release status](docs/RELEASE.md) | Tested paths and remaining acceptance work |
-| [Package checks](docs/PACKAGE_CHECKS.md) | Reproducible host, firmware and silent display checks |
+| [Setup](docs/SETUP.md) · [Build options](docs/BUILD_OPTIONS.md) | Host preparation, startup, speech, and device choices |
+| [Smart display](docs/SMART_DISPLAY.md) · [Display design](docs/DISPLAY_DESIGN.md) | Pi installation, pairing, page map, typography, and native sizing |
+| [Pi voice](docs/PI_VOICE.md) · [Spotify](docs/PI_SPOTIFY.md) · [Alerts](docs/PI_ALERTS.md) | Independent Pi microphone and speaker paths |
+| [Hardware](docs/HARDWARE.md) · [Wireless](docs/WIRELESS.md) | Round-board identity, original backup, build, flash, and pairing |
+| [Home control](docs/HOME_CONTROL.md) · [Calendars](docs/DAILY_BRIEFING.md) · [Cameras](docs/CAMERAS_AND_DOORBELLS.md) | Sources, permissions, actions, and integration limits |
+| [Music](docs/MUSIC_DISPLAY.md) · [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) | Playback, destinations, announcements, and calls |
+| [Deployment](docs/DEPLOYMENT.md) · [Private access](docs/TAILNET_ACCESS.md) | Docker, Hermes UIs, storage, recovery, and selected-device access |
+| [Crescent assembly](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md) · [Web gallery](docs/WEB_UI.md) | Printable parts, build photographs, and UI examples |
+| [Build queue](docs/BUILD_QUEUE.md) · [Release history](docs/RELEASE.md) · [Package checks](docs/PACKAGE_CHECKS.md) | Current acceptance, historical releases, and reproducible checks |
 
 <details>
 <summary><strong>Source layout and contributing</strong></summary>
 
 | Directory | Purpose |
 | --- | --- |
-| `src`, `include` | Board firmware and shared scene renderer |
-| `backend`, `web` | Host services and browser application |
-| `deploy/host`, `deploy/remote` | Images, Compose, and host helpers |
-| `deploy/pi` | Pi kiosk, pairing, native voice, music and alerts |
-| `tools` | Setup, pairing, previews, models, backups, and diagnostics |
-| `config` | Nonsecret examples and dependency/model pins |
-| `tests` | Offline tests using synthetic services |
+| `src`, `include` | ESP32 firmware and shared scene renderer |
+| `backend`, `web` | Host services, web workspace, and smart-display UI |
+| `deploy/pi` | Pi kiosk, pairing, local wake, Spotify, and alerts |
+| `deploy/host`, `deploy/remote` | Docker images, Compose, and hosting helpers |
+| `tools`, `config` | Setup, previews, diagnostics, examples, and pinned dependencies |
+| `tests` | Offline checks using synthetic services |
 | `enclosure/crescent-v1` | Printable parts, source, renders, and assembly guide |
-| `lib`, `third_party` | Vendored components, licenses, and attribution |
+| `lib`, `third_party` | Vendored components and attribution |
 
-See [Contributing](CONTRIBUTING.md) for development and publication checks, and
-[Security](SECURITY.md) for private vulnerability reports. Improvements to
-fresh-install instructions, physical fit, and hardware compatibility are welcome.
+See [Contributing](CONTRIBUTING.md) for development checks. Use synthetic preview
+data for documentation screenshots, and keep credentials, personal configuration,
+recordings, model weights, paired firmware, and backups out of Git. Report security
+issues through [Security](SECURITY.md).
 
 </details>
 
 ## License and acknowledgements
 
-Echo Assistant is **GPL-3.0-or-later**. Third-party software, fonts, models, and
+Echo Assistant is **GPL-3.0-or-later**. Software dependencies, fonts, models, and
 services retain their own terms; see [LICENSE](LICENSE) and
 [third-party notices](THIRD_PARTY_NOTICES.md). Model weights and pre-paired firmware
 are not included. This is an independent project, unaffiliated with Waveshare,
