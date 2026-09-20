@@ -1,0 +1,39 @@
+/* A local keyboard for the dedicated display; phones retain their native keyboard. */
+.keyboard-toggle { display:grid;place-items:center;width:36px;height:42px;border-radius:10px;color:var(--soft); }
+.keyboard-toggle[aria-expanded=true] { color:var(--mint);background:#a0eee012; }
+.chat-composer input { min-width:0; }
+#chat-keyboard { flex:none; margin-top:8px; padding:0 1px 2px; user-select:none; -webkit-user-select:none; }
+.keyboard-toolbar { display:flex;align-items:center;gap:6px;height:36px;margin-bottom:5px; }
+#keyboard-suggestions { display:flex;align-items:center;justify-content:center;gap:5px;flex:1;min-width:0; }
+.keyboard-hint { color:var(--soft);font-size:11px; }
+.keyboard-toolbar button { min-height:34px;border-radius:9px;font-size:14px;background:#9edbc50b;padding:4px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.keyboard-toolbar [data-key-action=hide] { width:40px;font-size:24px;flex:none;padding:0; }
+#keyboard-suggestions button { flex:1;min-width:0;color:var(--mint); }
+#keyboard-suggestions button:first-child { background:#a0eee019; }
+#keyboard-keys { position:relative;touch-action:none; }
+.keyboard-row { display:flex;justify-content:center;gap:5px;margin-top:5px; }
+.keyboard-row:first-of-type { margin-top:0; }
+.keyboard-key { flex:1;min-width:0;height:42px;border:1px solid #99c7de25;border-radius:9px;background:linear-gradient(155deg,#243d53,#1a3045);font-size:18px;font-weight:550;box-shadow:0 2px 0 #020b1666;touch-action:none;padding:0; }
+.keyboard-key:hover { background:#304e63; }
+.keyboard-key:active,.keyboard-key.is-traced { color:#082d35;background:#a0eee0;box-shadow:0 0 14px #a0eee022; }
+.keyboard-key[data-key-action] { font-size:13px;background:#13283b;color:#c2d8e8; }
+.keyboard-key[data-key-action=shift][aria-pressed=true] { color:var(--mint);border-color:#a0eee063; }
+.keyboard-row[data-row="1"] { padding-inline:4.8%; }
+.keyboard-row[data-row="2"] .keyboard-key[data-key-action] { flex:1.45; }
+.keyboard-row:last-child .keyboard-key { flex:.85;font-size:16px; }
+.keyboard-row:last-child .keyboard-key[data-key-action=space] { flex:4;font-size:12px;color:var(--soft); }
+.keyboard-row:last-child .keyboard-key[data-key-action=mode] { flex:1.4;font-size:13px; }
+#keyboard-trail { position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:visible; }
+#keyboard-trail polyline { fill:none;stroke:#a0eee0;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;opacity:.65; }
+.chat-keyboard-open .conversation-heading { display:none; }
+.chat-keyboard-open .conversation-privacy { display:none; }
+.chat-keyboard-open .chat-welcome { min-height:0;padding:4px; }
+.chat-keyboard-open .chat-welcome img,.chat-keyboard-open .chat-welcome p,.chat-keyboard-open .chat-welcome .suggestions { display:none; }
+.chat-keyboard-open .chat-welcome h3 { font-size:16px;margin:0; }
+@media(max-width:760px) {
+  .chat-keyboard-open .echo-conversation { height:min(600px,calc(100dvh - 80px));min-height:380px;padding:12px; }
+  .keyboard-row { gap:3px; }
+  .keyboard-key { font-size:16px;border-radius:6px; }
+  .keyboard-toggle { width:30px; }
+  .keyboard-hint { font-size:10px; }
+}

@@ -126,6 +126,10 @@ class DisplayPreview(Preview):
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
             return self.camera_sample(path.endswith('/stream'))
         assets = {'/assets/display/polish.css':('display/polish.css','text/css'),
+                  '/assets/display/keyboard.css':('display/keyboard.css','text/css'),
+                  '/assets/display/keyboard.js':('display/keyboard.js','text/javascript'),
+                  '/assets/display/swipe.js':('display/swipe.js','text/javascript'),
+                  '/assets/display/keyboard-words.json':('display/keyboard-words.json','application/json'),
                   '/assets/fonts/Manrope-Variable.ttf':('fonts/Manrope-Variable.ttf','font/ttf'),
                   '/assets/display/pi-voice.js':('display/pi-voice.js','text/javascript'),
                   '/assets/display/alerts.js':('display/alerts.js','text/javascript'),

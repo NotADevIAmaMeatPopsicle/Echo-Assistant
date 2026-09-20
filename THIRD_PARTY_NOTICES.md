@@ -3,6 +3,20 @@
 Keep these notices with source and binary distributions. Vendored dependencies
 retain their individual licenses; this file does not relicense them.
 
+The on-screen keyboard's `web/display/keyboard-words.json` is an adapted English
+frequency list from **wordfreq 3.1.1**, copyright Robyn Speer, licensed
+**CC-BY-SA-4.0**: https://creativecommons.org/licenses/by-sa/4.0/.
+It keeps the first 16,000 ASCII alphabetic entries of up to 20 letters from the
+top 25,000 English words, in frequency order, and adds a few Echo-related terms.
+This adapted data remains CC-BY-SA-4.0; the keyboard code is original project code.
+Keep `third_party/licenses/wordfreq-NOTICE.md` with distributions for the upstream
+source credits, including Google Books, Leeds, Wikipedia, ParaCrawl,
+OpenSubtitles and Marc Brysbaert and the SUBTLEX authors. SUBTLEX remains freely
+available data. The wordfreq generation tool is Apache-2.0; its notice is in
+`third_party/licenses/wordfreq-LICENSE.txt`. Source: https://github.com/rspeer/wordfreq.
+Run `tools/build_keyboard_words.py` with wordfreq 3.1.1 to regenerate the list.
+Neither wordfreq nor an external service is required by the running keyboard.
+
 Linux storage encryption uses `cryptography` 46.0.7 (Apache-2.0 OR BSD-3-Clause,
 as declared in its installed package metadata). Keep its package notices when
 redistributing the runtime. Source: https://github.com/pyca/cryptography

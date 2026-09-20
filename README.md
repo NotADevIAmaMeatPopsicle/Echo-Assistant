@@ -68,6 +68,8 @@ live-service acceptance.
 Echo's status panel and settings sit beside the conversation. Type a message,
 press the microphone, or enable local wake words after configuring the Pi's
 microphone and speaker. Replies return to the device that heard the request.
+Tapping the chat field opens a compact keyboard with local English swipe typing
+and word corrections; the talk button stays within reach.
 The blue-green ring changes with listening, thinking, speaking, and connection
 state; Stop and mute remain accessible.
 

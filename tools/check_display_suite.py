@@ -18,7 +18,7 @@ import urllib.request
 ROOT=Path(__file__).resolve().parents[1]
 CHECKS=('smart_display_ui','display_connection','display_conversation','display_voice_ui',
         'display_daily','display_music','display_cameras','display_announcements',
-        'display_intercom','pi_spotify_ui','display_alerts_ui','pi_voice_ui')
+        'display_intercom','pi_spotify_ui','display_alerts_ui','pi_voice_ui','display_keyboard')
 
 
 def run_check(name,node,output):

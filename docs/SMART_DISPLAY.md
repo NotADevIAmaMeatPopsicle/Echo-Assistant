@@ -76,6 +76,22 @@ and its spoken reply returns only to that display.
 The home and Echo rings show this display's capture, processing and reply state.
 Another device being offline does not put the Pi into an offline voice state.
 Text entry works without a microphone. Native Pi wake words, reply playback and alarm chimes are implemented; physical audio acceptance remains open.
+
+Tap **Message Echo** to open the compact on-screen keyboard on the large display.
+Type individual letters or glide through an English word, then choose an
+alternative above the keys if needed. Numbers, punctuation, Shift, caret arrows,
+and Backspace are included. The down arrow hides the keyboard without clearing
+the draft; the keyboard button opens it again. The microphone stays beside the
+input. Only **Send** submits the message. Physical keyboards still work, and
+phones use their native keyboard by default.
+
+Swipe recognition and its bundled English dictionary run entirely in the browser;
+drafts and gesture samples are not sent to a service or saved. Tap names or words
+the dictionary does not recognize. If the dictionary cannot load, ordinary key
+entry remains available. [Dictionary attribution](../THIRD_PARTY_NOTICES.md).
+
+![Compact keyboard below Echo's chat input with local word suggestions; synthetic preview](images/display-keyboard.png)
+
 The round speaker retains its separate voice path and existing Spotify receiver.
 
 [Build options](BUILD_OPTIONS.md) explains the Pi, round-speaker, browser/phone

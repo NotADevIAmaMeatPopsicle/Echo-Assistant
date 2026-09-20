@@ -25,6 +25,9 @@
   <script src="/assets/display/intercom.js" defer></script>
   <link rel="stylesheet" href="/assets/display/alerts.css">
   <link rel="stylesheet" href="/assets/display/polish.css">
+  <link rel="stylesheet" href="/assets/display/keyboard.css">
+  <script src="/assets/display/swipe.js" defer></script>
+  <script src="/assets/display/keyboard.js" defer></script>
   <link rel="preload" href="/assets/fonts/Manrope-Variable.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
@@ -151,8 +154,14 @@
             <button id="voice-start" class="mic-button" type="button" data-requires="displayVoice" aria-label="Talk to Echo" title="Talk to Echo"><svg><use href="#i-mic"/></svg></button>
             <button id="voice-send" class="pill primary" type="button" hidden>Send recording</button>
             <input id="chat-text" maxlength="1200" placeholder="Message Echo…" aria-label="Message to Echo" required autocomplete="off">
+            <button id="toggle-chat-keyboard" class="keyboard-toggle" type="button" aria-label="Show keyboard" aria-controls="chat-keyboard" aria-expanded="false" title="Keyboard"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 16h10"/></svg></button>
             <button class="send-button" type="submit" id="send-chat" aria-label="Send message"><svg><use href="#i-send"/></svg></button>
           </form>
+          <section id="chat-keyboard" aria-label="On-screen keyboard" hidden>
+            <div class="keyboard-toolbar"><div id="keyboard-suggestions" aria-label="Word suggestions"><span class="keyboard-hint">Tap or swipe a word · English</span></div><button type="button" data-key-action="hide" aria-label="Hide keyboard" title="Hide keyboard">⌄</button></div>
+            <div id="keyboard-keys"><svg id="keyboard-trail" aria-hidden="true"><polyline/></svg></div>
+            <span id="keyboard-status" class="sr-only" role="status"></span>
+          </section>
           <div id="reply-audio-slot"><audio id="voice-reply" controls hidden></audio></div>
           <p class="conversation-privacy" id="voice-privacy-note">Mic closes before processing · messages stay in this tab until reload</p>
         </article>
