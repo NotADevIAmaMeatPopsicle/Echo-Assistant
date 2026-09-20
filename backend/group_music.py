@@ -22,6 +22,7 @@ class GroupMusicConfig(BaseModel):
     enabled:bool=False
     url:str=Field(default='',max_length=200)
     players:list[str]=Field(default_factory=list,max_length=32)
+    receivers:list[str]=Field(default_factory=list,max_length=32)
     max_volume:int=Field(default=30,ge=1,le=100)
 
     @field_validator('url')
@@ -42,6 +43,12 @@ class GroupMusicConfig(BaseModel):
     @classmethod
     def identifiers(cls,value):
         if len(set(value))!=len(value) or any(not re.fullmatch(r'[A-Za-z0-9_:.-]{1,160}',v) for v in value):raise ValueError('Choose unique Music Assistant players')
+        return value
+
+    @field_validator('receivers')
+    @classmethod
+    def receiver_ids(cls,value):
+        if len(set(value))!=len(value) or any(not re.fullmatch(r'[a-f0-9]{32}',v) for v in value):raise ValueError('Choose paired displays once')
         return value
 
 
@@ -234,7 +241,7 @@ class MusicMembers(BaseModel):
     members:list[str]=Field(max_length=31)
 
 
-def install(app,music,authorize,owner):
+def install(app,music,authorize,owner,displays=None):
     app.state.group_music=music
     def call(fn):
         try:return fn()
@@ -244,7 +251,10 @@ def install(app,music,authorize,owner):
     @app.get('/v1/music/groups/settings',dependencies=[Depends(owner)])
     def settings():return call(music.settings)
     @app.put('/v1/music/groups/settings',dependencies=[Depends(owner)])
-    def configure(body:ConfigureGroupMusic):return call(lambda:music.configure(body.config.model_dump(),body.token,body.revision))
+    def configure(body:ConfigureGroupMusic):
+        if displays is not None and not set(body.config.receivers)<={d['id'] for d in displays.snapshot() if d['profile']['mode']=='household'}:
+            raise HTTPException(422,'Choose currently paired Household displays as native receivers')
+        return call(lambda:music.configure(body.config.model_dump(),body.token,body.revision))
     @app.get('/v1/music/groups/discovery',dependencies=[Depends(owner)])
     def discover():return call(lambda:music.snapshot(discovery=True))
     @app.get('/v1/music/groups',dependencies=[Depends(authorize)])
@@ -253,3 +263,7 @@ def install(app,music,authorize,owner):
     def control(body:MusicControl):return call(lambda:music.control(body.action,body.player,body.value,body.revision))
     @app.post('/v1/music/groups/members',dependencies=[Depends(authorize)])
     def members(body:MusicMembers):return call(lambda:music.members(body.leader,body.members,body.revision,body.binding))
+    from .group_stream import install as install_stream
+    install_stream(app,music,authorize)
+    from .music_library import install as install_library
+    install_library(app,music,authorize,call)

@@ -108,3 +108,21 @@ a dimensional reference and is not redistributed. Google Home Mini and
 CS-MSX200SL names identify reference hardware, not an endorsement or electrical
 compatibility certification. Third-party geometry tools retain their own licenses;
 their versions are pinned in `enclosure/crescent-v1/source/requirements.txt`.
+
+
+## Optional synchronized music
+
+Music Assistant server 2.10.4 is an external Apache-2.0 application; its container
+is pinned by digest in `deploy/host/music.yaml`. Source and licensing:
+https://github.com/music-assistant/server/tree/2.10.4 . It is not vendored here.
+
+The optional Pi player uses the audio/client modules from Sendspin 7.5.0 and
+aiosendspin 6.0.1 (Apache-2.0), installed separately using the wheel hashes in
+`deploy/pi/group-music-pi313.lock`. Sources:
+https://github.com/Sendspin/sendspin-cli and https://github.com/Sendspin/aiosendspin .
+Echo's adapter uses their synchronization and playback APIs; it does not copy the
+CLI application into this repository. Retain their installed package notices
+when distributing a runtime. Dependencies retain their separate terms, including
+PyAV/FFmpeg, NumPy, sounddevice/PortAudio and the networking packages in the lock.
+The full CLI's server, desktop interface and discovery modules are not part of
+Echo's installed minimal player; running that CLI requires its other dependencies.

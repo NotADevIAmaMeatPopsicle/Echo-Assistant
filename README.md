@@ -132,9 +132,11 @@ pickup and feedback still need physical verification. See [display music](docs/M
 setup](docs/PI_SPOTIFY.md), and [voice setup](docs/PI_VOICE.md).
 
 The optional [Music Assistant connection](docs/GROUP_MUSIC.md) adds a **Together**
-tab for shared-player controls and reviewed room grouping. It works with compatible
-players already configured in Music Assistant; native grouped playback on the Pi
-and round speaker is still being integrated.
+tab for library search, queue selection, shared-player controls and reviewed room
+grouping. Browse connected providers and explicitly choose where to play. It works
+with compatible players configured in Music Assistant. The optional native Pi player connects
+through Echo’s private gateway and keeps voice attenuation local to that screen.
+The round-player adapter and physical multi-speaker timing remain in progress.
 
 ### Your day, lists, and reminders
 

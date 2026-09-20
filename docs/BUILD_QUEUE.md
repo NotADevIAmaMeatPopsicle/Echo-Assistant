@@ -24,17 +24,26 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
-**Grouped-music controls checkpoint:** the optional Music Assistant connection and
-Music → Together page are deployed to the private host and Pi browser. Music
-Assistant 2.10.4 runs without published ports; the adapter uses a separate regular
-user token, with credentials encrypted and new volume commands capped at 2% in
-this installation. The service currently has no registered players. Native Pi and
-Mini Sendspin clients and synchronized playback remain open. Thirty-two focused
-checks passed on both Windows and Linux; browser checks cover group review,
-existing music controls, guest restrictions and phone layout. The Pi kiosk was
-refreshed, pairing/settings were preserved, and the listener and existing Spotify
-receiver remained available. No audio or home actions were used. See
-[Grouped music](GROUP_MUSIC.md).
+**Grouped-music player checkpoint:** Music Assistant 2.10.4 runs privately without
+published ports. The native Pi client is installed, registered as Echo Deck and
+clock-synchronized through the existing authenticated Echo gateway. No Music
+Assistant token is stored on the Pi. Its local output ceiling is 2%, voice ducking
+reduces amplitude by 80%, and voice/alerts or local Spotify can silence only this
+endpoint. An in-memory check of the pinned audio engine verified those levels;
+no audio chunks were sent during the connection check. The existing listener
+remains armed and Spotify remains available. Mini's native client and physical
+multi-speaker playback/timing remain open.
+
+The Together page now also has provider browsing, track/album/playlist/radio search,
+queue pages and explicit selection to play on the chosen output. Provider setup
+remains in Music Assistant; existing Spotify Connect credentials are not imported.
+The update is deployed to the private host and Pi browser. Thirty-eight focused
+tests pass across Windows and isolated Linux checks; the synthetic browser flow
+covers library/search/queue selection, grouping, keyboard entry, native settings,
+Guest restrictions and phone layout. Pi browsing and queue reads returned
+successfully, matching assets were served after the kiosk refresh, and pairing
+and private settings were preserved. No real playback or home actions were used.
+See [Grouped music](GROUP_MUSIC.md).
 
 **Calendar management checkpoint:** event details, single-event editing/deletion
 and bounded recurring creation are deployed to the private host and Pi browser.
@@ -162,9 +171,10 @@ parity. Known gaps documented in the smart-display guide remain:
 - [x] Supported single-event editing/deletion and bounded recurring creation, with separate owner permissions and explicit review (software; external calendar writes untested).
 - [ ] Existing recurring-series editing/deletion, invitations and a calendar-review path for the Mini.
 - [ ] Synchronized grouped music across endpoints.
-      Music Assistant connection, shared-output permissions and a Together control
-      page are implemented. Native Pi/round clients, private stream transport,
-      voice coordination and physical timing remain open; see [Grouped music](GROUP_MUSIC.md).
+      Music Assistant connection, library/queue selection, shared-output permissions,
+      the native Pi player, private stream transport and local voice coordination
+      are implemented. The round client, actual provider playback and physical
+      timing remain open; see [Grouped music](GROUP_MUSIC.md).
 - [ ] External calling with a supported provider.
 - [ ] Household/guest profiles and per-user/per-room source policies.
       Per-display Household/Guest profiles, selected home-device and read-only

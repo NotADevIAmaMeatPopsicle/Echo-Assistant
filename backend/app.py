@@ -139,7 +139,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return auth.authorize(request)
     def owner(request:Request):
         if authorize(request).startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
-    install_group_music(app,GroupMusic(runtime_root,store.protector,enabled=deployment_mode=='device'),authorize,owner)
+    install_group_music(app,GroupMusic(runtime_root,store.protector,enabled=deployment_mode=='device'),authorize,owner,displays)
     install_schedules(app,schedules,authorize)
     install_display_alerts(app,DisplayAlerts(assistant,schedules),authorize)
     announcements=Announcements(runtime_root,store.protector,displays,schedules,

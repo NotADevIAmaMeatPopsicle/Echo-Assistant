@@ -72,8 +72,9 @@ def fixtures():
          'features':['pause','volume_set','volume_mute','set_members'],'members':[],'leader':None,'in_group':False,
          'blocked':False,'compatible':['demo-deck' if key=='demo-mini' else 'demo-mini'],
          'title':'A little room to breathe','artist':'Sample track'} for key,name in [('demo-deck','Echo Deck · sample'),('demo-mini','Echo Mini · sample')]]}
-    data['/v1/music/groups/settings']={'revision':1,'config':{'enabled':True,'url':'http://echo-music:8095','players':['demo-deck','demo-mini'],'max_volume':30},'token_saved':True}
+    data['/v1/music/groups/settings']={'revision':1,'config':{'enabled':True,'receivers':[],'url':'http://echo-music:8095','players':['demo-deck','demo-mini'],'max_volume':30},'token_saved':True}
     data['/v1/music/groups/discovery']=deepcopy(data['/v1/music/groups'])
+    data['/v1/display/group-music']={'supported':False}
     home = data['/v1/home']; home['status'] = 'configured'
     home['lights']['revision'] = revision
     for room, identifier in zip(home['lights']['rooms'], ['bedroom','living_room','dining_room','patio']): room['id'] = identifier
@@ -240,6 +241,16 @@ class DisplayPreview(Preview):
     do_PATCH = do_DELETE = do_PUT = do_POST
 
     def mutate(self, path, body):
+        if path=='/v1/music/groups/library':
+            view=body['view'];folder=view=='browse' and not body.get('selection')
+            return {'view':view,'offset':0,'total':1,'more':False,'truncated':False,'items':[
+                {'selection':('c' if folder else 'd')*32,'kind':'folder' if folder else 'queue' if view=='queue' else 'track',
+                 'name':'Echo Sessions · sample' if folder else 'Room to breathe',
+                 'artist':'' if folder else 'North Coast · sample','available':True,'current':view=='queue'}]}
+        if path=='/v1/music/groups/library/play':
+            player=next(p for p in self.state['/v1/music/groups']['items'] if p['id']==body['player'])
+            player.update(state='playing',title='Room to breathe',artist='North Coast · sample')
+            return {'status':'accepted','text':'Demo playback selected. No real audio played.'}
         if path=='/v1/music/groups/settings':
             current=self.state[path]
             if body['revision']!=current['revision']:raise ValueError()

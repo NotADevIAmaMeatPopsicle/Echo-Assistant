@@ -3,10 +3,13 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
 (async()=>{
   const base=await previewBase(),browser=await chromium.launch({channel:'chrome',headless:true});
   try{
-    const page=await browser.newPage({viewport:{width:1024,height:600}}),errors=[],changes=[];
+    const page=await browser.newPage({viewport:{width:1024,height:600}}),errors=[],changes=[],plays=[];let playerSaved=null;
+    const native={supported:true,installed:true,config:{enabled:false,name:'Sample Deck',output:'demo_output',volume:2},outputs:[{id:'demo_output',name:'Sample attached speaker'}],state:{phase:'disabled'}};
+    await page.route('**/v1/display/group-music',r=>{if(r.request().method()==='PUT'){playerSaved=r.request().postDataJSON();native.config=playerSaved;}return r.fulfill({json:native});});
     page.on('pageerror',e=>errors.push(e.message));
-    await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
+    await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.fallback():r.abort());
     await page.route('**/v1/music/groups/members',r=>{changes.push(r.request().postDataJSON());return r.continue();});
+    await page.route('**/v1/music/groups/library/play',r=>{plays.push(r.request().postDataJSON());return r.continue();});
     await page.goto(base+'/display#music');await page.locator('#tab-groups').click();
     const card=page.locator('[data-group-player="demo-deck"]');await card.locator('[data-group-edit]').click();
     await page.locator('#group-members-options input').check();assert.equal(changes.length,0);
@@ -18,10 +21,24 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     assert.equal(changes.length,1);assert.deepEqual(changes[0].members,['demo-mini']);
     await card.getByText('Together: Echo Mini · sample').waitFor();
     await page.screenshot({path:'output/playwright/display-group-music.png',animations:'disabled'});
+    await card.getByRole('button',{name:'Choose music',exact:true}).click();
+    await page.locator('#group-library-items').getByRole('button',{name:'Open',exact:true}).click();
+    await page.locator('#group-library-items').getByText('Room to breathe',{exact:true}).waitFor();
+    assert.equal(plays.length,0);
+    await page.locator('#group-library-query').fill('North Coast');await page.locator('#group-library-search button[type=submit]').click();
+    await page.locator('#group-library-items').getByRole('button',{name:'Play now',exact:true}).waitFor();assert.equal(plays.length,0);
+    await page.screenshot({path:'output/playwright/display-group-library.png',animations:'disabled'});
+    await page.locator('#group-library-items').getByRole('button',{name:'Play now',exact:true}).click();
+    await page.locator('#group-library-items').getByRole('button',{name:'Play this',exact:true}).waitFor();
+    assert.equal(plays.length,1);assert.equal(plays[0].player,'demo-deck');
+    await page.locator('#group-library-close').click();
     await page.locator('.rail-settings').click();await page.locator('#group-music-load').click();
     assert.ok(await page.locator('#group-music-share').isDisabled());assert.equal(await page.locator('#group-music-token').inputValue(),'');
     await page.locator('#group-music-discover').click();await page.locator('#group-music-share:not(:disabled)').waitFor();
     assert.equal(await page.locator('#group-music-output-choices input:checked').count(),2);
+    await page.locator('#group-local-enabled').check();assert.equal(playerSaved,null);await page.locator('#group-local-form button[type=submit]').click();
+    await page.waitForFunction(()=>document.getElementById('toast')?.textContent.includes('Player settings saved'));
+    assert.equal(playerSaved.enabled,true);assert.equal(playerSaved.volume,2);assert.equal(playerSaved.output,'demo_output');
     const guest=await browser.newPage({viewport:{width:1024,height:600}});
     await guest.route('**/v1/display/session',r=>r.fulfill({json:{role:'display',profile:{mode:'guest'},profile_revision:1}}));
     await guest.goto(base+'/display#music');await guest.locator('body.guest-display').waitFor();
@@ -30,6 +47,13 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.locator('[data-group-player="demo-deck"] [data-group-edit]').click();
     const bounds=await page.locator('#group-music-dialog').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=390&&bounds.y+bounds.height<=844);
     await page.screenshot({path:'output/playwright/display-group-music-phone.png',animations:'disabled'});
-    assert.deepEqual(errors,[]);console.log('PASS: group review/apply/cancel, selected outputs, guest restrictions and phone layout. No real audio or devices.');
+    await page.locator('#group-members-cancel').click();await page.locator('[data-group-player="demo-deck"] [data-group-library="browse"]').click();
+    const libraryBounds=await page.locator('#group-library-dialog').boundingBox();assert.ok(libraryBounds.x>=0&&libraryBounds.x+libraryBounds.width<=390&&libraryBounds.y+libraryBounds.height<=844);
+    const limited=await browser.newPage({viewport:{width:1024,height:600}});
+    await limited.route('**/v1/music/groups',async r=>{const response=await r.fetch(),value=await response.json();value.items.forEach(p=>{p.features=p.features.filter(f=>f!=='pause');p.state='playing';});return r.fulfill({json:value});});
+    await limited.goto(base+'/display#music');await limited.locator('#tab-groups').click();
+    assert.equal(await limited.locator('[data-group-player="demo-deck"] [data-group-command="pause"]').count(),0);
+    assert.equal(await limited.locator('[data-group-player="demo-deck"] [data-group-command="stop"]').count(),1);
+    assert.deepEqual(errors,[]);console.log('PASS: grouping, library/search/queue, explicit playback, native settings, guest restrictions and phone layout. No real audio or devices.');
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

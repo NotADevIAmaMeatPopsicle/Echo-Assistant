@@ -18,6 +18,7 @@ from spotify import Spotify,Unavailable
 from alerts import Alerts
 from listener import Listener
 from screen import Screen
+from grouped import GroupReceiver
 
 
 class Bridge(BaseHTTPRequestHandler):
@@ -27,6 +28,7 @@ class Bridge(BaseHTTPRequestHandler):
     alerts=None
     voice=None
     screen=None
+    group_music=None
 
     def access_profile(self,base,headers):
         request=urllib.request.Request(base+'/v1/display/session',headers=headers)
@@ -88,6 +90,26 @@ class Bridge(BaseHTTPRequestHandler):
         except (ValueError,TypeError):return self.error_reply(422,'Invalid music settings or control')
         except Unavailable as error:return self.error_reply(409,str(error))
         except (OSError,urllib.error.URLError):return self.error_reply(503,'Pi music is unavailable')
+
+    def local_group_music(self,path,body,base,headers):
+        try:
+            if path.endswith('/focus') and self.command=='GET':
+                with self.music.lock:
+                    result={'held':self.music.held(),'ducked':self.music.ducked(),
+                            'other_music':bool(self.music.player and self.music.player.poll() is None)}
+            else:
+                profile,_=self.access_profile(base,headers)
+                if profile['mode']=='guest':return self.error_reply(403,'Grouped music is managed by the owner')
+                if self.command=='GET':result=self.group_music.snapshot()
+                elif self.command=='PUT' and body and len(body)<=2048:result=self.group_music.configure(json.loads(body))
+                else:return self.error_reply(405,'Unsupported grouped-music method')
+            raw=json.dumps(result).encode();self.send_response(200)
+            for key,value in {'Content-Type':'application/json','Content-Length':str(len(raw)),'Cache-Control':'no-store'}.items():self.send_header(key,value)
+            self.end_headers();self.wfile.write(raw)
+        except urllib.error.HTTPError as error:return self.error_reply(error.code,'Display pairing is unavailable')
+        except (ValueError,TypeError):return self.error_reply(422,'Choose valid grouped-music settings')
+        except Unavailable as error:return self.error_reply(409,str(error))
+        except OSError:return self.error_reply(503,'Grouped music is unavailable')
 
     def local_alerts(self,body,base,headers):
         request=urllib.request.Request(base+'/v1/display/session',headers=headers)
@@ -180,6 +202,8 @@ a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
         path='/display' if self.path=='/' else self.path
         display_page=requested.path in {'/','/display'} and self.command in {'GET','HEAD'}
         headers={'Authorization':'Display '+self.configuration['credential'],'X-Echo-Request':'1','Origin':base}
+        if self.group_music is not None and requested.path in {'/v1/display/group-music','/v1/display/group-music/focus'}:
+            return self.local_group_music(requested.path,body,base,headers)
         if self.screen is not None and requested.path=='/v1/display/screen':
             return self.local_screen(body)
         if self.voice is not None and requested.path=='/v1/display/local-voice':
@@ -227,6 +251,7 @@ def main():
     Bridge.opener=urllib.request.build_opener(NoRedirect,urllib.request.HTTPSHandler(context=ssl.create_default_context()),urllib.request.ProxyHandler({}))
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Bridge)
     Bridge.music=Spotify();Bridge.music.start()
+    Bridge.group_music=GroupReceiver(args.config);Bridge.group_music.start()
     Bridge.screen=Screen()
     try:Bridge.screen.apply()
     except (OSError,subprocess.SubprocessError):pass  # X11 may start after the bridge.
@@ -244,7 +269,7 @@ def main():
     print(f'Echo display bridge listening on loopback port {args.port}. Credentials stay outside the browser.',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass
-    finally:server.server_close();Bridge.voice.close();Bridge.alerts.close();Bridge.music.close()
+    finally:server.server_close();Bridge.group_music.close();Bridge.voice.close();Bridge.alerts.close();Bridge.music.close()
 
 
 if __name__=='__main__':
