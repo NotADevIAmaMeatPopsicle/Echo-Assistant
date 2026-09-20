@@ -70,14 +70,15 @@ def select(items,intent):
 
 
 class ScopedAccess:
-    def __init__(self,access,displays,session,expected):
+    def __init__(self,access,displays,session,expected,require_voice=True):
         self.access,self.displays,self.session,self.expected=access,displays,session,expected
+        self.require_voice=require_voice
 
     def snapshot(self):
         current=self.displays.profile_for(self.session)
         if current!=self.expected:raise HomeAccessUnavailable('Display access changed; ask again after it refreshes.')
         profile=current['profile']
-        if profile['mode']!='guest' or not profile.get('home_voice',False) or not profile['conversation']:
+        if profile['mode']!='guest' or self.require_voice and (not profile.get('home_voice',False) or not profile['conversation']):
             raise HomeAccessUnavailable('Guest home voice commands are not enabled.')
         saved=self.access.snapshot();policy={'default_access':'hidden','devices':{}}
         for entity,grant in profile['home_devices'].items():

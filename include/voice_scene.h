@@ -83,7 +83,7 @@ inline uint16_t accent(State s) {
 }
 struct Model {
     State state=State::Offline;
-    bool connected=false, powerKnown=false, battery=false, charging=false, micMuted=false;
+    bool connected=false, powerKnown=false, battery=false, charging=false, micMuted=false,guest=false;
     int percent=-1, volume=0;
     float peak=0;
     const char* response="";
@@ -133,7 +133,7 @@ template<class Surface> void icon(Surface& g,int x,int y,int type,uint16_t c) {
 }
 template<class Surface> void header(Surface& g,const Model& m,uint16_t color,const char* status=nullptr) {
     if(m.micMuted || m.state==State::Muted) { status="MICROPHONE MUTED"; color=amber; }
-    const char* heading=status?status:m.connected?"ECHO ASSISTANT":"HOST OFFLINE";
+    const char* heading=status?status:m.connected?(m.guest?"ECHO / GUEST":"ECHO ASSISTANT"):"HOST OFFLINE";
     g.circle(233-g.width(heading,0)/2-10,49,2,m.connected?color:dim);
     g.text(heading,233,53,0,m.micMuted || m.state==State::Muted?amber:dim);
     char power[40];

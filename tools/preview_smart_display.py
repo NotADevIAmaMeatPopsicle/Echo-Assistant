@@ -39,6 +39,8 @@ def fixtures():
     data['/v1/display/local-voice']={'supported':False,'phase':'unavailable'}
     data['/v1/display/alert-settings']={'supported':False,'status':'Silent preview'}
     data['/v1/displays']={'items':[]}
+    data['/v1/round/profile']={'profile':{'mode':'household','name':'Household','room':'','conversation':True,'home_voice':False,
+        'home_devices':{},'calendars':[],'cameras':[],'presence_sensors':[]},'profile_revision':0,'firmware_ready':True}
     data['/v1/display/voice']={'available':False,'mode':'push_to_talk','message':'Silent preview.'}
     data['/v1/display/sources']={'status':'available','items':[
         {'entity_id':'calendar.household_demo','kind':'calendar','name':'Household · sample','available':True,'can_create':True,'writable':True,'can_edit':True,'can_delete':True,'editable':True,'deletable':True},
@@ -241,6 +243,12 @@ class DisplayPreview(Preview):
     do_PATCH = do_DELETE = do_PUT = do_POST
 
     def mutate(self, path, body):
+        if path=='/v1/round/profile':
+            from backend.display_profiles import DisplayProfile
+            current=self.state[path]
+            if body['revision']!=current['profile_revision']:raise ValueError()
+            current.update(profile=DisplayProfile.model_validate(body['profile']).model_dump(),profile_revision=current['profile_revision']+1)
+            return current
         if path=='/v1/music/groups/library':
             view=body['view'];folder=view=='browse' and not body.get('selection')
             return {'view':view,'offset':0,'total':1,'more':False,'truncated':False,'items':[

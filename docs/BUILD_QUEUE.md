@@ -24,6 +24,22 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Mini access checkpoint:** encrypted Household/Guest profiles, selected home
+cards, isolated conversation and optional local guest home voice commands are
+implemented. Guest speaker selection does not change the household choice.
+Queued requests retain their access revision; profile changes clear replies,
+cards, drafts and calls. Guest mode blocks grouped music, household announcements,
+calendar drafts, memory and Hermes tools. Existing settings remain Household.
+
+Fifty-three focused tests pass on Windows and isolated Linux. The owner browser
+flow covers firmware readiness, saving, cancellation, guest restrictions and
+phone layout. Native C++ access checks and circular rendering pass; firmware
+0.18.0 builds with a verified four-image bundle. The host update is deployed
+privately. Mini firmware installation and physical guest acceptance remain open.
+Pairing, private settings and source grants were preserved. The Deck serves the
+matching owner UI, remains armed at 2%, and reports Spotify discovery and grouped
+music readiness. No sound or home devices were used. See [Mini access](ROUND_ACCESS.md).
+
 **Mini calendar checkpoint:** the private host now supports paginated draft review
 and a separate Create confirmation on firmware 0.17.0. Full field previews include
 UTC offsets, all-day bounds and repeat rules. Partial transfers, unresolved questions,
@@ -168,8 +184,8 @@ voice troubleshooting are deployed. Known generated speech passes both wake phra
 transcription/assistant path without playback. This does not verify room pickup:
 the observed USB-headset input is quiet and no owner wake event was observed in
 the latest diagnostic window. Use the input meter and stage history during the
-next real attempt. Mini firmware 0.15.0 builds with Screen settings and idle OLED
-protection; installation is pending because no USB Mini is attached to this laptop.
+next real attempt. Mini firmware 0.18.0 includes Screen settings, idle OLED
+protection, calendar review and access profiles; installation remains pending.
 Presence wake now supports owner-approved Home Assistant motion/occupancy sensors
 and per-display selection. No qualifying sensors are currently exposed by Home
 Assistant, so physical presence-wake acceptance remains open.
@@ -247,8 +263,9 @@ parity. Known gaps documented in the smart-display guide remain:
 - [ ] Household/guest profiles and per-user/per-room source policies.
       Per-display Household/Guest profiles, selected home-device and read-only
       source grants, isolated guest conversation and opt-in local guest home
-      voice commands are implemented. Per-person identities, separate member memory/accounts and
-      Mini profiles remain open; see [Display access](DISPLAY_ACCESS.md).
+      voice commands and Mini profile software are implemented. Per-person identities
+      and separate member memory/accounts remain open; Mini installation and physical
+      acceptance are pending. See [Display access](DISPLAY_ACCESS.md).
 - [ ] Supported casting/commercial-video integrations, subject to provider access
       and licensing; current local media and Spotify do not establish those features.
 - [ ] Full Windows host and Hermes disaster-recovery rehearsal.

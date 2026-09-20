@@ -15,6 +15,7 @@ from fastapi import HTTPException
 
 from .group_music import GroupMusic, GroupMusicUnavailable
 from .settings import default_protector
+from .round_profile import RoundProfile,RoundProfileUnavailable
 from .timed_speaker import TimedSpeaker, raw_clock
 
 
@@ -64,6 +65,7 @@ class RoundGroupMusic:
                     'playing':False,'ceiling':2,'latency_ms':0,'volume':2,'muted':False,'error':None}
         self.title='';self.artist=''
         self.control_pending=None
+        self.profile_allowed=True
 
     def _clear(self):
         self.pcm.clear();self.buffered=0;self.epoch+=1
@@ -113,7 +115,7 @@ class RoundGroupMusic:
             self.thread=Thread(target=self._worker,name='mini-group-music',daemon=True);self.thread.start()
         with self.lock:
             state=dict(self.state);self.other_music=spotify_busy
-            allowed=(phase=='armed' and not speaker_busy and not spotify_busy and not calls_busy and
+            allowed=(self.profile_allowed and phase=='armed' and not speaker_busy and not spotify_busy and not calls_busy and
                      state['connected'] and state['server_clock'] and not state['error'] and
                      self.clock()-self.updated<2 and self.clock()>=self.retry_at and self.sender.capable)
             if self.sender.ceiling!=state['ceiling'] or self.sender.latency_us!=state['latency_ms']*1000:
@@ -147,6 +149,7 @@ class RoundGroupMusic:
     def control(self,intent):
         """Run on a worker, rechecking saved permissions for every home control."""
         try:
+            if not self.profile_allowed or RoundProfile(self.root,default_protector()).snapshot()['profile']['mode']=='guest':raise PermissionError()
             music=self.loader();music.settings()
             if not music.config.round_enabled or not music.config.enabled:raise PermissionError()
             rows=music.inventory();identifier=canonical_player(rows,self.identity)
@@ -162,7 +165,7 @@ class RoundGroupMusic:
             music.control(action,identifier,None,music.revision)
             return 'accepted',{'play':'Music requested.','pause':'Music paused.','stop':'Music stopped.',
                                'next':'Next track requested.','previous':'Previous track requested.'}[action]
-        except (GroupMusicUnavailable,PermissionError,ValueError,OSError,HTTPException):
+        except (GroupMusicUnavailable,RoundProfileUnavailable,PermissionError,ValueError,OSError,HTTPException):
             return 'unavailable','Music Assistant could not confirm that control. Check that this Mini and its group are shared in Echo Settings.'
 
     def close(self):
@@ -183,7 +186,7 @@ class RoundGroupMusic:
                 try:
                     music=await asyncio.to_thread(self.loader);music.settings()
                     config=music.config
-                    wanted=(self.sender.capable and music.actions_enabled and config.enabled and config.round_enabled and bool(music.token))
+                    wanted=(self.profile_allowed and self.sender.capable and music.actions_enabled and config.enabled and config.round_enabled and bool(music.token))
                     current=(config.model_dump_json(),music.token) if wanted else None
                     if task and (task.done() or current!=binding):
                         task.cancel();await asyncio.gather(task,return_exceptions=True);task=None

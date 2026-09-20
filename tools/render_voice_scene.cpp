@@ -20,6 +20,7 @@
 #include "../include/touch_gesture.h"
 #include "../include/screen_idle.h"
 #include "../include/calendar_scene.h"
+#include "../include/access_profile.h"
 
 struct Raster {
     std::vector<uint16_t> pixels=std::vector<uint16_t>(466*466,0);
@@ -192,6 +193,19 @@ int main(int argc,char** argv) {
         puts("PASS: mute button bounce, startup, hold, repeat, bus-fault and rollover cases");
     }
     const char* directory=argc>1?argv[1]:".";
+    {
+        MiniAccess access;assert(access.conversation && access.home("temp_up") && access.home("sound_up"));
+        assert(access.configure(1,1,1,"Guest"));assert(!access.home("temp_up") && !access.home("sound_up") && !access.lights);
+        assert(!access.permissions(2,1,16));assert(access.permissions(0,1,2));
+        assert(!access.home("temp_up") && access.home("sound_up") && access.lights==2);
+        assert(access.configure(2,1,0,"Guest"));assert(!access.conversation && !access.lights && !access.speaker);
+        assert(!access.configure(3,1,1,"Invalid\nlabel"));assert(access.revision==2);
+        Raster raster;Model m;m.state=State::Ready;m.connected=true;m.guest=true;m.volume=2;
+        Animation animation;VoiceScene::render(raster,m,1,animation);raster.checkBounds();assert(raster.has("ECHO / GUEST"));
+        char file[1024];snprintf(file,sizeof(file),"%s/voice-guest.ppm",directory);raster.save(file);
+        assert(access.configure(3,0,1,"Household") && access.temperature && access.speaker && access.lights==15);
+        puts("PASS: Mini guest defaults, explicit controls, conversation off, malformed policy and circular guest header");
+    }
     {
         CalendarReview draft;const char* id="cccccccccccccccccccccccccccccccc";
         const char* other="dddddddddddddddddddddddddddddddd";

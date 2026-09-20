@@ -55,7 +55,7 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
 | **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, and answered two-way intercom. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
-| **Share deliberately** | Owner-assigned Household or Guest profiles for paired displays, selected home-device controls, optional local guest home voice commands, read-only calendar/camera sources, and separate guest conversation. |
+| **Share deliberately** | Owner-assigned Household or Guest profiles for Deck and Mini, selected home-device controls, optional local guest home voice commands, read-only display sources, and separate guest conversation. Mini profile firmware awaits installation. |
 
 Home Assistant, Spotify, and Hermes are optional integrations. Features that need
 an account, a selected source, or an audio device report their availability. The
@@ -256,8 +256,13 @@ Home/Echo, the upper button toggles software microphone mute.
 
 The new [Mini calendar review](docs/ROUND_CALENDAR.md) presents spoken event drafts
 page by page, then requires a separate Create confirmation. It shares the Deck's
-calendar permissions and duplicate protection. Firmware 0.17.0 installation and
+calendar permissions and duplicate protection. Current firmware installation and
 physical touch acceptance are pending.
+
+[Mini access profiles](docs/ROUND_ACCESS.md) add a Guest mode for a shared room.
+Choose which lights, thermostat and speakers it can control, and whether it can
+answer questions. Household memory and Hermes tools stay private. The host support
+is deployed; firmware 0.18.0 is built and awaits installation.
 
 <table>
 <tr>

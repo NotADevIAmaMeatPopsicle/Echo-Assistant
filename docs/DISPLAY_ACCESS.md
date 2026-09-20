@@ -89,8 +89,9 @@ display page. Removing a profile grant does not delete household data.
 
 These are **per-device access profiles**, not per-person sign-in or voice
 identification. Anyone using a Household display receives its household access.
-Separate member identities, individual memory/calendar accounts, and profiles on
-the Mini remain open work. Local guest home commands
+Separate member identities and individual memory/calendar accounts remain open.
+[Mini profiles](ROUND_ACCESS.md) use the same grants with native home cards;
+their firmware is built and awaits installation. Local guest home commands
 are implemented with the explicit scope described above.
 
 Synthetic API checks exercise denied direct routes, isolated typed and spoken

@@ -37,6 +37,7 @@ from .transport import load_wifi, WifiTransport
 from .round_intercom import RoundIntercom
 from .round_group_music import RoundGroupMusic, ForegroundWire
 from .round_calendar import RoundCalendar
+from .round_access import RoundAccess
 
 ROOT = Path(__file__).resolve().parents[1]
 MAC = __import__('os').environ.get('ECHO_DEVICE_MAC', '').lower()
@@ -166,7 +167,8 @@ def run_session(args, lifecycle, model, recovery, music):
         group=RoundGroupMusic(ROOT,MAC,port.write)
         port=ForegroundWire(port,group)
         with httpx.Client(base_url="http://127.0.0.1:8768", timeout=15, trust_env=False,
-                               headers={"Authorization": "Bearer " + token}) as client, ThreadPoolExecutor(max_workers=3) as worker, SpeechJobs(worker) as speech_jobs:
+                               headers={"Authorization": "Bearer " + token}) as base_client, ThreadPoolExecutor(max_workers=3) as worker, SpeechJobs(worker) as speech_jobs:
+            access_profile=RoundAccess(ROOT);client=access_profile.client(base_client)
             def spoken_result(outcome, reply, *, cancel=None):
                 try:
                     check_cancel(cancel)
@@ -184,15 +186,15 @@ def run_session(args, lifecycle, model, recovery, music):
                 check_cancel(cancel)
                 return outcome, reply, pcm
 
-            def answer(text, *, cancel=None):
+            def answer(text, request_client, review, *, cancel=None):
                 prepared=None
                 try:
-                    response = post_text(text,token,cancel=cancel,calendar_review=calendar.supported)
+                    response = post_text(text,token,cancel=cancel,calendar_review=review.supported,access_revision=request_client.revision)
                     response.raise_for_status()
                     data = response.json()
                     outcome, reply = data.get("status", "unavailable"), str(data.get("text", "Assistant unavailable"))
-                    if data.get('calendar_draft') and calendar.supported:
-                        prepared=calendar.prepare(data['calendar_draft'])
+                    if data.get('calendar_draft') and review.supported:
+                        prepared=review.prepare(data['calendar_draft'])
                         reply='Review every draft page on the Mini, then confirm Create. Nothing is saved yet.' if prepared and prepared['allowed'] else 'Open My day on the Deck and prepare the event there. Nothing has been saved.'
                 except (httpx.HTTPError, ValueError):
                     outcome, reply = "unavailable", "The local assistant is unavailable right now."
@@ -220,7 +222,10 @@ def run_session(args, lifecycle, model, recovery, music):
             else:
                 raise RuntimeError("Voice-capable firmware did not identify itself")
             if lifecycle.stopped(): return
-            for line in lines:group.receive(line);calendar.receive(line)
+            for line in lines:group.receive(line);calendar.receive(line);access_profile.observe(line)
+            access_profile.configure(port.write)
+            group.profile_allowed=not access_profile.guest and access_profile.state['available']
+            if access_profile.guest:calendar.supported=False
             if any(re.search(r'\bintercom=1\b',line) for line in lines):port.write(b'CALL_RESET\n')
             duplex = any(re.search(r'\bduplex=1\b', line) for line in lines if line.startswith('STATUS '))
             activation = Activation(any(re.search(r'\bcue_ready=1\b', line) for line in lines if line.startswith('STATUS ')))
@@ -259,6 +264,7 @@ def run_session(args, lifecycle, model, recovery, music):
                 if (decoder.errors, decoder.gaps) != (previous_errors, previous_gaps):
                     recognition.reset()
                 for line in lines:
+                    access_profile.observe(line)
                     group.receive(line)
                     calendar.receive(line)
                     calls.receive(line)
@@ -320,7 +326,7 @@ def run_session(args, lifecycle, model, recovery, music):
                         if pending: pending.cancel(); pending = None
                         if speaker.active: speaker.stop()
                         resume_music = False
-                    elif line == "EVENT talk=1" and not status["muted"] and not calls.busy:
+                    elif line == "EVENT talk=1" and not status["muted"] and not calls.busy and access_profile.conversation:
                         calendar.clear()
                         finish_sample('cancelled')
                         last_pcm = now
@@ -335,6 +341,24 @@ def run_session(args, lifecycle, model, recovery, music):
                         if action in {'toggle', 'next', 'previous'}:
                             if group.selected:group.submit_control(worker,action)
                             else:music.command(action)
+                if access_profile.refresh():
+                    calendar_capable=calendar.supported
+                    if pending:pending.cancel();pending=None
+                    calendar.clear();alarms.retry();calls.close()
+                    if speaker.active and phase!='music':speaker.stop()
+                    group.profile_allowed=not access_profile.guest and access_profile.state['available']
+                    if not group.profile_allowed:group.stream('disconnect');group.hold()
+                    client=access_profile.client(base_client)
+                    display=HomeDisplay(client,worker,port.write);alarms=Alarms(client,worker,port.write,speech_jobs)
+                    calls=RoundIntercom(client,port.write);calendar=RoundCalendar(client,worker,port.write)
+                    calendar.supported=calendar_capable and not access_profile.guest
+                    from .display import home_lines
+                    for clear_line in home_lines({}):port.write(clear_line.encode('ascii'))
+                    port.write(b'TIMER_UNAVAILABLE\nVOICE_REPLY Access refreshed\n')
+                    access_profile.configure(port.write)
+                    recognition.reset();resume_music=False
+                    if phase!='music':phase,until='cooldown',now+.3
+                    status['access_profile']=access_profile.health()
                 display.pump()
                 calendar.pump()
                 alarms.pump()
@@ -472,9 +496,9 @@ def run_session(args, lifecycle, model, recovery, music):
                 if phase=='armed' and resume_music and calendar.draft is None:
                     music.command('play'); resume_music = False
                 group.pump(phase,speaker_busy=speaker.active or calendar.draft is not None,spotify_busy=music.status=='playing',calls_busy=calls.busy)
-                recognition.set_mode(recognition_mode('music' if phase=='armed' and group.active else phase, status['muted'], recognition.echo_ready))
+                recognition.set_mode(recognition_mode('music' if phase=='armed' and group.active else phase, status['muted'] or not access_profile.conversation, recognition.echo_ready))
                 for event in recognition.poll():
-                    if phase in {'armed', 'music'} and event['kind'] == 'wake':
+                    if phase in {'armed', 'music'} and event['kind'] == 'wake' and access_profile.conversation:
                         calendar.clear()
                         alarms.messages.cancel()
                         resume_music = activate(port, speaker, music, phase, activation) or resume_music
@@ -495,7 +519,7 @@ def run_session(args, lifecycle, model, recovery, music):
                                 outcome, reply, resume_music = control_music(music, intent, resume_music)
                                 pending = speech_jobs.submit(spoken_result, outcome, reply)
                         else:
-                            pending = speech_jobs.submit(answer, event['value'])
+                            pending = speech_jobs.submit(answer, event['value'],client,calendar)
                         phase = 'thinking'
                 recognition.set_mode(recognition_mode('music' if phase=='armed' and group.active else phase, status['muted'], recognition.echo_ready))
                 for pcm, reference in zip(packets, decoder.references):

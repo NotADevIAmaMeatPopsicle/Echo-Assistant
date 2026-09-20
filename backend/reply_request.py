@@ -5,7 +5,7 @@ import httpx
 from .speech_jobs import check_cancel
 
 
-def post_text(text, token, *, cancel=None, transport=None,calendar_review=False):
+def post_text(text, token, *, cancel=None, transport=None,calendar_review=False,access_revision=None):
     async def request():
         check_cancel(cancel)
         async with httpx.AsyncClient(base_url='http://127.0.0.1:8768',timeout=45,
@@ -13,7 +13,8 @@ def post_text(text, token, *, cancel=None, transport=None,calendar_review=False)
                 headers={'Authorization':'Bearer '+token}) as client:
             body={'text':text}
             if calendar_review:body['calendar_review']=True
-            pending = asyncio.create_task(client.post('/v1/text',json=body))
+            headers={} if access_revision is None else {'X-Echo-Endpoint':'round','X-Echo-Access-Revision':str(access_revision)}
+            pending = asyncio.create_task(client.post('/v1/text',json=body,headers=headers))
             deadline = time.monotonic()+45
             try:
                 while True:

@@ -45,8 +45,8 @@ class DisplayProfileTests(unittest.TestCase):
         self.settings=SettingsStore(protector=self.protector)
         self.settings.save(SettingsUpdate(settings=EchoSettings(provider='local',model='synthetic',agent_runtime='hermes',personality='PRIVATE HOUSEHOLD PERSONALITY')))
         self.provider=Mock();self.provider.complete.return_value='A guest answer.'
-        self.app=create_app('owner-token-'*4,home=self.home,home_catalog=self.catalog,home_access_store=self.access,settings_store=self.settings,provider=self.provider)
-        self.client=TestClient(self.app);self.client.__enter__();self.addCleanup(self.client.__exit__,None,None,None)
+        self.app=create_app('owner-token-'*4,home=self.home,home_catalog=self.catalog,home_access_store=self.access,settings_store=self.settings,provider=self.provider,runtime_root=self.root if getattr(self,'with_runtime',False) else None)
+        self.client=TestClient(self.app,base_url='http://localhost' if getattr(self,'with_runtime',False) else 'http://testserver');self.client.__enter__();self.addCleanup(self.client.__exit__,None,None,None)
         self.owner={'Authorization':'Bearer '+'owner-token-'*4}
         self.paired=self.enroll('Guest room');self.guest={'Authorization':'Display '+self.paired['credential']}
 

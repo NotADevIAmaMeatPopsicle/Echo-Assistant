@@ -34,7 +34,7 @@ def install(app,intercom,authorize):
 
     def endpoint(request,session):
         if session.startswith('display:'):return session.split(':',1)[1]
-        if session=='device' and request.headers.get('x-echo-audio-receiver')=='round':return 'round'
+        if session in {'device','round'} and request.headers.get('x-echo-audio-receiver')=='round':return 'round'
         raise HTTPException(403,'Intercom audio requires a paired endpoint')
 
     @app.post('/v1/intercom/heartbeat')

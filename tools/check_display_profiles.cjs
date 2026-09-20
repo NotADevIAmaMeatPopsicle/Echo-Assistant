@@ -8,10 +8,15 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});
     const profile={mode:'household',name:'Household',room:'',conversation:true,home_devices:{},calendars:[],cameras:[],presence_sensors:[]};
     const display={id:'a'.repeat(32),name:'Guest room display',profile,profile_revision:0};
+    let miniSaved=null;const mini={profile:{...profile},profile_revision:0,firmware_ready:false};
+    await page.route('**/v1/round/profile',r=>{
+      if(r.request().method()==='PUT'){miniSaved=r.request().postDataJSON();mini.profile=miniSaved.profile;mini.profile_revision++;}
+      return r.fulfill({json:mini});
+    });
     await page.route('**/v1/displays',r=>r.fulfill({json:{items:[display]}}));
     await page.route('**/v1/displays/*/profile',r=>{saved=r.request().postDataJSON();display.profile=saved.profile;display.profile_revision++;return r.fulfill({json:{profile:display.profile,profile_revision:display.profile_revision}});});
     await page.goto(base+'/display#settings');await page.locator('[data-profile-display]').tap();
-    try{await page.locator('#display-access-save:not(:disabled)').waitFor({timeout:5000});}catch(error){console.error(await page.locator('#display-access-status').textContent());throw error;}
+    try{await page.locator('#display-access-save:not(:disabled)').waitFor({timeout:5000});}catch(error){console.error(await page.evaluate(()=>({url:location.href,status:document.getElementById('display-access-status')?.textContent,body:document.body.innerText.slice(-1000)})));throw error;}
     await page.locator('#display-access-mode').selectOption('guest');
     await page.locator('#display-access-name').fill('Visiting friends');await page.locator('#display-access-room').fill('Guest room');
     // Close the soft keyboard to review the complete grant list.
@@ -26,11 +31,25 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     assert.equal(saved.profile.home_voice,false);
     assert.deepEqual(saved.profile.calendars,['calendar.household_demo']);
     assert.deepEqual(saved.profile.cameras,['camera.porch_demo']);
+    await page.locator('#mini-access-edit:not(:disabled)').tap();await page.locator('#display-access-save:not(:disabled)').waitFor();
+    assert.equal(await page.locator('#display-access-mode option[value=guest]').evaluate(el=>el.disabled),true);
+    await page.locator('#display-access-cancel').tap();assert.equal(miniSaved,null);
+    mini.firmware_ready=true;await page.reload();await page.locator('#mini-access-edit:not(:disabled)').tap();
+    await page.locator('#display-access-save:not(:disabled)').waitFor();await page.locator('#display-access-mode').selectOption('guest');
+    await page.locator('#display-access-name').fill('Guest speaker');await page.locator('#display-access-mode').selectOption('guest');
+    assert.equal(await page.locator('[data-profile-source]').count(),0);
+    await page.locator('[data-profile-entity]').first().selectOption('control');
+    await page.locator('#display-access-home-voice').check();await page.locator('#display-access-conversation').uncheck();
+    await page.screenshot({path:'output/playwright/mini-access-profile.png',animations:'disabled'});
+    await page.locator('#display-access-save').tap();await page.locator('#display-access-dialog').waitFor({state:'hidden'});
+    assert.equal(miniSaved.revision,0);assert.equal(miniSaved.profile.conversation,false);assert.equal(miniSaved.profile.home_voice,true);
+    assert.equal(miniSaved.profile.home_devices[entity],'control');assert.deepEqual(miniSaved.profile.calendars,[]);
     const guest=await browser.newPage({viewport:{width:1024,height:600},hasTouch:true});guest.on('pageerror',e=>errors.push(e.message));
     await guest.route('**/v1/display/session',r=>r.fulfill({json:{role:'display',receiver_id:display.id,profile_revision:1,profile:display.profile}}));
     for(const path of ['/v1/household','/v1/schedules','/v1/routines','/v1/display/photos','/v1/display/briefing*','/v1/voice'])
       await guest.route('**'+path,r=>r.fulfill({status:403,json:{detail:'Not shared with this guest display'}}));
     await guest.goto(base+'/display#lists');await guest.locator('body.guest-display').waitFor();
+    assert.equal(await guest.locator('#mini-access-card').isVisible(),false);
     await guest.waitForURL('**#home');assert.equal(await guest.locator('nav [data-page=lists]').isVisible(),false);
     await guest.locator('nav [data-page=rooms]').tap();assert.equal(await guest.locator('#room-cards').isVisible(),false);
     assert.equal(await guest.locator('#guest-display-note').isVisible(),true);
@@ -50,6 +69,6 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.setViewportSize({width:390,height:844});await page.locator('[data-profile-display]').tap();
     await page.locator('#display-access-save:not(:disabled)').waitFor();
     const bounds=await page.locator('#display-access-dialog').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=390&&bounds.y+bounds.height<=844);
-    assert.deepEqual(errors,[]);console.log('PASS: explicit owner grants, guest navigation/privacy labels, optional home voice consent and phone profile editor.');
+    assert.deepEqual(errors,[]);console.log('PASS: explicit owner grants, Mini firmware gate and saved access, guest navigation/privacy labels, optional home voice consent and phone profile editor.');
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

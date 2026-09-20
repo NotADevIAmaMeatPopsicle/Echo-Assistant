@@ -50,6 +50,8 @@ from .display_alerts import DisplayAlerts, install as install_display_alerts
 from .household_commands import parse as household_request
 from .display_auth import Displays,DisplayStorageUnavailable
 from .display_profiles import DisplayProfile,GuestSettings,ProfileAgent,home_view
+from .round_profile import RoundProfile,RoundProfileUnavailable
+from .round_home import RoundHome
 from .experiences import SourceStore, Experiences
 from .experience_api import install as install_experiences
 from .calendar_events import CalendarWriter
@@ -124,7 +126,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     routines = Routines(RoutineStore(runtime_root,store.protector),actions)
     echo.routines = routines
     auth = BrowserAuth(token)
-    displays = Displays(runtime_root,store.protector)
+    round_profile=RoundProfile(runtime_root,store.protector)
+    displays = Displays(runtime_root,store.protector,round_profile=round_profile)
+    round_home=RoundHome(home,catalog,actions,displays,round_profile)
     guest_echo=EchoAgent(GuestSettings(store),echo.provider,MemoryStore(None,store.protector))
     from .guest_home import GuestHome
     profiled_echo=ProfileAgent(echo,guest_echo,displays,GuestHome(catalog,actions,displays))
@@ -134,12 +138,17 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     voice_check_lock = Lock()
     def authorize(request:Request):
         header=request.headers.get('authorization','')
+        if request.headers.get('x-echo-endpoint'):
+            auth.bearer(request)
+            if request.headers['x-echo-endpoint']!='round':raise HTTPException(403,'Unknown host endpoint')
+            return round_profile.authorize(request)
         if header.startswith('Display '): return displays.authorize(request)
         if header.startswith('Bearer ') or request.cookies.get('echo_session'): return auth.authorize(request)
         if request.cookies.get('echo_display_session'): return displays.authorize(request)
         return auth.authorize(request)
     def owner(request:Request):
-        if authorize(request).startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
+        principal=authorize(request)
+        if principal=='round' or principal.startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
     install_group_music(app,GroupMusic(runtime_root,store.protector,enabled=deployment_mode=='device'),authorize,owner,displays)
     install_schedules(app,schedules,authorize)
     install_display_alerts(app,DisplayAlerts(assistant,schedules),authorize)
@@ -188,6 +197,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     @app.exception_handler(DisplayStorageUnavailable)
     async def display_storage_error(request,error): return JSONResponse({'detail':str(error)},status_code=503)
 
+    @app.exception_handler(RoundProfileUnavailable)
+    async def round_profile_error(request,error):return JSONResponse({'detail':str(error)},status_code=503)
+
     class PairDisplay(BaseModel):
         model_config=ConfigDict(extra='forbid')
         name:str=Field(min_length=1,max_length=60)
@@ -210,6 +222,12 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             raise HTTPException(409,'The active request is stopping. Save display access again when it has finished.')
         profile=body.profile.model_dump()
         previous=displays.profile_for(principal)
+        validate_guest_profile(profile,previous)
+        result=displays.save_profile(identifier,profile,body.revision)
+        echo.clear(principal);guest_echo.clear(principal);conversations.clear(principal)
+        return result
+
+    def validate_guest_profile(profile,previous):
         if profile['mode']=='guest':
             old=previous['profile']['home_devices']
             added={entity:grant for entity,grant in profile['home_devices'].items() if old.get(entity)!=grant and not (old.get(entity)=='control' and grant=='read')}
@@ -222,8 +240,24 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             sources=experiences.store.snapshot()['sources']
             if any(not set(profile[key])<=set(sources[key]) for key in ('calendars','cameras','presence_sensors')):
                 raise HTTPException(422,'Share sources in Display settings before assigning them to a guest')
-        result=displays.save_profile(identifier,profile,body.revision)
-        echo.clear(principal);guest_echo.clear(principal);conversations.clear(principal)
+    @app.get('/v1/round/profile')
+    def mini_access(principal=Depends(authorize)):
+        if principal.startswith('display:'):raise HTTPException(403,'Open the owner workspace to manage Echo Mini')
+        status=voice_status(runtime_root) if runtime_root else {}
+        ready=status.get('status') not in {None,'connecting','disconnected'} and status.get('access_profile',{}).get('firmware',False)
+        return {**round_profile.snapshot(),'firmware_ready':bool(ready)}
+
+    @app.put('/v1/round/profile',dependencies=[Depends(owner)])
+    def save_mini_access(body:SetDisplayProfile):
+        with round_profile.lock:
+            if conversations.snapshot('round').get('active'):
+                conversations.clear('round');raise HTTPException(409,'The Mini request is stopping. Save access when it finishes.')
+            profile=body.profile.model_dump();previous=round_profile.snapshot()
+            if profile['mode']=='guest' and previous['profile']['mode']!='guest' and not mini_access('device')['firmware_ready']:
+                raise HTTPException(409,'Connect Echo Mini with the current profile-aware firmware before enabling Guest mode.')
+            validate_guest_profile(profile,previous)
+            result=round_profile.save(profile,body.revision)
+        echo.clear('round');guest_echo.clear('round');conversations.clear('round')
         return result
 
     @app.get('/v1/displays',dependencies=[Depends(owner)])
@@ -252,7 +286,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
 
     @app.get('/v1/display/session')
     def current_display_session(session=Depends(authorize)):
-        return {'role':'display' if session.startswith('display:') else 'owner',
+        return {'role':'display' if session=='round' or session.startswith('display:') else 'owner',
                 'receiver_id':session.split(':',1)[1] if session.startswith('display:') else None,
                 **displays.profile_for(session)}
 
@@ -471,7 +505,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return voice_status(runtime_root) if runtime_root else {"status": "disconnected", "phrases": ["hey echo", "okay echo"]}
 
     @app.get("/v1/home", dependencies=[Depends(authorize)])
-    def home_state(session=Depends(authorize)):
+    def home_state(connection:Request,session=Depends(authorize)):
+        if session=='round':
+            return mini_control(connection,round_home.snapshot,household_home)
         profile=displays.profile_for(session)['profile']
         if profile['mode']=='guest':
             # Legacy room/speaker shortcuts have global bindings. Guests use the
@@ -486,6 +522,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
                 except HomeUnavailable:pass
             return {'status':'available','devices':devices,'lights':{'status':'restricted','rooms':[]},
                     'speakers':{'status':'restricted','choices':[]}}
+        return household_home()
+
+    def household_home():
         result = home.snapshot()
         try: result['lights'] = room_lights.snapshot()
         except (HomeUnavailable,HomeAccessUnavailable): result['lights'] = {'status':'unavailable','rooms':[]}
@@ -496,6 +535,15 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             result['speakers']={'status':'unavailable','choices':[]}
             result['devices']['soundbar']={'status':'unavailable'}
         return result
+
+    def mini_control(connection,guest,household):
+        # Recheck inside the same lock as profile writes. A queued request cannot
+        # inherit household permissions when the owner changes its profile.
+        with round_profile.lock:
+            authorize(connection)
+            try:return (guest if round_profile.snapshot()['profile']['mode']=='guest' else household)()
+            except ValueError as error:raise HTTPException(409,str(error)) from None
+            except HomeUnavailable as error:raise HTTPException(503,str(error)) from None
 
     class SpeakerSelection(BaseModel):
         model_config=ConfigDict(extra='forbid')
@@ -508,13 +556,15 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         binding: str=Field(pattern=r'^[a-f0-9]{64}$')
 
     @app.post('/v1/home/speakers/select',dependencies=[Depends(authorize)])
-    def select_speaker(request:SpeakerSelection):
+    def select_speaker(request:SpeakerSelection,connection:Request,session=Depends(authorize)):
+        if session=='round':return mini_control(connection,lambda:round_home.select(request.index,request.revision),lambda:speakers.select(request.index,request.revision))
         try:return speakers.select(request.index,request.revision)
         except ValueError as error:raise HTTPException(409,str(error)) from None
         except HomeUnavailable as error:raise HTTPException(503,str(error)) from None
 
     @app.post('/v1/home/speakers/control',dependencies=[Depends(authorize)])
-    def control_speaker(request:SpeakerAction):
+    def control_speaker(request:SpeakerAction,connection:Request,session=Depends(authorize)):
+        if session=='round':return mini_control(connection,lambda:round_home.speaker(request.action,request.binding),lambda:speakers.action(request.action,request.binding))
         try:return speakers.action(request.action,request.binding)
         except ValueError as error:raise HTTPException(409,str(error)) from None
         except HomeUnavailable as error:raise HTTPException(503,str(error)) from None
@@ -532,7 +582,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         except HomeUnavailable as error: raise HTTPException(503,str(error)) from None
 
     @app.post('/v1/home/rooms/{room}/actions', dependencies=[Depends(authorize)])
-    def room_action(room: str, request: RoomAction):
+    def room_action(room: str, request: RoomAction,connection:Request,session=Depends(authorize)):
+        if session=='round':return mini_control(connection,lambda:round_home.room(room,request.action,request.revision),lambda:room_lights.action(room,request.action,request.revision))
         try: return room_lights.action(room,request.action,request.revision)
         except ValueError as error: raise HTTPException(409,str(error)) from None
         except HomeUnavailable as error: raise HTTPException(503,str(error)) from None
@@ -567,8 +618,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             return actions.execute(command)
 
     @app.post("/v1/home/{device}/actions", dependencies=[Depends(authorize)])
-    def home_action(device: str, request: HomeAction):
+    def home_action(device: str, request: HomeAction,connection:Request,session=Depends(authorize)):
         if deployment_mode == 'validation': raise HTTPException(409,'Device actions are off in this validation instance')
+        if session=='round':return mini_control(connection,lambda:round_home.action(device,request.action,request.value,request.unit),lambda:home.act(device,request.action,request.value,request.unit))
         try:
             return home.act(device, request.action, request.value, request.unit)
         except HomeUnavailable as error:
@@ -581,31 +633,51 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         result={"timers": assistant.timer_states()+schedules.timer_states(), "capabilities": ["clock", "timer", "schedules"]}
         if displays.profile_for(session)['profile']['mode']=='guest':
             result['timers']=[t for t in result['timers'] if t['destination']==session]
-        if session=='device':
+        if session in {'device','round'}:
             for timer in result['timers']:
                 if timer['destination']!='round': timer['notified']=True
-        if session=='device' and request.headers.get('x-echo-audio-receiver')=='round':
+        if session in {'device','round'} and displays.profile_for(session)['profile']['mode']!='guest' and request.headers.get('x-echo-audio-receiver')=='round':
             try:result['audio_inbox']=announcements.inbox('round','round')
             except AnnouncementUnavailable:result['audio_inbox']={'enabled':False,'ready':False,'status':'unavailable','items':[],'active':[]}
         return result
 
+    def research_reply(text,session):
+        import re
+        query=text.strip().lower().rstrip('.!?')
+        if query in {'what did you find','research status','stop research','cancel research'}:
+            jobs=research.list(session)
+            if jobs:
+                latest=jobs[0]
+                if query in {'stop research','cancel research'}:
+                    research.stop(session,latest['id']);answer='I’ve requested a stop for that research.'
+                elif latest['active']:answer='I’m still researching. You can follow progress on Tasks.'
+                else:answer=(latest.get('result') or {}).get('text','That research was stopped.')[:900]
+                return {'status':'complete','capability':'research','text':answer}
+        if re.match(r'\s*(?:please\s+)?(?:research\b|look into\b|compare\b)',text,re.I):
+            task=research.start(session,text)
+            return {'status':'complete','capability':'research','text':'I’ll look into that. The report and sources will appear on the Tasks page.','task_id':task['id']}
+        return None
+
     @app.post("/v1/text")
     async def text(request: TextRequest, connection: Request, session=Depends(authorize)):
+        if session=='round':
+            with round_profile.lock:
+                authorize(connection)
+                if round_profile.snapshot()['profile']['mode']=='household':
+                    research_result=research_reply(request.text,'device')
+                    if research_result is not None:return research_result
+                try:activity=conversations.begin(session)
+                except ConversationBusy as error:raise HTTPException(409,str(error)) from None
+                before=round_profile.snapshot()
+            result=await run_conversation(connection,app.state.speech_stop,
+                partial(profiled_echo.respond,allow_home_actions=deployment_mode=='device',progress=activity.progress,calendar_review=request.calendar_review),
+                request.text,session,request.lookup,activity=activity)
+            authorize(connection)
+            if round_profile.snapshot()!=before:raise HTTPException(409,'Mini access changed during the reply')
+            return result
         try:
-            import re
-            query=request.text.strip().lower().rstrip('.!?')
-            if query in {'what did you find','research status','stop research','cancel research'}:
-                jobs=research.list(session)
-                if jobs:
-                    latest=jobs[0]
-                    if query in {'stop research','cancel research'}:
-                        research.stop(session,latest['id']);answer='I’ve requested a stop for that research.'
-                    elif latest['active']:answer='I’m still researching. You can follow progress on Tasks.'
-                    else:answer=(latest.get('result') or {}).get('text','That research was stopped.')[:900]
-                    return {'status':'complete','capability':'research','text':answer}
-            if re.match(r'\s*(?:please\s+)?(?:research\b|look into\b|compare\b)',request.text,re.I):
-                task=research.start(session,request.text)
-                return {'status':'complete','capability':'research','text':'I’ll look into that. The report and sources will appear on the Tasks page.','task_id':task['id']}
+            research_result=research_reply(request.text,session)
+            if research_result is not None:return research_result
             if routine_request(request.text) or household_request(request.text) or briefing_request(request.text) or draft_request(request.text):
                 return await run_conversation(connection,app.state.speech_stop,
                     partial(echo.respond,allow_home_actions=deployment_mode=='device',calendar_review=request.calendar_review),request.text,session,request.lookup)

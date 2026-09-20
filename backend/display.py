@@ -72,6 +72,8 @@ def home_lines(snapshot):
     else:
         lines.append('HOME_SELECTED '+'0'*64+' Speaker_unavailable\n')
         lines.append('HOME_SPEAKERS '+'0'*64+' 0 -1\n')
+    permissions=snapshot.get('permissions',{'thermostat':bool(thermo),'soundbar':bool(sound),'lights':15 if lights.get('status')=='available' else 0})
+    lines.append(f"HOME_PERMS {int(bool(permissions.get('thermostat')))} {int(bool(permissions.get('soundbar')))} {int(permissions.get('lights',0))&15}\n")
     return lines
 
 

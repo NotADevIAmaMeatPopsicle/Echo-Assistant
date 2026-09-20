@@ -60,7 +60,7 @@ def install(app,store,settings,authorize,owner,synthesizer=synthesize_checked):
 
     def endpoint(request,session):
         if session.startswith('display:'):return session.split(':',1)[1]
-        if session=='device' and request.headers.get('x-echo-audio-receiver')=='round':return 'round'
+        if session in {'device','round'} and request.headers.get('x-echo-audio-receiver')=='round':return 'round'
         raise HTTPException(403,'Receiving audio requires a paired display or the round audio bridge')
 
     @app.get('/v1/audio/rooms')

@@ -22,6 +22,7 @@
 #include "intercom_state.h"
 #include "intercom_scene.h"
 #include "calendar_scene.h"
+#include "access_profile.h"
 
 // CO5300 setup from YouAndEye's accepted AMOLED surface. See THIRD_PARTY_NOTICES.md.
 static Arduino_DataBus* bus=new Arduino_ESP32QSPI(Board::lcdCs,Board::lcdClock,Board::lcdD0,Board::lcdD1,Board::lcdD2,Board::lcdD3);
@@ -54,6 +55,7 @@ using Page=ControlScene::Page;
 static Page page=Page::Voice;
 static Page touchPage=Page::Voice;
 static TouchGesture touchGesture;
+static MiniAccess miniAccess;
 static CalendarReview calendarReview;
 static void cancelCalendar() {
     if(calendarReview.id[0])Host.printf("EVENT calendar_cancel=%s\n",calendarReview.id);
@@ -124,7 +126,7 @@ static void receiveHost();
 static void sendMic();
 static void pollMuteButton();
 static void syncIntercomCapture() {
-    bool capture=intercom.capture(wakeMuted) && wakeArmed;
+    bool capture=intercom.capture(wakeMuted || miniAccess.guest) && wakeArmed;
     if(capture==intercomCapture)return;
     intercomCapture=capture;
     audioCommand(capture?AudioCommand::StreamOn:AudioCommand::StreamOff);
@@ -134,7 +136,7 @@ static void endIntercom(bool disable=false) {
     if(intercom.busy())Host.printf("EVENT intercom_action=hangup id=%s\n",intercom.id);
     if(remoteIsIntercom || intercom.busy()){audioRemoteStop();audioCommand(AudioCommand::Stop);}
     intercom.clear(disable);syncIntercomCapture();remoteIsIntercom=false;
-    if(wakeArmed && !wakeMuted)audioCommand(AudioCommand::StreamOn);
+    if(wakeArmed && !wakeMuted && miniAccess.conversation)audioCommand(AudioCommand::StreamOn);
     if(disable)Host.println("EVENT intercom_enabled=0");
 }
 static void muteIntercom() {
@@ -167,7 +169,7 @@ struct VoiceSurface {
 static VoiceScene::Animation voiceAnimation;
 static VoiceScene::Input voiceInput(const AudioStatus& audio) {
     VoiceScene::Input i;
-    i.connected=wakeArmed;i.muted=wakeMuted;i.micReady=audio.micReady;
+    i.connected=wakeArmed;i.muted=wakeMuted||!miniAccess.conversation;i.micReady=audio.micReady;
     i.listening=listenUntil && int32_t(listenUntil-millis())>0;
     i.thinking=thinking;i.mode=unsigned(audio.mode);i.music=remoteIsMusic;i.alarm=remoteIsAlarm;
     i.reply=voiceResult.length() && millis()-voiceResultAt<10000;
@@ -205,6 +207,7 @@ static bool modesFresh() { return wakeArmed && modesReady && millis()-modesAt<20
 static bool timersFresh() { return wakeArmed && timerAvailable && millis()-timerAt<5000; }
 static bool weatherFresh() { return wakeArmed && weatherReady && millis()-weatherAt<20000; }
 static void homeAction(const char* action) {
+    if(!miniAccess.home(action)){homeResult="View only";homeLegacyAt=millis();return;}
     if(strncmp(action,"sound_",6)==0 && (strlen(speakerBinding)!=64 || strspn(speakerBinding,"0")==64))return;
     if(!homeActionState.begin(millis()))return;
     homeResult="";
@@ -224,15 +227,15 @@ static void draw() {
     if(page==Page::Voice) {
         VoiceScene::Model m;
         m.state=VoiceScene::resolve(voiceInput(audio));m.connected=wakeArmed;
-        m.micMuted=wakeMuted;
+        m.micMuted=wakeMuted||!miniAccess.conversation;m.guest=miniAccess.guest;
         m.powerKnown=powerKnown;m.battery=batteryPresent;m.percent=batteryPercent;m.charging=charging;
         m.volume=audio.volume;m.peak=min(1.0f,audio.peak/12000.0f);m.response=voiceResult.c_str();
         VoiceSurface surface;VoiceScene::render(surface,m,millis()/1000.0f,voiceAnimation);
         finishFrame(started);return;
     }
     ControlScene::Model m;
-    m.page=page;m.system.state=VoiceScene::resolve(voiceInput(audio));m.system.connected=wakeArmed;
-    m.system.micMuted=wakeMuted;
+    m.page=page;m.system.guest=miniAccess.guest;m.system.state=VoiceScene::resolve(voiceInput(audio));m.system.connected=wakeArmed;
+    m.system.micMuted=wakeMuted||!miniAccess.conversation;
     m.system.powerKnown=powerKnown;m.system.battery=batteryPresent;m.system.percent=batteryPercent;m.system.charging=charging;m.system.volume=audio.volume;
     m.temperatureReady=homeFresh();m.modesReady=modesFresh();m.soundReady=soundFresh();m.weatherReady=weatherFresh();m.timersReady=timersFresh();
     m.temperature=tempCurrent;m.target=tempTarget;m.low=tempMin;m.high=tempMax;m.unit=tempUnit;m.mode=tempMode;m.modes=tempModes;
@@ -244,7 +247,7 @@ static void draw() {
     m.homePending=homeActionState.pending();m.homeFailed=homeActionState.failed();
     m.result=homeActionState.phase!=HomeActionState::Phase::Idle?homeActionState.message():millis()-homeLegacyAt<8000?homeResult.c_str():"";
     m.weather=weatherTemperature;m.weatherUnit=weatherUnit;m.humidity=weatherHumidity;m.condition=weatherCondition.c_str();
-    m.micMuted=wakeMuted;m.micReady=audio.micReady;m.brightness=brightness;m.wifi=networkConnected();m.sdReady=sdReady;m.sdMegabytes=sdMegabytes;
+    m.micMuted=wakeMuted||!miniAccess.conversation;m.micReady=audio.micReady;m.brightness=brightness;m.wifi=networkConnected();m.sdReady=sdReady;m.sdMegabytes=sdMegabytes;
     m.screenDim=screenIdle.dimSeconds;m.screenOff=screenIdle.offSeconds;
     m.connection=wakeArmed?(networkConnected()?"Connected":"USB connected"):strcmp(networkState(),"not_paired")==0?"Wi-Fi not paired":strcmp(networkState(),"connecting_wifi")==0?"Connecting to Wi-Fi":strcmp(networkState(),"waiting_host")==0?"Waiting for your host":networkConnected()?"Waiting for your host":"Connection unavailable";
     m.timerBusy=timerBusy;m.timerCount=timerCount;m.timerFinished=timerFinished;m.timerSeconds=max(0,timerSeconds-int((millis()-timerAt)/1000));m.timerMinutes=timerMinutes;
@@ -261,7 +264,7 @@ static void report(unsigned query=0) {
     auto s=audioStatus();
     auto net=networkStats();
     auto usb=usbStats();
-    Host.printf("STATUS product=round-voice version=0.17.0 protocol=1 duplex=1 intercom=1 timed_audio=1 calendar_review=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
+    Host.printf("STATUS product=round-voice version=0.18.0 protocol=1 duplex=1 intercom=1 timed_audio=1 calendar_review=1 access_profile=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
         displayReady,touchReady,ESP.getPsramSize(),sdReady,(unsigned long)sdMegabytes,pmuReady,
         batteryPresent,batteryPercent,charging,s.micReady,s.speakerReady,unsigned(s.mode),
         (unsigned long)s.recordedSamples,s.peak,s.volume,(unsigned long)s.errors,ESP.getFreeHeap(),
@@ -280,7 +283,7 @@ static void setWakeMuted(bool muted) {
     if(muted && intercom.busy())endIntercom();
     wakeMuted=muted; cuePending=false; listenUntil=0; voiceResult=""; thinking=false;
     if (!((remoteIsMusic||remoteIsAlarm) && audioRemoteStatus().active)) { audioRemoteStop(); audioCommand(AudioCommand::Stop); }
-    audioCommand(!muted && wakeArmed?AudioCommand::StreamOn:AudioCommand::StreamOff);
+    audioCommand(!muted && wakeArmed && miniAccess.conversation?AudioCommand::StreamOn:AudioCommand::StreamOff);
     preferences.putBool("mic_muted",muted);
     Host.printf("EVENT mic_muted=%d\n",muted);
 }
@@ -333,10 +336,28 @@ static void pollMuteButton() {
 }
 static void handleCommand(const String& command) {
     if (!networkConnected() && networkCommand(command)) return;
+    if(command.startsWith("PROFILE_SET ")) {
+        unsigned long revision;unsigned guest,conversation;int offset=0;
+        if(sscanf(command.c_str()+12,"%lu %u %u :%n",&revision,&guest,&conversation,&offset)==3&&offset>0&&miniAccess.configure(revision,guest,conversation,command.c_str()+12+offset)){
+            cancelCalendar();endIntercom(true);voiceResult="";voiceNotice=false;thinking=false;cuePending=false;listenUntil=0;
+            homeResult="";homeActionState=HomeActionState{};tempReady=modesReady=soundReady=weatherReady=timerAvailable=false;
+            lightsReady=lightsOn=lightsMixed=lightsConfigured=0;speakerCount=0;speakerSelected=-1;speakerName="";
+            musicTitle="";musicArtist="";musicAt=0;
+            if(!remoteIsMusic){audioRemoteStop();audioCommand(AudioCommand::Stop);page=miniAccess.conversation?Page::Voice:Page::Home;}
+            audioCommand(wakeArmed&&!wakeMuted&&miniAccess.conversation?AudioCommand::StreamOn:AudioCommand::StreamOff);
+            Host.printf("EVENT profile_ready=%lu\n",revision);
+        }
+        return;
+    }
+    if(command.startsWith("HOME_PERMS ")){
+        unsigned temperature,sound,rooms;char extra;
+        if(sscanf(command.c_str()+11,"%u %u %u %c",&temperature,&sound,&rooms,&extra)==3)miniAccess.permissions(temperature,sound,rooms);
+        return;
+    }
     if(command=="CAL_CLEAR"){calendarReview.clear();if(page==Page::Calendar)page=Page::Voice;return;}
     if(command.startsWith("CAL_BEGIN ")) {
         char id[33],extra;unsigned count,allowed,ttl;unsigned long digest;
-        if(wakeArmed&&!wakeMuted&&!intercom.busy()&&sscanf(command.c_str()+10,"%32s %u %u %u %lu %c",id,&count,&allowed,&ttl,&digest,&extra)==5)
+        if(wakeArmed&&!wakeMuted&&!miniAccess.guest&&!intercom.busy()&&sscanf(command.c_str()+10,"%32s %u %u %u %lu %c",id,&count,&allowed,&ttl,&digest,&extra)==5)
             calendarReview.begin(id,count,allowed,ttl,digest,millis());
         return;
     }
@@ -347,7 +368,7 @@ static void handleCommand(const String& command) {
         return;
     }
     if(command.startsWith("CAL_COMMIT ")) {
-        if(wakeArmed&&!wakeMuted&&!intercom.busy()&&calendarReview.valid(millis())&&calendarReview.commit(command.c_str()+11)){
+        if(wakeArmed&&!wakeMuted&&!miniAccess.guest&&!intercom.busy()&&calendarReview.valid(millis())&&calendarReview.commit(command.c_str()+11)){
             wakeScreen();page=Page::Calendar;Host.printf("EVENT calendar_ready=%s\n",calendarReview.id);
         }
         return;
@@ -361,6 +382,7 @@ static void handleCommand(const String& command) {
         return;
     }
     if(command=="CALL_RESET") {endIntercom(true);return;}
+    if(miniAccess.guest && command.startsWith("CALL_"))return;
     if(command.startsWith("CALL_LIST ")) {
         char binding[17],notice[33];unsigned count;int enabled,ready;
         if(sscanf(command.c_str()+10,"%16s %u %d %d %32[^\n]",binding,&count,&enabled,&ready,notice)==5 && strlen(binding)==16 && strspn(binding,"0123456789abcdef")==16 && count<=32) {
@@ -382,7 +404,7 @@ static void handleCommand(const String& command) {
         if(sscanf(command.c_str()+11,"%32s %11s %d %lu %32[^\n]",id,phase,&muted,&seconds,room)!=5)return;
         if(strcmp(phase,"idle")==0) {
             bool wasBusy=intercom.busy();intercom.state("",IntercomState::Idle,true,millis());syncIntercomCapture();
-            if(wasBusy && !intercom.busy()){audioRemoteStop();remoteIsIntercom=false;if(wakeArmed && !wakeMuted)audioCommand(AudioCommand::StreamOn);}
+            if(wasBusy && !intercom.busy()){audioRemoteStop();remoteIsIntercom=false;if(wakeArmed && !wakeMuted && miniAccess.conversation)audioCommand(AudioCommand::StreamOn);}
         } else if(intercom.enabled && wakeArmed && !wakeMuted && IntercomState::identifier(id)) {
             auto next=strcmp(phase,"incoming")==0?IntercomState::Incoming:strcmp(phase,"outgoing")==0?IntercomState::Outgoing:IntercomState::Active;
             if(strcmp(phase,"active")!=0 && next==IntercomState::Active)return;
@@ -394,7 +416,7 @@ static void handleCommand(const String& command) {
     }
     if (command=="STATUS") report();
     else if (command.startsWith("STATUS ")) report(strtoul(command.c_str()+7,nullptr,10));
-    else if (command=="VOICE_ARM") { wakeArmed=true; wakeHeartbeat=millis(); if (!wakeMuted && !intercom.busy()) audioCommand(AudioCommand::StreamOn); report(); }
+    else if (command=="VOICE_ARM") { wakeArmed=true; wakeHeartbeat=millis(); if (!wakeMuted && !intercom.busy() && miniAccess.conversation) audioCommand(AudioCommand::StreamOn); report(); }
     else if (command=="VOICE_PING") { wakeHeartbeat=millis(); }
     else if (command=="VOICE_OFF") { cancelCalendar();wakeArmed=false; endIntercom(true); cuePending=false; thinking=false; listenUntil=0; audioRemoteStop(); audioCommand(AudioCommand::StreamOff); }
     else if (command=="MUTE") setWakeMuted(true);
@@ -481,7 +503,7 @@ static void handleCommand(const String& command) {
             timerCount=count; timerSeconds=remaining; timerFinished=finished==1; timerAt=millis(); timerAvailable=true;
         }
     }
-    else if ((command=="WAKE" || command.startsWith("WAKE ")) && wakeArmed && !wakeMuted && !intercom.busy() && !listenUntil) {
+    else if ((command=="WAKE" || command.startsWith("WAKE ")) && wakeArmed && !wakeMuted && !intercom.busy() && !listenUntil && miniAccess.conversation) {
         cancelCalendar();
         wakeScreen();
         page=Page::Voice; thinking=false;
@@ -497,7 +519,7 @@ static void handleCommand(const String& command) {
         if(sscanf(command.c_str()+12,"%lu %c",&nonce,&extra)==1&&nonce)
             Host.printf("EVENT group_clock=%lu device_us=%llu\n",nonce,(unsigned long long)esp_timer_get_time());
     }
-    else if(command.startsWith("GROUP_BEGIN ")&&wakeArmed&&!intercom.busy()&&!cuePending&&!listenUntil&&!thinking&&!calendarReview.id[0]){
+    else if(command.startsWith("GROUP_BEGIN ")&&wakeArmed&&!miniAccess.guest&&!intercom.busy()&&!cuePending&&!listenUntil&&!thinking&&!calendarReview.id[0]){
         unsigned long session;unsigned ceiling;char extra;
         if(sscanf(command.c_str()+12,"%lu %u %c",&session,&ceiling,&extra)==2&&session&&ceiling<=20&&audioGroupBegin(ceiling)){
             audioSession=session;remoteIsMusic=true;remoteIsAlarm=remoteIsIntercom=false;page=Page::Music;
@@ -526,9 +548,9 @@ static void handleCommand(const String& command) {
         }
         else Host.println("ERROR audio_begin");
     }
-    else if (command=="MIC_MONITOR 1" && wakeArmed && !wakeMuted) { audioCommand(AudioCommand::MonitorOn); Host.println("EVENT mic_monitor=1"); }
+    else if (command=="MIC_MONITOR 1" && wakeArmed && !wakeMuted && miniAccess.conversation) { audioCommand(AudioCommand::MonitorOn); Host.println("EVENT mic_monitor=1"); }
     else if (command=="MIC_MONITOR 0") { audioCommand(AudioCommand::MonitorOff); Host.println("EVENT mic_monitor=0"); }
-    else if (command=="MIC_DUPLEX 1" && wakeArmed && !wakeMuted) { audioCommand(AudioCommand::DuplexOn); Host.println("EVENT mic_duplex=1"); }
+    else if (command=="MIC_DUPLEX 1" && wakeArmed && !wakeMuted && miniAccess.conversation) { audioCommand(AudioCommand::DuplexOn); Host.println("EVENT mic_duplex=1"); }
     else if (command=="MIC_DUPLEX 0") { audioCommand(AudioCommand::MonitorOff); Host.println("EVENT mic_duplex=0"); }
     else if (command=="AUDIO_END") audioRemoteEnd();
     else if (command=="AUDIO_STOP") audioRemoteStop();
@@ -537,7 +559,7 @@ static void handleCommand(const String& command) {
     }
     else if (command=="VOICE_UNKNOWN") { listenUntil=0; thinking=false; voiceResult="Try a supported command"; voiceResultAt=millis(); voiceNotice=true; }
     else if (command=="VOICE_TIMEOUT") { cuePending=false; listenUntil=0; thinking=false; voiceResult="Didn't catch that. Try again."; voiceResultAt=millis(); voiceNotice=true; }
-    else if (command=="RECORD" && !wakeMuted && !intercom.busy()) audioCommand(AudioCommand::Record);
+    else if (command=="RECORD" && !wakeMuted && !intercom.busy() && miniAccess.conversation) audioCommand(AudioCommand::Record);
     else if (command=="STOP") { if(intercom.busy())endIntercom();audioRemoteStop(); audioCommand(AudioCommand::Stop); }
     else if (command=="PLAY" && !intercom.busy()) audioCommand(AudioCommand::Playback);
     else if (command=="CHIME" && !intercom.busy()) audioCommand(AudioCommand::Chime);
@@ -725,7 +747,7 @@ void loop() {
                 Host.println("EVENT cancelled=1");
             } else if (TouchTargets::navHome.contains(x,y)) { page=Page::Home; homeResult=""; }
             else if (TouchTargets::navMusic.contains(x,y)) page=Page::Music;
-            else if (TouchTargets::navTalk.contains(x,y)) { page=Page::Voice; if (!wakeMuted && wakeArmed && s.micReady) Host.println("EVENT talk=1"); }
+            else if (TouchTargets::navTalk.contains(x,y)) { page=Page::Voice; if (!wakeMuted && wakeArmed && s.micReady && miniAccess.conversation) Host.println("EVENT talk=1"); }
         } else if (y>=382 && y<=424 && ((x>=154 && x<=199) || (x>=267 && x<=312))) {
             audioCommand(x<233?AudioCommand::VolumeDown:AudioCommand::VolumeUp); preferenceAt=millis();
         } else if(page==Page::Calendar && y>=282 && y<=324 && calendarReview.valid(millis()) && !calendarReview.pending) {
@@ -740,6 +762,7 @@ void loop() {
                 else if(calendarReview.confirm())Host.printf("EVENT calendar_reviewed=%s\n",calendarReview.id);
             }
         } else if (page==Page::Intercom) {
+            if(miniAccess.guest){homeResult="Calls are private";page=Page::Home;return;}
             if(intercom.busy()) {
                 if(y>=275 && y<=317 && x>=239 && x<=371)endIntercom();
                 else if(y>=275 && y<=317 && x>=95 && x<=227 && !wakeMuted) {
@@ -773,7 +796,9 @@ void loop() {
             else if (TouchTargets::homeSettings.contains(x,y)) page=Page::Settings;
         } else if (page==Page::Lights && wakeArmed && lightsAt && millis()-lightsAt<20000) {
             const char* rooms[]={"bedroom","living_room","dining_room","patio"};
-            for(int j=0;j<4;++j)if(TouchTargets::roomLights[j].contains(x,y) && (lightsReady&(1u<<j)) && homeActionState.begin(millis())) {
+            for(int j=0;j<4;++j)if(TouchTargets::roomLights[j].contains(x,y) && (lightsReady&(1u<<j))) {
+                if(!(miniAccess.lights&(1u<<j))){homeResult="View only";homeLegacyAt=millis();break;}
+                if(!homeActionState.begin(millis()))break;
                 Host.printf("EVENT light_action=%s:%s request=%lu binding=%s\n",rooms[j],lightsOn&(1u<<j)?"off":"on",(unsigned long)homeActionState.request,lightsBinding);
                 break;
             }

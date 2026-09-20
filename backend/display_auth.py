@@ -54,9 +54,10 @@ def allowed(method,path):
 
 
 class Displays:
-    def __init__(self,root,protector,clock=time.time):
+    def __init__(self,root,protector,clock=time.time,round_profile=None):
         self.path=Path(root)/'local/echo-displays.json' if root else None
         self.protector,self.clock,self.lock=protector,clock,RLock()
+        self.round_profile=round_profile
         self.devices=[]; self.pending={}; self.sessions={}; self.seen={}; self.error=False
         if self.path and self.path.exists():
             try:
@@ -156,6 +157,7 @@ class Displays:
         return 'display:'+identifier
 
     def profile_for(self,principal):
+        if principal=='round' and self.round_profile is not None:return self.round_profile.snapshot()
         with self.lock:
             self.require()
             if not principal.startswith('display:'):return {'profile':DisplayProfile().model_dump(),'profile_revision':0}

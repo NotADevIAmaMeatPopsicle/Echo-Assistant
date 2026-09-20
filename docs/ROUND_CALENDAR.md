@@ -44,8 +44,9 @@ There is no Mini text editor or saved-draft inbox yet.
 
 The voice extractor currently drafts single events. The preview also represents
 bounded repeat rules if supplied by a compatible draft source. Series management
-and invitations are outside this Mini flow. Personal accounts and Guest profiles
-for Mini remain separate work; this flow uses the existing trusted Mini host path.
+and invitations are outside this Mini flow. Personal accounts remain separate
+work. [Guest Mini profiles](ROUND_ACCESS.md) disable calendar drafting; this flow
+is available in Household mode.
 
 ## Connection and checks
 
