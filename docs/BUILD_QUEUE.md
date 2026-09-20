@@ -45,7 +45,8 @@ Prioritize the Pi audio path before extending round intercom. See
 - [ ] Identify and configure the microphone and speaker to be attached to the Pi; physical mute/indicator wiring.
 - [x] Deploy the current display software and restricted gateway; Pi pairing and restart recovery.
 - [x] Live access revocation and re-enrollment through a temporary Pi bridge; primary pairing preserved.
-- [ ] Full power-off cold boot and extended network loss.
+- [x] Recovery after a 90-second loss of the Pi's Echo connection, with the original pairing retained.
+- [ ] Full power-off cold boot and recovery after Wi-Fi/router restart.
 - [ ] Quiet audio, wake/reply, interruption and feedback tests on each endpoint.
 - [ ] Physical enclosure fit, thermal behavior and final assembly instructions.
 
@@ -174,3 +175,12 @@ display administration stayed inaccessible. The private gateway also rejected
 cookie-only requests as intended. The primary kiosk pairing was unchanged and
 the temporary enrollments were removed. This does not establish cold-boot or
 extended network-outage recovery, and exercised no audio or home devices.
+
+The primary Pi subsequently recovered from a **90-second Echo endpoint outage**.
+A temporary packet-drop rule targeted only the configured Echo HTTPS destination;
+a separate automatic cleanup timer was armed before the rule was installed.
+The live screen showed “Host unreachable · retrying” and disabled sending.
+After removing the rule, the original bridge session returned successfully with
+the pairing file unchanged and all prior firewall tables preserved. No audio,
+home commands, browser reload or fresh pairing was used. This covers loss of
+the Echo connection; physical power cycling and Wi-Fi/router restart remain open.
