@@ -11,10 +11,10 @@ from typing import Literal
 from zoneinfo import ZoneInfo,ZoneInfoNotFoundError
 
 from pydantic import BaseModel,ConfigDict,Field,field_validator,model_validator
-from .experiences import ExperienceConflict,ExperienceUnavailable
+from .experiences import ExperienceConflict,ExperienceUnavailable,temporal
 from .home import HomeUnavailable
 from .calendar_transport import calendar_command
-from .calendar_reference import event_version,single_event
+from .calendar_reference import event_version,change_scopes,following_start_locked
 from urllib.parse import urlencode
 
 
@@ -33,10 +33,12 @@ class EventReference(BaseModel):
     uid:str=Field(min_length=1,max_length=512)
     on_date:str=Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
     version:str=Field(pattern=r'^[a-f0-9]{64}$')
+    recurrence_id:str|None=Field(default=None,min_length=1,max_length=512)
 
-    @field_validator('uid')
+    @field_validator('uid','recurrence_id')
     @classmethod
     def plain_uid(cls,value):
+        if value is None:return None
         if any(ord(c)<32 for c in value):raise ValueError('Invalid event identifier')
         return value
 
@@ -170,19 +172,29 @@ class CalendarWriter:
             self.commit({**self.receipts,key:{**receipt,'status':status}})
             return self.result(status)
 
-    def change(self,operation,reference,event,revision,request_id,principal):
+    def change(self,operation,reference,event,revision,request_id,principal,*,scope='single'):
         if not self.enabled:raise PermissionError('Calendar changes are disabled on the validation host')
-        if operation not in {'edit','delete'} or not re.fullmatch('[a-f0-9]{32}',request_id):raise ValueError('Invalid calendar change')
+        if operation not in {'edit','delete'} or scope not in {'single','occurrence','following','series'} or not re.fullmatch('[a-f0-9]{32}',request_id):raise ValueError('Invalid calendar change')
         reference=EventReference.model_validate(reference)
         if operation=='edit':
             event=CalendarEvent.model_validate(event)
-            if event.calendar!=reference.calendar or event.recurrence:raise ValueError('Keep the existing calendar and single-event schedule')
+            if event.calendar!=reference.calendar or event.recurrence:raise ValueError('Keep the existing calendar and repeat pattern; use the calendar app to change recurrence rules')
         elif event is not None:raise ValueError('Deletion does not accept replacement fields')
         payload={'type':'calendar/event/update' if operation=='edit' else 'calendar/event/delete',
                  'entity_id':reference.calendar,'uid':reference.uid}
+        if scope in {'occurrence','following'}:
+            if not reference.recurrence_id:raise ValueError('An exact occurrence identifier is required for this scope')
+            payload['recurrence_id']=reference.recurrence_id
+            if scope=='following':payload['recurrence_range']='THISANDFUTURE'
+        elif scope=='single' and reference.recurrence_id:raise ValueError('Choose which occurrences this change affects')
+        if scope=='series' and operation=='edit':raise ValueError('To edit a repeating schedule, select its first occurrence and choose this and following events. The calendar app can edit the entire series directly.')
         if operation=='edit':payload['event']=event.websocket_event()
         key=hashlib.sha256(request_id.encode()).hexdigest()
-        digest=hashlib.sha256(json.dumps({'command':payload,'reference':reference.model_dump()},sort_keys=True).encode()).hexdigest()
+        # Preserve legacy single-event digests, including receipts from before
+        # occurrence IDs and scopes existed. Retrying must never dispatch twice.
+        intent={'command':payload,'reference':reference.model_dump(exclude_none=True)}
+        if scope!='single':intent['scope']=scope
+        digest=hashlib.sha256(json.dumps(intent,sort_keys=True).encode()).hexdigest()
         with self.lock,self.experiences.store.lock:
             if self.error:raise ExperienceUnavailable('Calendar receipts are unreadable. Changes are paused.')
             policy=self.experiences.store.snapshot()
@@ -190,7 +202,7 @@ class CalendarWriter:
             prior=self.receipts.get(key)
             if prior:
                 if prior['digest']!=digest:raise ExperienceConflict('This request identifier belongs to another calendar change')
-                return self.change_result(prior['status'],operation)
+                return self.change_result(prior['status'],operation,scope)
             if policy['revision']!=revision:raise ExperienceConflict('Calendar permissions changed. Reload before changing an event.')
             if len(self.receipts)>=4096:raise ExperienceUnavailable('Calendar receipt capacity reached')
             home=self.experiences.home;state=home._request('GET','/api/states/'+reference.calendar)
@@ -201,22 +213,36 @@ class CalendarWriter:
             bounds={k:datetime.combine(day+timedelta(days=offset),datetime.min.time(),timezone.utc).isoformat() for k,offset in (('start',-1),('end',2))}
             entries=home._request('GET','/api/calendars/'+reference.calendar+'?'+urlencode(bounds))
             if not isinstance(entries,list):raise HomeUnavailable('Calendar event could not be rechecked')
-            matches=[item for item in entries if isinstance(item,dict) and item.get('uid')==reference.uid]
-            if len(matches)!=1 or not single_event(matches[0]):raise ExperienceConflict('The event is missing, ambiguous, or recurring. Refresh the agenda; manage recurring series in your calendar app.')
+            matches=[item for item in entries if isinstance(item,dict) and item.get('uid')==reference.uid
+                     and (item.get('recurrence_id') or None)==reference.recurrence_id]
+            if len(matches)!=1:raise ExperienceConflict('This occurrence is missing or ambiguous. Refresh the agenda before making a change.')
             current=matches[0]
             if event_version(current)!=reference.version:raise ExperienceConflict('The event changed elsewhere. Refresh the agenda before editing or deleting it.')
+            if scope not in change_scopes(current)[operation]:raise ExperienceConflict('This change scope is not available for the current event. Refresh the agenda.')
+            if operation=='edit' and scope=='following':
+                old_start,old_all_day,old_instant=temporal(current['start'])
+                new_bounds=event.bounds()
+                if event.all_day!=old_all_day:raise ValueError('Keep the all-day setting when editing following occurrences; the calendar app can change the series type')
+                changed=(event.start!=old_start) if event.all_day else datetime.fromisoformat(new_bounds['start_date_time']).timestamp()!=old_instant
+                if following_start_locked(current) and changed:
+                    raise ValueError('Keep this series start unchanged to preserve its remaining occurrences. You can move this occurrence alone or reschedule the series in its calendar app.')
+            if operation=='edit' and scope=='following' and not event.all_day:
+                home_zone=home._request('GET','/api/config').get('time_zone')
+                if home_zone!=event.timezone:raise ValueError('Repeating edits must use the Home Assistant time zone: '+str(home_zone or 'unavailable'))
             if operation=='edit' and any(len(str(current.get(k) or ''))>limit for k,limit in (('summary',200),('description',2000),('location',300))):
                 raise ValueError('This event has longer fields than the display editor supports. Edit it in your calendar app to retain all details.')
             receipt={'digest':digest,'status':'pending'};self.commit({**self.receipts,key:receipt})
             try:status=self.command(payload)
             except HomeUnavailable:status='unconfirmed'
             self.commit({**self.receipts,key:{**receipt,'status':status}})
-            return self.change_result(status,operation)
+            return self.change_result(status,operation,scope)
 
     @staticmethod
-    def change_result(status,operation):
+    def change_result(status,operation,scope='single'):
         result=CalendarWriter.result(status)
-        if status=='accepted':result['text']='Home Assistant accepted the '+('deletion' if operation=='delete' else 'edit')+'. Refresh the agenda after the calendar syncs.'
+        if status=='accepted':
+            affected={'single':'event','occurrence':'selected occurrence','following':'selected and following occurrences','series':'entire series'}[scope]
+            result['text']='Home Assistant accepted the '+('deletion' if operation=='delete' else 'edit')+' for the '+affected+'. Refresh the agenda after the calendar syncs.'
         return result
 
     @staticmethod

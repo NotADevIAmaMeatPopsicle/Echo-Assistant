@@ -69,7 +69,9 @@ class CalendarChangesTests(TestCase):
         self.assertEqual(result['reference'],self.ref);self.assertEqual(result['description'],'Keep these notes')
         source=self.exp.sources()['items'][0];self.assertTrue(source['editable']);self.assertTrue(source['deletable'])
         self.original['recurrence_id']='20260922T140000Z'
-        self.assertIsNone(self.exp.agenda('2026-09-22')['events'][0]['reference'])
+        recurring=self.exp.agenda('2026-09-22')['events'][0]
+        self.assertEqual(recurring['reference']['recurrence_id'],'20260922T140000Z')
+        self.assertEqual(recurring['change_scopes']['edit'],['occurrence','following'])
         self.assertTrue(self.exp.agenda('2026-09-22')['events'][0]['recurring'])
 
     def test_websocket_auth_and_no_retries_or_private_errors(self):

@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from .home import HomeUnavailable
-from .calendar_reference import event_version,single_event
+from .calendar_reference import event_reference,change_scopes,following_start_locked
 
 
 class ExperienceUnavailable(RuntimeError): pass
@@ -234,7 +234,9 @@ class Experiences:
                                        'location': str(event.get('location') or '')[:300],
                                        'description':str(event.get('description') or '')[:2000],
                                        'recurring':bool(event.get('rrule') or event.get('recurrence_id')),
-                                       'reference':{'calendar':identifier,'uid':event['uid'],'on_date':began[:10],'version':event_version(event)} if single_event(event) else None,
+                                       'reference':event_reference(event,identifier,began[:10]),
+                                       'change_scopes':change_scopes(event),
+                                       'following_start_locked':following_start_locked(event),
                                        '_sort': sort})
                     except (KeyError, ValueError, TypeError, AttributeError): continue
             except HomeUnavailable: failures.append(identifier)

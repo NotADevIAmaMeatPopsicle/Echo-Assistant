@@ -41,6 +41,7 @@ class ChangeEvent(BaseModel):
     operation:Literal['edit','delete']
     reference:EventReference
     event:CalendarEvent|None=None
+    scope:Literal['single','occurrence','following','series']='single'
 
 
 def install(app, experiences, authorize, owner, writer=None, briefing=None, doorbells=None, drafts=None,displays=None):
@@ -109,7 +110,7 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
     def change_event(body:ChangeEvent,principal=Depends(authorize)):
         if writer is None:raise HTTPException(503,'Calendar editing unavailable')
         result=call(lambda:writer.change(body.operation,body.reference.model_dump(),
-            body.event.model_dump() if body.event else None,body.revision,body.request_id,principal))
+            body.event.model_dump() if body.event else None,body.revision,body.request_id,principal,scope=body.scope))
         if briefing:briefing.invalidate()
         return result
 

@@ -223,8 +223,8 @@ Push-to-talk capture, request cancellation and reply routing are implemented.
 Native Pi wake and request interruption are implemented; physical echo-control acceptance is still required.
 Natural-language calendar drafts can be reviewed and created on the smart display;
 see [calendar drafting](DAILY_BRIEFING.md#describe-an-event). Single-event editing,
-confirmed deletion and recurring creation are implemented; see [Calendars](CALENDARS.md).
-Existing-series changes, invitations, grouped audio, external calling and
+confirmed deletion, recurring creation and scoped occurrence changes are implemented;
+see [Calendars](CALENDARS.md). Master-event editing, invitations, grouped audio, external calling and
 per-person identities remain open. Per-device Household/Guest profiles are available. Commercial
 video and proprietary casting depend on supported providers and licensing.
 
@@ -467,6 +467,6 @@ stream limits and remaining physical acceptance.
 reminder routing, quiet hours, and visible snooze/dismiss controls. It is disabled
 until the attached speaker is selected in Settings.
 
-Calendar details, creation, repeats and single-event changes are covered in
+Calendar details, creation, repeats and scoped event/occurrence changes are covered in
 [Calendars on Echo](CALENDARS.md). Changes to existing events require a separate
 owner grant; previous creation permissions do not enable editing or deletion.

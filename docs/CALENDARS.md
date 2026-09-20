@@ -6,7 +6,7 @@ which calendars appear on the displays. There are three independent choices:
 
 - **Share the calendar:** show its agenda and event details.
 - **Allow event creation:** enable New event and reviewed conversation drafts.
-- **Allow edits and deletion:** enable supported changes to existing single events.
+- **Allow edits and deletion:** enable supported changes to existing events and occurrences.
 
 The last choice starts off, including on existing installations. Home Assistant's
 integration must advertise support for each operation. Guest displays remain
@@ -43,10 +43,32 @@ cancels; **Delete event** sends the change. Deletion affects everyone sharing th
 calendar. Echo reads the event again before dispatch and refuses a change if its
 contents have changed since the displayed version.
 
-Existing recurring series and their individual occurrences remain read-only in
-this editor. Use the calendar's own app for those changes, invitations, attendees
-and unsupported fields. An integration that supplies no stable event identifier
-also remains read-only. Unusually long event fields must be edited in the calendar
+### Repeating events
+
+Opening a repeating event adds an **Apply to** choice before editing or deletion:
+
+| Scope | Edit | Delete |
+| --- | --- | --- |
+| Only this occurrence | Change this occurrence without changing its siblings. | Remove this occurrence. |
+| This and following occurrences | Change the selected occurrence and later events, preserving the repeat pattern. | Remove the selected occurrence and later events. |
+| Every occurrence in the series | Use the calendar's app; Echo has no master-event view. | Remove the whole series, including past events and changed exceptions, after confirmation. |
+
+The integration must supply an exact occurrence identifier for occurrence or
+following changes. Echo does not infer one from the displayed date. If only a
+stable series identifier is available, the editor can offer whole-series deletion.
+Google Calendar currently advertises creation and deletion through Home Assistant,
+but not editing; Echo follows the integration's capabilities.
+
+For **following** edits, keep the all-day setting and use Home Assistant's time
+zone. If the series has a fixed occurrence count, or its repeat rule is unavailable,
+its start stays fixed. You can change the title, notes, location and end time.
+This avoids a confirmed issue in Home Assistant's `ical` 14.2.0 dependency, where
+moving a counted series later can discard its final occurrence. Move one occurrence
+instead, or reschedule the series in its calendar app. Replacing repeat rules,
+editing the master event, and invitations/attendees remain unsupported here.
+
+An integration that supplies no stable event identifier remains read-only.
+Unusually long event fields must be edited in the calendar
 app so the compact display editor does not truncate their contents.
 
 ## Connection loss and saved data
@@ -65,14 +87,18 @@ Echo's validation deployment mode.
 
 ## Verification and limits
 
-Synthetic checks cover creation, recurrence, edit/delete permissions, event
+Synthetic checks cover creation, recurrence scopes, edit/delete permissions, event
 freshness, source filtering, guest denial, clock changes, uncertain responses and
 restart-safe retry behavior. Touch-browser checks cover the forms, separate owner
-grants, deletion confirmation and phone layout. These checks do not establish
+grants, series deletion confirmation, fixed-start controls and phone layout.
+An in-memory check of the actual `ical` 14.2.0 engine confirms that the supported
+following detail/duration edits preserve the event count, single moves preserve
+sibling events, and following/whole-series deletion handles exceptions. No real
+calendar was changed. These checks do not establish
 that a particular external calendar integration supports every operation.
 
 The implementation follows Home Assistant's
 [calendar entity API](https://developers.home-assistant.io/docs/core/entity/calendar/)
 and [calendar WebSocket handlers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/calendar/__init__.py).
-Invitations, editing existing recurring series, and the Mini's calendar review
-screen remain planned work.
+Invitations, master-event editing, counted-series rescheduling, and the Mini's
+calendar review screen remain planned work.

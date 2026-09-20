@@ -82,6 +82,7 @@ touch typing and English swipe entry (`--check display_keyboard`),
 shared text fields and modal keyboards (`--check display_form_keyboard`),
 owner/guest display access (`--check display_profiles`),
 calendar details, recurring creation and confirmed changes (`--check display_calendar_changes`),
+occurrence/series scopes and count-preserving controls (`--check display_calendar_series`),
 Home tile choices and touch page navigation (`--check display_home`),
 microphone permission cancellation, daily briefing, calendars, music, cameras,
 announcements, intercom and the Pi's native voice/music/alert controls. It checks

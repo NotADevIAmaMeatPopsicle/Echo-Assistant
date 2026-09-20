@@ -67,8 +67,9 @@ the Pi retains its latest voice result for only two minutes. The browser keeps i
 conversation/form in that tab until reload. Closing a pending draft cancels its
 model request, and a delayed response cannot overwrite a newly opened form.
 
-Event updates/deletion, recurring calendar events and invitation management remain
-unimplemented. Create recurring Echo alarms or reminders on **Planner** instead.
+Event editing/deletion and bounded recurring creation are available through the
+reviewed touch forms. See [Calendars](CALENDARS.md) for occurrence scopes and
+provider limits. Invitation management remains open.
 
 ## What “accepted” means
 
@@ -111,4 +112,6 @@ local and Anthropic JSON replies receive the same server-side validation.
 For recurring creation, event details, edits and confirmed deletion, see
 [Calendars on Echo](CALENDARS.md). The ordinary one-off form still uses the
 create-event service; recurrence and changes use the calendar WebSocket API.
-Existing recurring-series changes and invitations remain unavailable.
+Occurrence/following edits and explicit series deletion are supported where the
+integration allows them. Master-event editing, counted-series rescheduling and
+invitations remain unavailable.

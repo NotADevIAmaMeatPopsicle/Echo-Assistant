@@ -24,6 +24,20 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Calendar occurrence checkpoint:** the private host and Pi browser now support
+explicit occurrence/following edits and occurrence/following/whole-series deletion.
+The existing repeat rule stays intact; counted or unknown series keep their start
+fixed to avoid a confirmed upstream event-loss bug. Unsupported master edits and
+invitations remain in the calendar app. Owner write grants were preserved; no real
+calendar event was changed. The Pi serves matching assets and its listener remains
+armed at 2%, with pairing and private files unchanged and no sound played.
+
+Forty-five focused checks pass on Windows and isolated Linux. Two synthetic browser
+flows cover existing forms, scope selection, cancellation, deletion confirmation,
+fixed-start fields, Guest restrictions and phone layout. An in-memory check using
+Home Assistant's actual calendar library confirms the supported operations preserve
+remaining occurrences. The privacy guard reports no findings. See [Calendars](CALENDARS.md).
+
 **Mini music integration checkpoint:** the private host now includes an opt-in
 Sendspin receiver, owner name/volume/calibration settings, connection/clock status,
 metadata and shared-output controls for Mini buttons and basic voice music intents.
@@ -76,8 +90,8 @@ preserves durable retry receipts. The Windows suite passed 483 tests with seven
 platform-specific skips; 34 focused Linux tests passed. Browser checks cover
 calendar changes, repeat forms, existing drafts and guest restrictions. The Pi
 serves matching assets and remains armed at 2%; settings and pairing were preserved.
-No real calendar events, home-device state or audio were changed. Existing series,
-invitations and Mini calendar review remain open; see [Calendars](CALENDARS.md).
+No real calendar events, home-device state or audio were changed. The occurrence
+checkpoint above extends this work; invitations and Mini review remain open.
 
 **Display access checkpoint:** owner-assigned Household/Guest profiles are deployed
 to the private host and current Pi client. Guests receive only selected devices
@@ -192,7 +206,8 @@ The completed software checkpoints above do not mean full Nest Hub/Echo Show
 parity. Known gaps documented in the smart-display guide remain:
 
 - [x] Supported single-event editing/deletion and bounded recurring creation, with separate owner permissions and explicit review (software; external calendar writes untested).
-- [ ] Existing recurring-series editing/deletion, invitations and a calendar-review path for the Mini.
+- [x] Explicit occurrence/following edits and occurrence/following/whole-series deletion, preserving repeat patterns (software; live provider writes untested).
+- [ ] Calendar master-event editing, counted-series rescheduling, invitations and a calendar-review path for the Mini.
 - [ ] Synchronized grouped music across endpoints.
       Music Assistant connection, library/queue selection, shared-output permissions,
       the native Pi player, private stream transport and local voice coordination

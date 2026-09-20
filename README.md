@@ -51,7 +51,7 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Ask, research, remember** | A configured model or Hermes agent, supported web lookup with citations, longer research tasks, and explicitly saved facts you can review, edit, export, or delete. |
 | **Control your home** | Home Assistant room lights, individual brightness/colour controls, thermostat modes and temperatures, speaker selection, and saved routines with device permissions. |
 | **Play music** | Spotify Connect with artwork, track details, seeking, shuffle/repeat, and volume controls; HTTPS radio presets and supported local media on the display. |
-| **Plan the day** | A daily briefing, selected calendars, reviewed event creation, repeating schedules, single-event editing/deletion, shopping lists, tasks, and notes. |
+| **Plan the day** | A daily briefing, selected calendars, reviewed event creation, repeating schedules, reviewed event/occurrence changes, shopping lists, tasks, and notes. |
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
 | **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, and answered two-way intercom. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
@@ -69,8 +69,8 @@ rooms, music, timers, lists or the thermostat. Music sits at bottom right by
 default, with live artwork and playback control. Swipe left or right between
 pages, or jump straight to a page from the sidebar.
 
-On My day, open event details, edit a supported single event, or create a repeating
-schedule. [Calendar permissions](docs/CALENDARS.md) separate agenda access, creation,
+On My day, open event details, edit a supported event or occurrence, or create a
+repeating schedule. Choose explicitly which occurrences a series change affects. [Calendar permissions](docs/CALENDARS.md) separate agenda access, creation,
 and changes to existing events. Guest calendars stay read-only.
 
 For a shared room, assign a [Guest display profile](docs/DISPLAY_ACCESS.md) and
@@ -159,8 +159,10 @@ Calendars connect through Home Assistant. The owner selects which calendars to
 share and separately permits event creation. The touch form supports timed and
 all-day events. Describe an event by voice or text on the smart display, review
 the model's editable draft, and choose **Create event** to save it. Repeat options
-create a bounded series. Single-event edits and confirmed deletion require a
-separate owner permission. Existing-series changes and invitations remain planned.
+create a bounded series. Edits and confirmed deletion require separate owner
+permission, with explicit choices for one occurrence, following events or full-series
+deletion. The existing repeat pattern is preserved; master-event editing, some
+series rescheduling and invitations remain open.
 [Calendar guide](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md).
 
 ### Cameras, doorbells, and room audio
@@ -474,7 +476,7 @@ checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 | **Packaging** | Host tests, firmware build, fresh Docker/API startup, isolated encrypted-archive restore, Linux Pi checks, browser flows, and privacy guards exercised. Broader fresh-install/provider coverage and a full Windows/Hermes disaster restore remain open. |
 
 Further work includes generic audio-endpoint adapters, synchronized grouped playback,
-calendar editing/invitations, household profiles, and external calling. Proprietary
+master-calendar editing/invitations, per-person profiles, and external calling. Proprietary
 casting and commercial streaming-video services are not implemented. The project
 does not claim complete Nest Hub or Echo Show feature parity.
 
