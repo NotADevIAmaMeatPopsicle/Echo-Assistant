@@ -11,7 +11,7 @@ endpoints.sources='/v1/display/sources'; pageEndpoints.sources='day';
 function agendaEndpoint(){endpoints.agenda='/v1/display/agenda?'+new URLSearchParams({start:$('agenda-date').value,days:$('agenda-days').value});}
 agendaEndpoint(); pageEndpoints.agenda='day';
 const sourceCard=document.createElement('article');sourceCard.className='card pairing-card';sourceCard.hidden=true;
-sourceCard.innerHTML='<span class="eyebrow">CHOOSE WHAT IS SHARED</span><h2>Calendars & cameras</h2><p class="soft">Choose sources for your paired displays. Nothing is selected automatically. Calendar accounts and doorbell cameras are connected through Home Assistant.</p><button class="pill" id="source-load" type="button">Load sources</button><form id="source-form" hidden><p id="source-status" class="tiny soft"></p><div id="source-choices"></div><button class="pill primary" type="submit">Save display sources</button></form>';
+sourceCard.innerHTML='<span class="eyebrow">CHOOSE WHAT IS SHARED</span><h2>Calendars & cameras</h2><p class="soft">Choose sources for your paired displays. Nothing is selected automatically. Connect calendars through Home Assistant or Google Calendar. Doorbell cameras use Home Assistant.</p><button class="pill" id="source-load" type="button">Load sources</button><form id="source-form" hidden><p id="source-status" class="tiny soft"></p><div id="source-choices"></div><button class="pill primary" type="submit">Save display sources</button></form>';
 $('page-settings').append(sourceCard);
 const presenceChoices=document.createElement('fieldset');presenceChoices.id='source-presence';
 presenceChoices.innerHTML='<legend>Presence sensors</legend><p class="tiny soft">Share motion or occupancy sensors here, then choose one under Screen comfort on each display. Sharing does not activate screen wake automatically.</p><div id="source-presence-choices"></div>';
@@ -22,7 +22,7 @@ function localEventDate(event){return event.all_day ? event.start : localDate(ne
 function renderAgenda(){
   const state=data.agenda;
   const selected=data.sources?.items.filter(s=>s.kind==='calendar') || [];
-  $('agenda-status').textContent=!state ? 'Agenda unavailable. Check the host connection.' : state.status==='not_configured' ? 'Connect Home Assistant in the owner workspace.' : !selected.length ? 'Choose calendars under Settings → Calendars & cameras.' : state.status==='partial' ? 'Some calendars could not be reached. Showing available events.' : 'From your selected Home Assistant calendars.';
+  $('agenda-status').textContent=!state ? 'Agenda unavailable. Check the host connection.' : state.status==='not_configured' ? 'Connect Home Assistant or Google Calendar in the owner workspace.' : !selected.length ? 'Choose calendars under Settings → Calendars & cameras.' : state.status==='partial' ? 'Some calendars could not be reached. Showing available events.' : 'From your selected calendars.';
   const start=$('agenda-date').value, until=new Date(start+'T12:00:00');until.setDate(until.getDate()+Number($('agenda-days').value));const end=localDate(until);
   const events=(state?.events || []).filter(e=>localEventDate(e)<end && (e.all_day ? e.end>start : localDate(new Date(e.end))>=start));
   let day='';
@@ -50,7 +50,7 @@ $('source-load').onclick=()=>action(async()=>{
   const state=await api('/v1/display/source-settings');sourceRevision=state.revision;
   const selected=new Set([...state.sources.calendars,...state.sources.cameras]),writers=new Set(state.sources.writable_calendars||[]),managers=new Set(state.sources.managed_calendars||[]);
   const items=state.items.filter(i=>['camera','calendar'].includes(i.kind));for(const id of selected)if(!items.some(i=>i.entity_id===id))items.push({entity_id:id,name:id,available:false});
-  $('source-status').textContent=state.status==='available' ? 'Checked sources are shared with paired displays. Uncheck to remove access.' : 'Home Assistant is unavailable or not configured. You can clear existing selections.';
+  $('source-status').textContent=state.status==='available' ? 'Checked sources are shared with paired displays. Uncheck to remove access.' : 'Some sources are unavailable or not configured. You can clear existing selections.';
   $('source-choices').innerHTML=items.map(i=>`<div class="source-permissions"><label class="source-choice"><input type="checkbox" data-source-read value="${esc(i.entity_id)}" ${selected.has(i.entity_id)?'checked':''}><span>${esc(i.name)}<small class="soft">${esc(i.entity_id)}${i.available ? '' : ' · unavailable'}</small></span></label>${i.can_create||writers.has(i.entity_id)?`<label class="check-label calendar-write-choice"><input type="checkbox" data-source-write value="${esc(i.entity_id)}" ${writers.has(i.entity_id)?'checked':''}>Allow event creation from Echo displays</label>`:''}${i.can_edit||i.can_delete||managers.has(i.entity_id)?`<label class="check-label calendar-write-choice"><input type="checkbox" data-source-manage value="${esc(i.entity_id)}" ${managers.has(i.entity_id)?'checked':''}>Allow edits and deletion of existing events</label>`:''}</div>`).join('') || empty('No calendar or camera entities were found.');
   renderDoorbellChoices(state);
   const shared=new Set(state.sources.presence_sensors||[]),sensors=state.items.filter(i=>i.can_detect_presence);

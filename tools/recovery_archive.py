@@ -11,7 +11,7 @@ LEGACY_FILES=('echo-settings.json','echo-memory.json','echo-routines.json','echo
               'echo-schedules.json','echo-displays.json','echo-experiences.json','home-access.json',
               'echo-media.json','speaker-selection.json','timers.json','spotify-credentials.json',
               'remote-agent.json','host-migration.json')
-FILES=(*LEGACY_FILES,'echo-announcements.json','echo-calendar-receipts.json','echo-doorbells.json','echo-group-music.json','echo-round-profile.json','echo-members.json','echo-calling.json')
+FILES=(*LEGACY_FILES,'echo-announcements.json','echo-calendar-receipts.json','echo-doorbells.json','echo-group-music.json','echo-round-profile.json','echo-members.json','echo-calling.json','echo-google-calendar.json')
 LIMITS={'echo-displays.json':1_000_000,'echo-schedules.json':1_500_000,'echo-household.json':800_000,
         'echo-announcements.json':2_000_000,'echo-calendar-receipts.json':4_000_000,'echo-members.json':6_000_000}
 MAX_ENVELOPE=24_000_000

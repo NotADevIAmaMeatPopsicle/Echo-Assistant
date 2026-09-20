@@ -1,0 +1,6 @@
+.google-calendar-card{margin-top:16px}.google-calendar-card label{display:block;margin:14px 0}
+.google-calendar-card input{max-width:100%;width:100%;min-width:0}.google-calendar-card .row{gap:10px;flex-wrap:wrap}
+.google-calendar-card .google-account{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
+.google-calendar-card .google-account h3{margin:0 0 8px}.google-calendar-card a{overflow-wrap:anywhere}
+#google-flow{padding:16px;margin-top:16px;border:1px solid var(--line);border-radius:18px;background:#091e2d}
+.google-calendar-card details{margin:16px 0}.google-calendar-card summary{cursor:pointer;padding:10px 0}

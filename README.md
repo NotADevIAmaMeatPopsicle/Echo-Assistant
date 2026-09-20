@@ -160,8 +160,10 @@ paired displays, with encrypted host storage.
 </tr>
 </table>
 
-Calendars connect through Home Assistant. The owner selects which calendars to
-share and separately permits event creation. The touch form supports timed and
+Calendars connect through Home Assistant or the new read-only
+[Google Calendar connection](docs/GOOGLE_CALENDAR.md). The owner selects which
+calendars to share and separately permits event creation for supported Home
+Assistant calendars. The touch form supports timed and
 all-day events. Describe an event by voice or text on the smart display, review
 the model's editable draft, and choose **Create event** to save it. Repeat options
 create a bounded series. Edits and confirmed deletion require separate owner
@@ -441,7 +443,7 @@ displays**, then complete its client installation. Start audible tests at **2%**
 | --- | --- |
 | Lights, climate, speakers, and routines | [Home Assistant and permissions](docs/HOME_CONTROL.md) |
 | Music from the Spotify app | [Round receiver](docs/MUSIC.md) · [Pi receiver](docs/PI_SPOTIFY.md) |
-| Calendar agenda, repeats and event changes | [Calendar permissions and forms](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md) |
+| Calendar agenda, repeats and event changes | [Calendar permissions and forms](docs/CALENDARS.md) · [Google Calendar](docs/GOOGLE_CALENDAR.md) · [Daily briefing](docs/DAILY_BRIEFING.md) |
 | Camera views and doorbell cards | [Cameras and doorbells](docs/CAMERAS_AND_DOORBELLS.md) |
 | Announcements and answered calls | [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) · [Browser voice/video calls](docs/CALLING.md) |
 | An always-on host and Hermes | [Docker deployment and UIs](docs/DEPLOYMENT.md) |
@@ -491,7 +493,8 @@ checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 | **Packaging** | Host tests, firmware build, Windows recovery-task execution, fresh-container API/Hermes archive restore, Linux Pi checks, browser flows, and privacy guards exercised. Portable passphrase backups support recovery without the original Windows account. Broader fresh-install/provider coverage remains open. |
 
 Further work includes generic audio-endpoint adapters, synchronized grouped playback,
-master-calendar editing/invitations, per-person Hermes tool sessions, and external calling. Proprietary
+master-calendar editing/invitations, per-person Hermes tool sessions, and live acceptance
+of the optional external calling provider. Proprietary
 casting and commercial streaming-video services are not implemented. The project
 does not claim complete Nest Hub or Echo Show feature parity.
 

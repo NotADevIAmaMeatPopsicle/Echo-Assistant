@@ -67,6 +67,7 @@ from .group_music import GroupMusic,install as install_group_music
 from .intercom import Intercom
 from .intercom_api import install as install_intercom
 from .calling import Calling, CallStore, install as install_calling
+from .google_calendar import GoogleCalendars, install as install_google_calendar
 from .photos import Photos
 from .photo_api import install as install_photos
 from .media_presets import MediaPresets, install as install_media
@@ -98,6 +99,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         def watch_calls():
             while not scheduler_stop.is_set():
                 calling.tick()
+                google_calendars.prune()
                 scheduler_stop.wait(2)
         call_thread=Thread(target=watch_calls,name='echo-calls',daemon=True)
         call_thread.start()
@@ -199,7 +201,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     install_intercom(app,Intercom(announcements),authorize)
     calling=Calling(CallStore(runtime_root,store.protector),displays,enabled=deployment_mode=='device')
     install_calling(app,calling,authorize,owner)
-    experiences = Experiences(home, SourceStore(runtime_root, store.protector))
+    google_calendars=GoogleCalendars(runtime_root,store.protector,enabled=deployment_mode=='device')
+    install_google_calendar(app,google_calendars,authorize,owner)
+    experiences = Experiences(home, SourceStore(runtime_root, store.protector),google=google_calendars)
     from .member_agenda import MemberAgenda
     personal_echo.agenda=MemberAgenda(experiences,displays,schedules)
     doorbells=Doorbells(experiences,runtime_root,store.protector)

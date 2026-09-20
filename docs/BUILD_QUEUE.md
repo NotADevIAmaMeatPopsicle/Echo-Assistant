@@ -24,6 +24,20 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Direct Google Calendar checkpoint:** owner OAuth setup and linking now use PKCE,
+one-use state, per-browser finish proof and encrypted host storage. Calendars
+enter the existing explicit sharing controls and read-only agenda/briefing path,
+including Google-only operation when Home Assistant is absent. Guest and Personal
+source intersections remain enforced, and disconnect discards in-flight reads.
+Forty-one focused Windows checks, thirty isolated Linux checks and the Google
+setup and existing daily-planning browser flows pass. The private host update is
+deployed, and the Pi serves matching assets after its kiosk reload. Pairing and
+private settings were preserved; its listener remains armed at 2%, with Spotify
+discoverable. No sound played and no real Google account was linked.
+Provider master-event editing, counted-series rescheduling,
+invitations and per-person private Google linking remain open; this read path is
+the direct-provider foundation for that work. See [Google Calendar](GOOGLE_CALENDAR.md).
+
 **Browser calling checkpoint:** Deck and browser displays now have optional
 LiveKit voice/video calls with owner configuration, encrypted provider credentials,
 explicit Household-display grants, two-minute one-use codes, quiet 2% playback,

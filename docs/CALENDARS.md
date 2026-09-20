@@ -12,6 +12,11 @@ The last choice starts off, including on existing installations. Home Assistant'
 integration must advertise support for each operation. Guest displays remain
 read-only even when a calendar has these household permissions.
 
+Alternatively, [connect Google Calendar directly](GOOGLE_CALENDAR.md) for read-only
+agenda and briefing sources without Home Assistant. Its account setup and sharing
+are implemented; provider-specific writes and master-event review remain open.
+The creation and change operations below describe the Home Assistant path.
+
 ## Create an event or a repeating schedule
 
 On **My day → New event**, enter the title, dates, time zone and optional location

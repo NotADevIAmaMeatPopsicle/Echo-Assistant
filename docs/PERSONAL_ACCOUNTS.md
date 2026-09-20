@@ -119,6 +119,7 @@ browser checks cover creation, access editing, touch sign-in, memory, lock and
 phone layout. These checks do not establish physical keypad or spoken acceptance.
 
 Voice identification, separate Hermes instances per person
-and external calendar/account sign-in remain future work. Shared Home Assistant
-calendar sources can be granted read-only now. The isolated display preview uses
+and per-person external calendar/account sign-in remain future work. Shared Home Assistant
+and owner-linked [Google Calendar](GOOGLE_CALENDAR.md)
+sources can be granted read-only now. The isolated display preview uses
 temporary demo accounts only; closing the preview process removes them.

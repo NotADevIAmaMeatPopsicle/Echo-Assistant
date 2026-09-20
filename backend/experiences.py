@@ -103,8 +103,8 @@ def temporal(value):
 
 
 class Experiences:
-    def __init__(self, home, store):
-        self.home, self.store = home, store
+    def __init__(self, home, store, google=None):
+        self.home, self.store,self.google = home, store,google
         self._presence_lock, self._presence_cache = RLock(), None
 
     @staticmethod
@@ -114,10 +114,19 @@ class Experiences:
                 isinstance(attrs, dict) and attrs.get('device_class') in ('motion', 'occupancy', 'presence'))
 
     def discovery(self):
-        if not self.home.config.enabled: return {'status': 'not_configured', 'items': []}
-        states = self.home._request('GET', '/api/states')
+        google_failed=False
+        try:google_items=self.google.catalog() if self.google else []
+        except HomeUnavailable:
+            if not self.home.config.enabled:raise
+            google_items=[];google_failed=True
+        if not self.home.config.enabled and not google_items: return {'status': 'not_configured', 'items': []}
+        home_failed=False
+        try:states = self.home._request('GET', '/api/states') if self.home.config.enabled else []
+        except HomeUnavailable:
+            if not google_items:raise
+            states=[];home_failed=True
         if not isinstance(states, list): raise HomeUnavailable('Home source inventory unavailable')
-        items = []
+        items = list(google_items)
         for state in states:
             if not isinstance(state, dict): continue
             identifier = state.get('entity_id', '')
@@ -133,7 +142,7 @@ class Experiences:
                           'can_detect_presence': self.presence_capable(state),
                           'available': state.get('state') not in {None, 'unknown', 'unavailable'}})
         items.sort(key=lambda i:(i['kind'] not in {'calendar','camera'},i['name']))
-        return {'status': 'available', 'items': items[:512]}
+        return {'status': 'partial' if home_failed or google_failed else 'available', 'items': items[:512]}
 
     def save_sources(self, sources, revision):
         checked = Sources.model_validate(sources)
@@ -142,7 +151,7 @@ class Experiences:
         if selected:
             inventory=self.discovery()['items']
             known = {item['entity_id'] for item in inventory}
-            if not selected <= known: raise ValueError('A selected source is no longer in Home Assistant')
+            if not selected <= known: raise ValueError('A selected source is no longer available from its provider')
             if not set(checked.writable_calendars)<={i['entity_id'] for i in inventory if i['can_create']}:
                 raise ValueError('A writable calendar does not support event creation')
             if not set(checked.managed_calendars)<={i['entity_id'] for i in inventory if i['can_edit'] or i['can_delete']}:
@@ -187,7 +196,7 @@ class Experiences:
 
     def sources(self):
         selected = self.store.snapshot()['sources']
-        if not self.home.config.enabled: return {'status': 'not_configured', 'items': []}
+        if not self.home.config.enabled and not (self.google and self.google.catalog()): return {'status': 'not_configured', 'items': []}
         if not any(selected.values()): return {'status': 'not_selected', 'items': []}
         known = {item['entity_id']: item for item in self.discovery()['items']}
         items = []
@@ -220,7 +229,8 @@ class Experiences:
         for source in calendars:
             identifier = source['entity_id']
             try:
-                raw = self.home._request('GET', '/api/calendars/'+identifier+'?'+urlencode({'start': since.isoformat(), 'end': until.isoformat()}))
+                raw = (self.google.events(identifier,since.isoformat(),until.isoformat()) if self.google and self.google.owns(identifier)
+                       else self.home._request('GET', '/api/calendars/'+identifier+'?'+urlencode({'start': since.isoformat(), 'end': until.isoformat()})))
                 if not isinstance(raw, list): raise HomeUnavailable('Calendar returned no event list')
                 for event in raw[:300]:
                     try:

@@ -197,8 +197,10 @@ again after fetching a frame. Snapshots and authenticated responses are not cach
 
 Calendar and camera selection is opt-in. Household displays use the globally
 shared sources; owner-assigned Guest profiles can narrow those choices per device.
-Per-person private calendar accounts remain future work. Calendars already connected in Home Assistant can be selected; this build
-does not ask for new Google or Microsoft credentials. Camera requests stay on
+Per-person private calendar accounts remain future work. Calendars already connected
+in Home Assistant can be selected, or the owner can link a read-only
+[Google Calendar connection](GOOGLE_CALENDAR.md) directly. Microsoft account linking
+remains open. Camera requests stay on
 the configured Home Assistant origin and never forward its token to redirects.
 
 Lists, schedule state, device credential hashes, selected sources, radio presets,

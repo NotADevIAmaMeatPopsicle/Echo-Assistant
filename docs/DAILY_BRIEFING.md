@@ -19,6 +19,11 @@ read. Calendar date-only events remain all-day events in the selected day.
 
 ## Choose calendars, then choose whether Echo can create events
 
+You can also [connect Google Calendar directly](GOOGLE_CALENDAR.md). Its current
+integration supplies read-only sources to this same agenda and briefing. Google
+write operations remain open; the creation/editing controls below apply to
+supported Home Assistant calendars with explicit write grants.
+
 In the owner's display workspace, open **Settings → Calendars & cameras → Load
 sources**. Sharing a calendar gives displays read access. A second checkbox,
 **Allow event creation from Echo displays**, appears only for calendars whose

@@ -45,7 +45,7 @@ class MemberAgenda:
             return unavailable('Turn off web lookup to read your approved calendars privately.')
         if not before['profile']['calendars']:
             return unavailable('No calendars are shared with your account. The owner can select them under Personal accounts → Access.')
-        scoped = Experiences(self.experiences.home, ScopedSources(self.experiences.store, check))
+        scoped = Experiences(self.experiences.home, ScopedSources(self.experiences.store, check),google=self.experiences.google)
         try:
             source_revision = self.experiences.store.snapshot()['revision']
             # The host time zone is configuration, not household agenda data.

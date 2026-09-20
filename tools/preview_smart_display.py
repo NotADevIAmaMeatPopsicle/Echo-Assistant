@@ -38,6 +38,7 @@ def fixtures():
     revision = hashlib.sha256(b'synthetic display').hexdigest()
     data['/health']['display_demo'] = True
     data['/v1/display/session']={'role':'owner'}
+    data['/v1/calendar/google']={'revision':0,'client_id':'','redirect_uri':'','secret_saved':False,'enabled':False,'accounts':[]}
     data['/v1/calling']={'enabled':False,'allowed':True,'provider':'LiveKit','max_minutes':15,'invite_seconds':120}
     data['/v1/calling/settings']={'revision':0,'enabled':False,'url':'','credentials_saved':False,'allowed_displays':[],'displays':[]}
     data['/v1/display/local-voice']={'supported':False,'phase':'unavailable'}
@@ -153,6 +154,8 @@ class DisplayPreview(Preview):
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
             return self.camera_sample(path.endswith('/stream'))
         assets = {'/assets/display/polish.css':('display/polish.css','text/css'),
+                  '/assets/display/google-calendar.js':('display/google-calendar.js','text/javascript'),
+                  '/assets/display/google-calendar.css':('display/google-calendar.css','text/css'),
                   '/assets/display/calling.js':('display/calling.js','text/javascript'),
                   '/assets/display/calling.css':('display/calling.css','text/css'),
                   '/assets/vendor/livekit-client-2.22.3.umd.js':('vendor/livekit-client-2.22.3.umd.js','text/javascript'),
