@@ -131,6 +131,34 @@ Plan reserves at least 30 GiB free by default, or model bytes plus 10 GiB,
 whichever is larger. This is a conservative capacity gate, not a measured build
 peak; large image builds/caches and a full backing VHD may need more space.
 
+### If Docker's system drive fills up
+
+Free space on another drive does not help until Docker's data disk is moved there.
+Docker Desktop supports relocating existing WSL data through **Settings → Resources
+→ Advanced → Disk image location**. This is supported by Docker Desktop 4.55;
+the [WSL guide](https://docs.docker.com/desktop/features/wsl/) describes the setting.
+
+1. Record the current data-disk location. Stop the running containers cleanly and
+   quit Docker Desktop completely before copying its actual `docker_data.vhdx`.
+   Its directory varies between installations; use the existing file, not a
+   guessed path. Keep a separate backup on a drive with sufficient capacity and
+   verify its size and SHA-256 against the stopped original.
+2. Start Docker Desktop, choose a new empty directory on the larger drive using
+   **Disk image location**, then apply the change. Let Docker finish the move and
+   restart. The destination for live data must be separate from the backup.
+3. Confirm the new location, retained images and volumes, and existing Echo and
+   Hermes data. Check health, pairing and settings before resuming builds. Keep
+   the backup until these checks pass and update `host_disk_path` to the drive
+   that now holds Docker's data.
+
+Docker's [backup guide](https://docs.docker.com/desktop/settings-and-maintenance/backup-and-restore/)
+requires Docker Desktop to be fully stopped for a VM-disk backup. The installer
+flag `--wsl-default-data-root` specifies a default for installation; it is not a
+documented migration command for an existing disk. Use Docker's relocation
+setting rather than manually editing its settings file or unregistering its WSL
+storage. Moving this disk interrupts every container on that Docker host, so
+coordinate the maintenance window with any other services using it.
+
 Missing models/manifests/images and unverified archives remain visible. Without
 host options, the default plan still inventories available management tools and
 reports missing configuration. Exit status 2 means blocked, incomplete or failed;

@@ -36,7 +36,7 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-20 | Fresh-machine recovery | Disposable replacement machine required; recovery lane |
 | ECHO-21 | Integrated package review | Depends on required tasks and explicit scope decisions; coordinator |
 | ECHO-22 | Personal Hermes instances | Server provisioning and real identity/tool checks open; agent lane |
-| ECHO-23 | Host capacity and Docker recovery | Cache copy verified and space freed; stalled runtime recovery pending; coordinator |
+| ECHO-23 | Host capacity and Docker recovery | Runtime recovered; permanent storage relocation remains open; coordinator |
 
 ## Integration contract
 
@@ -232,16 +232,23 @@ audio endpoint remains absent.
 The isolated Linux null-audio build stalled when the host system drive reached
 zero free space. A download-cache file was copied to a separate drive, verified
 by size and SHA-256, then removed from the cache to recover about 2.8 GB. Installed
-software and application data were preserved. Docker and the live Echo API did
-not recover. Docker Desktop's documented restart timed out waiting for the app
-to quit; its original processes remain. No force-stop or host reboot was run.
+software and application data were preserved. The owner subsequently authorized
+Docker recovery. Its stalled application processes and WSL VM were stopped,
+then Docker Desktop restarted. Echo and Hermes are healthy, pairing remains
+present, and the Pi again receives successful session and music responses.
+No images, volumes or application data were deleted; no host reboot was needed.
 
-**ECHO-23** owns the next recovery step: obtain approval for interrupting the
-Docker WSL VM, restore the existing runtime and Echo services, then arrange
-sustainable Docker storage capacity on the available larger drive. Do not delete
-volumes or private data. The pending Linux check must then run against the final
-source, followed by the combined image check and coordinated host/Pi deployment.
-Wave 4 is not deployed and no real YouTube playback has been performed.
+The resumed Linux check exposed real PulseAudio JSON format differences in the
+native sink/module validation. These are fixed, with 34 focused synthetic tests
+and both real Linux null-audio tests passing. The final combined image check
+precedes coordinated host/Pi deployment. Wave 4 is not deployed and no real
+YouTube playback has been performed. The Pi still has no microphone capture
+device attached.
+
+**ECHO-23** retains permanent storage relocation to the larger drive. Docker's
+supported settings workflow and verified cold-backup procedure are documented in
+[Host provisioning](HOST_PROVISIONING.md#if-dockers-system-drive-fills-up).
+The temporary cache relocation does not close the long-term capacity task.
 
 ## Dependent software tasks
 

@@ -1,5 +1,6 @@
 """Synthetic PCM, lease, process and native-route checks; no hardware/provider I/O."""
 from array import array
+from copy import deepcopy
 import ctypes
 from pathlib import Path
 import sys
@@ -264,13 +265,70 @@ class BackendTests(unittest.TestCase):
 
     def test_real_route_must_belong_to_echo_cancellation(self):
         commands = Mock()
+        commands.text.return_value = '1\tmodule-null-sink\tsink_name=echo_processed\t\n'
         commands.json.side_effect = [{'server_name': 'pulseaudio', 'server_version': '17.0'},
-                                    [{'name': 'module-null-sink', 'index': 1}],
                                     [{'name': 'echo_processed', 'owner_module': 1}]]
         backend = BrowserVideoBackend('/synthetic', commands)
         backend.output_server = 'unix:/synthetic'
         with self.assertRaisesRegex(BackendUnavailable, 'processed_output_missing'):
             backend._route()
+
+    def test_supported_pulse_routes_use_explicit_module_ids(self):
+        for version in ('16.1', '17.0'):
+            with self.subTest(version=version):
+                commands = Mock()
+                commands.text.return_value = ('3\tmodule-native-protocol-unix\t\t\n'
+                    '17\tmodule-echo-cancel\tsink_name=echo_processed\t\n')
+                commands.json.side_effect = [{'server_name': 'pulseaudio', 'server_version': version},
+                    [{'name': 'echo_processed', 'owner_module': 17, 'flags': []}]]
+                backend = BrowserVideoBackend('/synthetic', commands)
+                backend.output_server = 'unix:/synthetic'
+                self.assertEqual(backend._route(), version)
+                commands.text.assert_called_once_with(
+                    ['pactl', '--server=unix:/synthetic', 'list', 'short', 'modules'])
+
+    def test_module_ids_reject_malformed_or_ambiguous_rows(self):
+        for listing in ('module-null-sink\t\t\n', '1 module-null-sink\n',
+                        '-1\tmodule-null-sink\t\t\n', '4294967295\tmodule-null-sink\t\t\n',
+                        '0\tnot-a-module\t\t\n',
+                        '1\tmodule-null-sink\t\t\n1\tmodule-echo-cancel\t\t\n'):
+            with self.subTest(listing=listing):
+                commands = Mock()
+                commands.text.return_value = listing
+                backend = BrowserVideoBackend('/synthetic', commands)
+                with self.assertRaisesRegex(BackendUnavailable, 'invalid_pulse_response'):
+                    backend._list('modules', 'unix:/synthetic')
+
+    def test_private_null_topology_requires_reciprocal_monitor_and_owned_null_module(self):
+        # These field names and types match actual pactl 16.1 JSON, including
+        # its surprising monitor_source field on both the sink and the source.
+        sinks = [{'name': 'echo_video_capture', 'monitor_source': 'echo_video_capture.monitor',
+                  'driver': 'module-null-sink.c', 'owner_module': 17}]
+        sources = [{'name': 'echo_video_capture.monitor', 'monitor_source': 'echo_video_capture',
+                    'driver': 'module-null-sink.c', 'owner_module': 17}]
+        cases = [('valid', sinks, sources)]
+        for kind, original in (('sink', sinks), ('source', sources)):
+            for field, value in (('monitor_source', None), ('monitor_source', 'other'),
+                                 ('driver', 'module-alsa-sink.c'), ('owner_module', 3),
+                                 ('owner_module', None), ('owner_module', True)):
+                changed = deepcopy(original)
+                changed[0][field] = value
+                cases.append((f'{kind} {field}={value}', changed if kind == 'sink' else sinks,
+                              changed if kind == 'source' else sources))
+        cases.extend([('extra source', sinks, sources * 2), ('extra sink', sinks * 2, sources),
+                      ('no source', sinks, []), ('no sink', [], sources)])
+        for label, actual_sinks, actual_sources in cases:
+            with self.subTest(label=label):
+                commands = Mock()
+                commands.text.return_value = ('3\tmodule-native-protocol-unix\t\t\n'
+                    '17\tmodule-null-sink\tsink_name=echo_video_capture\t\n')
+                commands.json.side_effect = [actual_sinks, actual_sources]
+                backend = BrowserVideoBackend('/synthetic', commands)
+                if label == 'valid':
+                    backend._check_private_server('unix:/synthetic')
+                else:
+                    with self.assertRaisesRegex(BackendUnavailable, 'private_pulse_not_isolated'):
+                        backend._check_private_server('unix:/synthetic')
 
     def test_stop_needs_process_exit_and_sink_input_disappearance(self):
         backend = BrowserVideoBackend('/synthetic')
@@ -285,8 +343,8 @@ class BackendTests(unittest.TestCase):
 
     def test_flat_volume_route_cannot_change_shared_sink_gain(self):
         commands = Mock()
+        commands.text.return_value = '1\tmodule-echo-cancel\tsink_name=echo_processed\t\n'
         commands.json.side_effect = [{'server_name': 'pulseaudio', 'server_version': '17.0'},
-                                    [{'name': 'module-echo-cancel', 'index': 1}],
                                     [{'name': 'echo_processed', 'owner_module': 1, 'flags': ['FLAT_VOLUME']}]]
         backend = BrowserVideoBackend(None, commands)
         backend.output_server = 'unix:/synthetic'

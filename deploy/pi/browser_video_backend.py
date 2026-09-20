@@ -78,8 +78,24 @@ class BrowserVideoBackend:
         return uid
 
     def _list(self, kind, server=None):
-        value = self.commands.json(['pactl', '--server=' + (server or self.output_server),
-                                    '--format=json', 'list', kind])
+        command = ['pactl', '--server=' + (server or self.output_server)]
+        if kind == 'modules':
+            # PulseAudio 16.1 omits module indexes from pactl JSON. The short
+            # listing supplies the IDs required to verify sink ownership in
+            # both supported versions; never infer an ID from list position.
+            value, indexes = [], set()
+            for line in self.commands.text(command + ['list', 'short', 'modules']).splitlines():
+                fields = line.split('\t')
+                if (len(fields) != 4 or not re.fullmatch(r'[0-9]{1,10}', fields[0])
+                        or not re.fullmatch(r'module-[A-Za-z0-9_-]+', fields[1])):
+                    raise BackendUnavailable('invalid_pulse_response')
+                index = int(fields[0])
+                if index >= 0xffffffff or index in indexes:
+                    raise BackendUnavailable('invalid_pulse_response')
+                indexes.add(index)
+                value.append({'index': index, 'name': fields[1], 'argument': fields[2]})
+            return value
+        value = self.commands.json(command + ['--format=json', 'list', kind])
         if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
             raise BackendUnavailable('invalid_pulse_response')
         return value
@@ -155,6 +171,26 @@ class BrowserVideoBackend:
         self.processes[key] = process
         return process
 
+    def _check_private_server(self, server):
+        modules = self._list('modules', server)
+        if sorted(m.get('name', '') for m in modules) != ['module-native-protocol-unix', 'module-null-sink']:
+            raise BackendUnavailable('private_pulse_not_isolated')
+        null_modules = {m['index'] for m in modules if m['name'] == 'module-null-sink'}
+        sinks, sources = self._list('sinks', server), self._list('sources', server)
+        # pactl JSON uses monitor_source for both directions of the relationship:
+        # on a sink it names the monitor, and on a source it names the sink.
+        if (len(sinks) != 1 or sinks[0].get('name') != 'echo_video_capture'
+                or len(sources) != 1 or sources[0].get('name') != 'echo_video_capture.monitor'
+                or sinks[0].get('monitor_source') != sources[0]['name']
+                or sources[0].get('monitor_source') != sinks[0]['name']
+                or sinks[0].get('driver') != 'module-null-sink.c'
+                or sources[0].get('driver') != 'module-null-sink.c'
+                or type(sinks[0].get('owner_module')) is not int
+                or type(sources[0].get('owner_module')) is not int
+                or sinks[0]['owner_module'] not in null_modules
+                or sources[0].get('owner_module') != sinks[0]['owner_module']):
+            raise BackendUnavailable('private_pulse_not_isolated')
+
     def start(self, url):
         if not re.fullmatch(r'http://127\.0\.0\.1:8790/display/video-player#[0-9a-f]{32}', url):
             raise BackendUnavailable('invalid_player_url')
@@ -204,14 +240,7 @@ class BrowserVideoBackend:
             time.sleep(.05)
         if not ready:
             raise BackendUnavailable('private_pulse_start_failed')
-        modules = self._list('modules', server)
-        if sorted(m.get('name', '') for m in modules) != ['module-native-protocol-unix', 'module-null-sink']:
-            raise BackendUnavailable('private_pulse_not_isolated')
-        sinks, sources = self._list('sinks', server), self._list('sources', server)
-        if (len(sinks) != 1 or sinks[0].get('name') != 'echo_video_capture'
-                or len(sources) != 1 or sources[0].get('name') != 'echo_video_capture.monitor'
-                or sources[0].get('monitor_of_sink') != sinks[0].get('index')):
-            raise BackendUnavailable('private_pulse_not_isolated')
+        self._check_private_server(server)
         self.reader = self._launch('reader', ['parec', '--server=' + server,
             '--device=echo_video_capture.monitor', '--raw', '--format=s16le', '--rate=48000',
             '--channels=2', '--latency-msec=40', '--client-name=Echo browser monitor'], env, output_pipe=True)

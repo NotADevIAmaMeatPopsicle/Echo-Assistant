@@ -155,7 +155,7 @@ the backend launches its own fixed `--pcm-output` entry point, not another file.
 ## Validation and remaining acceptance
 
 Run `python -m unittest discover -s tests -p test_pi_browser_video.py`.
-The 31 synthetic tests cover lease replay/expiry, stale focus/access, competing
+The 34 synthetic tests cover lease replay/expiry, stale focus/access, competing
 playback, post-start recheck, stop/start races, PCM framing/cap/duck, sanitized
 errors, native explicit sink/unity/DONT_MOVE arguments, sink loss and process plus
 Pulse-stream stop acknowledgement. Compile checks passed on the development
@@ -164,18 +164,19 @@ host. These tests open no microphone, real output, provider page or OS service.
 Two additional tests in `tests/test_pi_browser_video_linux.py` are restricted to
 an explicitly opted-in Docker container with no `/dev/snd`. They exercise real
 libpulse sink removal/no fallback and the private server/monitor/output pipeline
-with digital silence, a fake browser process and real stop cleanup. They have
-**not executed**. On 2026-09-20 the disposable Debian 12/PulseAudio 16.1 test-image
-build stalled after package installation while the remote Docker host's system
-drive was full. The coordinator recovered disk space, but Docker's API stayed
-unresponsive and its documented restart timed out. No result from that build is
-counted as a passed Linux check. The production container and Pi were not
-modified by this worker; no real browser, recording or physical playback ran.
+with digital silence, a fake browser process and real stop cleanup. Both pass
+against the corrected source on Debian 12/PulseAudio 16.1, with no skipped tests.
+The original attempt was interrupted by a host disk-full incident. After host
+recovery, the tests exposed actual PulseAudio format differences: module JSON
+omits numeric IDs, and source JSON names its sink using `monitor_source`.
+The backend now reads explicit module IDs from the short listing and validates
+both sides of the null monitor relationship plus driver and module ownership.
+Production output still requires the existing echo-cancellation sink.
 
-Resume the isolated tests against the final source after Docker recovery, using
-a disposable container with no network, published ports, hardware devices or
-host mounts. Verify the native ABI/startup/process cleanup before deployment or
-owner-authorized Pi provider playback. Real acceptance must still cover ordinary YouTube touch and
+The final combined image check and deployment remain separate from those focused
+results. Run the Linux checks in a disposable container with no network,
+published ports, hardware devices or host mounts. No real browser, recording or
+physical playback is part of these checks. Real acceptance must still cover ordinary YouTube touch and
 captions, its correct Referer/client identification, no-signal/error states,
 2%/duck behavior, Stop/voice/access revoke, selected-sink loss, returning to the
 kiosk, and no resume after service/browser/network failure. This work does not

@@ -90,23 +90,39 @@ class LinuxNullTests(unittest.TestCase):
         self.addCleanup(backend.stop)
         # Deliberately bypass production check: this test's echo_processed is a
         # null sink, which production check MUST reject as non-AEC.
-        with self.assertRaisesRegex(BackendUnavailable, 'processed_output_missing'):
-            backend._route()
+        production_route = backend._route
+        def synthetic_route():
+            # Also exercise that rejection at each periodic read recheck. Only
+            # this isolated fixture may continue with a known non-AEC sink.
+            with self.assertRaisesRegex(BackendUnavailable, 'processed_output_missing'):
+                production_route()
+        synthetic_route()
+        backend._route = synthetic_route
         backend.start('http://127.0.0.1:8790/display/video-player#' + 'a' * 32)
         runtime = backend.runtime
         self.assertEqual(runtime.stat().st_mode & 0o777, 0o700)
         server = 'unix:' + str(runtime / 'pulse/native')
         modules = backend._list('modules', server)
         self.assertEqual(sorted(m['name'] for m in modules), ['module-native-protocol-unix', 'module-null-sink'])
+        sink, = backend._list('sinks', server)
+        source, = backend._list('sources', server)
+        null_module, = [m['index'] for m in modules if m['name'] == 'module-null-sink']
+        self.assertEqual(sink['owner_module'], null_module)
+        self.assertEqual(source['owner_module'], null_module)
+        self.assertEqual(sink['monitor_source'], source['name'])
+        self.assertEqual(source['monitor_source'], sink['name'])
         with self.assertRaises(BackendUnavailable):
             commands.text(['pactl', '--server=' + server, 'load-module', 'module-null-sink'])
-        for _ in range(100):
+        # The real null sink's initial clock interval can be two seconds before
+        # the monitor's requested latency takes effect.
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
             data = backend.read()
             if data:
                 self.assertFalse(any(data))  # Only generated digital silence.
                 backend.write(data[:len(data) // 4 * 4])
                 break
-            time.sleep(.005)
+            time.sleep(.01)
         else:
             self.fail('Null monitor did not deliver silence')
         for _ in range(100):

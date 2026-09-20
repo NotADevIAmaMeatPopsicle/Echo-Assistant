@@ -31,12 +31,13 @@ file ownership, dependencies and acceptance criteria before parallel dispatch.
 **Bounded wave 4 software checkpoint, not deployed:** ordinary YouTube owner
 selection, Household permissions, a dedicated player, native 2% output limiting
 and audio-focus stop handling are implemented. The combined Windows suite passed
-111 tests and the silent browser flow passed. The isolated Linux audio check and
-deployment are waiting for ECHO-23 host recovery: the system drive filled, about
-2.8 GB was recovered by relocating a verified download-cache copy, and Docker's
-normal restart remained stuck. Forced VM interruption has not been performed.
-The live API is currently unreachable. [The task tracker](REMAINING_TASKS.md)
-records recovery and remaining provider/hardware acceptance separately.
+111 tests and the silent browser flow passed. The host's disk-full incident was
+recovered after owner-authorized Docker/WSL restart; Echo, Hermes and the Pi's host
+connection are working again, with existing data retained. The resumed isolated
+Linux audio check exposed PulseAudio format differences; the corrected backend
+passes both real null-audio tests and 34 focused synthetic tests. The final image
+check and deployment are next. Permanent host-storage relocation remains ECHO-23. [The task tracker](REMAINING_TASKS.md)
+records the pending checks and provider/hardware acceptance separately.
 
 **Bounded wave 3 checkpoint:** ECHO-04 adds private per-person Google linking and
 explicit calendar selection, with isolated sessions and encrypted recovery.
