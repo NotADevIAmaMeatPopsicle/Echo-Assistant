@@ -20,9 +20,9 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-04 | Private Google accounts | Software deployed; account lane |
 | ECHO-05 | Separate personal Hermes routing | Software deployed; agent lane |
 | ECHO-06 | Grouped music | Provider and physical acceptance; coordinator |
-| ECHO-07 | Voice/video calls | Provider setup and two-device acceptance; coordinator |
+| ECHO-07 | Voice/video calls | Private provider deployed and TCP verified; physical two-device acceptance open; coordinator |
 | ECHO-08 | Phone music receiver | Adapter and distribution packages installed; disabled; module/phone/audio setup and playback open; media lane |
-| ECHO-09 | Commercial video | Ordinary YouTube software deployed; real playback and paid-provider acceptance open; media lane |
+| ECHO-09 | Commercial video | Ordinary YouTube deployed; installed ARM64 Widevine loads successfully; provider choice/sign-in and real playback open; media lane |
 | ECHO-10 | Replacement-host provisioning | Tooling implemented; recovery lane |
 | ECHO-11 | Real Google account and calendar acceptance | Owner account configuration required; coordinator |
 | ECHO-12 | Install prepared Mini firmware | Original backup and 0.19.0 bundle verified; connected board identity and installation pending; coordinator |
@@ -33,7 +33,7 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-17 | Camera and doorbell acceptance | Selected live sources required; coordinator |
 | ECHO-18 | Cold boot and router recovery | Stable hardware and controlled outage required; coordinator |
 | ECHO-19 | Final enclosures and build guide | Final hardware/fit/thermal results required; coordinator |
-| ECHO-20 | Fresh-machine recovery | Disposable replacement machine required; recovery lane |
+| ECHO-20 | Fresh-machine recovery | Disposable replacement machine required; current host has no spare VM and insufficient free memory for a new Windows guest; recovery lane |
 | ECHO-21 | Integrated package review | Depends on required tasks and explicit scope decisions; coordinator |
 | ECHO-22 | Personal Hermes instances | No personal accounts configured; per-person provider/tool choices and separate provisioning open; agent lane |
 | ECHO-23 | Host capacity and Docker recovery | Runtime recovered; permanent storage relocation remains open; coordinator |
@@ -289,6 +289,17 @@ are installed; radio, module loading, phone selection and reception remain off.
 The Bluetooth module-ID compatibility correction passed 30 synthetic checks on
 both Windows and the Pi, plus a read-only check of actual Pi module IDs. The
 original hardware inventory does not identify the attached HDMI panel model.
+
+A fresh connection inventory still finds no Mini USB device on the laptop and
+no USB capture device on the Pi. The owner has been asked to reconnect both.
+The Pi's browser inventory and actual Widevine module-loading check succeeded;
+no media, account login or audio was used. A provider selection is pending before
+the paid-video acceptance path is chosen. See [video findings](VIDEO_PROVIDER_OPTIONS.md).
+
+The private Windows host has Hyper-V available but no registered spare VM and
+about 0.7 GiB of free memory at inspection. Starting a fresh Windows recovery VM
+there is not suitable under current resources. ECHO-20 still needs a disposable
+replacement environment; no unrelated workload was stopped to create one.
 
 Personal Hermes readiness was checked separately: no personal accounts or agent
 connections are configured. A roster and per-person provider/tool choices are

@@ -1,9 +1,29 @@
 # ECHO-09: video provider decision
 
-Official sources checked **2026-09-20**. Research only: no browser/OS installation,
-account change, playback or Pi configuration was performed. The repository's
-Deck launcher uses Linux **Chromium** and a private browser profile; this research
-did not inventory its current browser version, codecs, CDM or hardware decoding.
+Official sources and the installed Pi browser checked **2026-09-20**. No browser/OS
+installation, provider sign-in or playback was performed. The ordinary YouTube
+integration is deployed separately and still awaits real playback acceptance.
+
+## Installed Deck capability check
+
+The Pi runs Debian 13 ARM64 with Raspberry Pi's Chromium **142.0.7444.175**,
+`libwidevinecdm0` **4.10.2662.3+1**, and `rpi-chromium-mods` **20251015**. Its
+installed Widevine library is a matching **64-bit AArch64** ELF binary. No copied
+CDM or architecture workaround was needed.
+
+A temporary headless Chromium profile on a loopback page successfully obtained
+`com.widevine.alpha` access for temporary CENC sessions and created a MediaKeys
+instance with software-secure crypto. Chromium also reported `probably` for
+H.264, VP9 and AAC codec support. The check used no media source, microphone,
+playback, licence request or provider account; the temporary profile was removed.
+An initial DOM-dump probe returned before its asynchronous query finished; the
+completed result came from a local callback after the actual browser promises
+resolved.
+
+This proves that the installed browser can load its CDM. It does **not** prove
+Netflix/Prime account licensing, protected-title playback, HDCP, resolution,
+hardware decoding, sustained frame rate or audio routing. An owner-selected
+provider and legitimate account playback check remain the next gate.
 
 **Recommend YouTube's official embedded player for ordinary, embeddable hosted
 videos**, disabled by default with no Echo-managed provider sign-in. This is a permitted integration
@@ -39,10 +59,10 @@ the actual distribution build; do not infer H.264/AAC or hardware decoding from
 the browser name. No user-agent spoofing, copied CDM from another platform,
 stream extraction, DRM removal or patched provider player is proposed.
 
-## Bounded future YouTube contract
+## Implemented ordinary YouTube contract
 
-Implement only the ordinary-video route above. A reasonable boundary is one
-owner-selected video at a time, with no search/library OAuth or paid catalog:
+The deployed ordinary-video integration uses one owner-selected video at a time,
+with no search/library OAuth or paid catalog:
 
 - Owner-only configuration under `/v1/display/video/settings`: provider fixed to
   `youtube`, `enabled:false`, `video_id:""`, `allowed_display_ids:[]`, and a
@@ -106,8 +126,8 @@ handoff instead. Do not silently change host mixer gain or disable voice safety.
 
 ## Acceptance and product decision
 
-First obtain a read-only Pi browser/OS/codec/CDM inventory. Then, only in an
-authorized real-provider check, verify one ordinary embeddable YouTube video,
+The read-only Pi browser/OS/codec/CDM inventory and module-loading check above
+are complete. In an authorized real-provider check, verify one ordinary embeddable YouTube video,
 captions/touch controls, truthful error handling, private-origin identification,
 the unchanged local output ceiling, hard focus, Stop, access revocation and
 no resume after reload/outage. Synthetic player events cannot close that gate.
@@ -117,5 +137,5 @@ categorically impossible. If paid catalogs are the requirement, choose either a
 separate authorized test of an official supported browser/CDM combination
 (Prime's documented Linux limit is SD; Netflix retains its Linux caveat), or a
 provider-supported external device. Do not count an ordinary YouTube clip or
-local MP4 as paid-video acceptance. No implementation or real acceptance was
-performed in this investigation.
+local MP4 as paid-video acceptance. No paid-provider sign-in, title playback or
+quality acceptance has been performed.
