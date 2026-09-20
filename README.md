@@ -172,8 +172,10 @@ the model's editable draft, and choose **Create event** to save it. Repeat optio
 create a bounded series. Edits and confirmed deletion require separate owner
 permission, with explicit choices for one occurrence, following events or full-series
 deletion. Direct Google series editing loads the original schedule and preserves
-its repeat pattern and event count. Following-only rescheduling of counted series
-and invitations remain open.
+its repeat pattern and event count. Simple counted Google series also support
+reviewed [following-only rescheduling](docs/GOOGLE_CALENDAR_SERIES.md). A separate
+[guest review](docs/CALENDAR_INVITATIONS.md) shows attendees and the notification
+choice before confirmation. Real Google account acceptance remains pending.
 [Calendar guide](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md).
 
 ### Cameras, doorbells, and room audio
@@ -497,7 +499,7 @@ checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 | **Packaging** | Host tests, firmware build, Windows recovery-task execution, fresh-container API/Hermes archive restore, Linux Pi checks, browser flows, and privacy guards exercised. Portable passphrase backups support recovery without the original Windows account. Broader fresh-install/provider coverage remains open. |
 
 Further work includes generic audio-endpoint adapters, synchronized grouped playback,
-following-only counted-series changes/invitations, provisioning the separate personal
+private per-person Google linking, provisioning the separate personal
 Hermes instances supported by the account connector, and live acceptance
 of the optional external calling provider. Proprietary
 casting and commercial streaming-video services are not implemented. The project

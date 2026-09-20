@@ -58,6 +58,7 @@ from .member_agent import MemberAgents
 from .experiences import SourceStore, Experiences
 from .experience_api import install as install_experiences
 from .calendar_events import CalendarWriter
+from .calendar_invitations import install as install_calendar_invitations
 from .daily_briefing import DailyBriefing, briefing_request
 from .calendar_drafts import CalendarDrafts, draft_request
 from .doorbells import Doorbells
@@ -100,6 +101,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             while not scheduler_stop.is_set():
                 calling.tick()
                 google_calendars.prune()
+                calendar_invitations.prune()
                 scheduler_stop.wait(2)
         call_thread=Thread(target=watch_calls,name='echo-calls',daemon=True)
         call_thread.start()
@@ -210,8 +212,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     briefing=DailyBriefing(experiences,home,schedules,household)
     echo.briefing=briefing
     echo.calendar_drafts=CalendarDrafts(store,echo.provider,experiences,schedules)
-    install_experiences(app, experiences, authorize, owner,
-        CalendarWriter(experiences,runtime_root,store.protector,enabled=deployment_mode=='device'),briefing,doorbells,echo.calendar_drafts,displays)
+    calendar_writer=CalendarWriter(experiences,runtime_root,store.protector,enabled=deployment_mode=='device')
+    install_experiences(app, experiences, authorize, owner,calendar_writer,briefing,doorbells,echo.calendar_drafts,displays)
+    calendar_invitations=install_calendar_invitations(app,calendar_writer,authorize,displays,briefing)
     install_photos(app, Photos(runtime_root, store.protector), authorize, owner)
     install_media(app, MediaPresets(runtime_root, store.protector), authorize, owner)
     display_voice=DisplayVoice(runtime_root,store,profiled_echo)

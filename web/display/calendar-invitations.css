@@ -1,0 +1,18 @@
+#calendar-invitations-dialog{width:min(720px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);padding:24px;box-sizing:border-box}
+#calendar-invitations-form{display:flex;flex-direction:column;gap:12px;max-height:calc(100dvh - 82px);min-height:0}
+#calendar-invitations-form h2,#calendar-invitations-form h3{margin:0 0 8px}
+.calendar-invitations-scroll{overflow:auto;min-height:0;padding-right:4px;overscroll-behavior:contain}
+#calendar-invitations-fields{border:0;padding:0;margin:0;min-width:0}
+#calendar-invitations-fields>label{display:grid;gap:8px;margin-top:18px}
+#calendar-invitations-fields textarea,#calendar-invitations-fields select{box-sizing:border-box;width:100%;max-width:100%}
+.calendar-invitations-guest{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid #ffffff20;padding:10px 0}
+.calendar-invitations-guest>div{min-width:0;overflow-wrap:anywhere}
+.calendar-invitations-guest p{margin:2px 0}
+.calendar-invitations-guest .check-label{flex-shrink:0}
+.calendar-invitations-change{padding:8px 0;overflow-wrap:anywhere}
+.calendar-invitations-change ul{margin:6px 0;padding-left:20px}
+#calendar-invitations-review-effect{padding:12px;border:1px solid #ffffff40;border-radius:12px}
+#calendar-invitations-event,#calendar-invitations-status{overflow-wrap:anywhere;margin:0}
+.calendar-invitations-actions{justify-content:flex-end;flex-wrap:wrap}
+#calendar-invitations-review .check-label{align-items:flex-start;line-height:1.5}
+@media(max-width:520px){#calendar-invitations-dialog{padding:16px}.calendar-invitations-actions{gap:8px}.calendar-invitations-actions .pill{flex:1 1 auto}.calendar-invitations-guest{gap:8px}#calendar-invitations-form{max-height:calc(100dvh - 66px)}}

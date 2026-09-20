@@ -76,14 +76,16 @@ instead, or reschedule the series in its calendar app. Replacing repeat rules,
 editing the master event, and invitations/attendees remain unsupported through
 the Home Assistant path.
 
-Direct Google supports **Only this occurrence** and **Every occurrence in the
-series** for edits and deletion. Whole-series editing first loads the original
+Direct Google supports **Only this occurrence**, **This and following occurrences**
+and **Every occurrence in the series** for edits and deletion. Whole-series editing first loads the original
 master dates and fields, even when you selected a later occurrence. Review those
 dates and the displayed repeat pattern; the change includes past and future events.
 Moving the entire series preserves the existing recurrence rule and COUNT. The
 all-day setting stays fixed, and recurrence rules cannot be replaced here.
-Following-only splitting and invitations remain unsupported. Events with existing
-attendees require Google's editor, so guests are not silently removed.
+[Following-only changes](GOOGLE_CALENDAR_SERIES.md) support simple finite COUNT
+rules after a full series review; exceptions and more complex patterns require
+Google's editor. [Guest changes](CALENDAR_INVITATIONS.md) use a separate attendee
+and notification review. Ordinary event edits continue to reject attendee events.
 
 An integration that supplies no stable event identifier remains read-only.
 Unusually long event fields must be edited in the calendar
@@ -121,8 +123,8 @@ that a particular external calendar integration supports every operation.
 The implementation follows Home Assistant's
 [calendar entity API](https://developers.home-assistant.io/docs/core/entity/calendar/)
 and [calendar WebSocket handlers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/calendar/__init__.py).
-Invitations and following-only rescheduling of counted Google series remain planned
-work. Real Google OAuth and reviewed event changes remain live-service acceptance
+Google invitation and following-only software checks use synthetic providers.
+Real Google OAuth and reviewed event changes remain live-service acceptance
 items. [Mini calendar review](ROUND_CALENDAR.md) supports paginated drafts and a
 separate creation confirmation; its firmware installation and physical acceptance
 remain pending.

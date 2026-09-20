@@ -111,7 +111,10 @@ $('calendar-event-form').onsubmit=async event=>{
 const calendarDetails=document.createElement('dialog');calendarDetails.id='calendar-details-dialog';
 calendarDetails.innerHTML='<div class="row spread"><h2 id="calendar-details-title"></h2><button class="icon-button" id="calendar-details-close" aria-label="Close event details" type="button">×</button></div><div id="calendar-details-content"></div><p id="calendar-details-status" class="tiny soft" role="status"></p><div class="row"><button class="pill" id="calendar-details-edit" type="button">Edit event</button><button class="pill" id="calendar-details-delete" type="button">Delete…</button><button class="pill" id="calendar-details-cancel" type="button" hidden>Keep event</button><button class="pill danger" id="calendar-details-confirm" type="button" hidden>Delete event</button></div>';
 document.body.append(calendarDetails);
-let detailedEvent=null,deleteDraft=null,deletingEvent=false,detailsAction=null,masterRequest=0;
+const invitationButton=document.createElement('button');invitationButton.id='calendar-details-invitations';invitationButton.className='pill';invitationButton.type='button';invitationButton.textContent='Guests & invitations';invitationButton.hidden=true;
+$('calendar-details-delete').after(invitationButton);
+invitationButton.onclick=()=>{const item=detailedEvent,revision=data.sources.revision;calendarDetails.close();openCalendarInvitations(item,{revision,onComplete:()=>{delete data.briefing;void refresh();}});};
+let detailedEvent=null,deleteDraft=null,deletingEvent=false,detailsAction=null,masterRequest=0,followingReview=null;
 calendarDetails.addEventListener('close',()=>{masterRequest++;});
 const scopePanel=document.createElement('div');scopePanel.className='calendar-scope';scopePanel.hidden=true;
 scopePanel.innerHTML='<label>Apply to<select id="calendar-change-scope"></select></label><p id="calendar-scope-note" class="tiny soft"></p>';
@@ -120,7 +123,7 @@ const scopeNames={single:'This event',occurrence:'Only this occurrence',followin
 function scopesFor(item,operation){return item.change_scopes?.[operation]||(!item.recurring&&item.reference?['single']:[]);}
 function showCalendarDetails(item){
   masterRequest++;
-  detailedEvent=item;deleteDraft=null;detailsAction=null;scopePanel.hidden=true;
+  detailedEvent=item;deleteDraft=null;followingReview=null;detailsAction=null;scopePanel.hidden=true;
   $('calendar-details-title').textContent=item.title;
   const firstDay=new Date(item.start.slice(0,10)+'T12:00:00'),lastDay=new Date(item.end.slice(0,10)+'T12:00:00');lastDay.setDate(lastDay.getDate()-1);
   const times=item.all_day?firstDay.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+(localDate(lastDay)!==item.start?' → '+lastDay.toLocaleDateString():'')+' · All day':`${new Date(item.start).toLocaleString()} → ${new Date(item.end).toLocaleString()}`;
@@ -128,11 +131,13 @@ function showCalendarDetails(item){
   const source=data.sources?.items.find(s=>s.entity_id===item.calendar),valid=fresh('sources')&&source?.available&&item.reference;
   $('calendar-details-edit').hidden=!valid||!source.editable||!scopesFor(item,'edit').length;
   $('calendar-details-delete').hidden=!valid||!source.deletable||!scopesFor(item,'delete').length;
+  invitationButton.hidden=!fresh('sources')||!source?.available||!source.editable||!item.invitation_reference||!!data.session?.member||data.session?.profile?.mode==='guest';
   $('calendar-details-confirm').hidden=$('calendar-details-cancel').hidden=true;
   $('calendar-details-confirm').disabled=$('calendar-details-edit').disabled=$('calendar-details-delete').disabled=false;
   $('calendar-details-confirm').textContent='Delete event';
   $('calendar-details-confirm').classList.add('danger');$('calendar-details-cancel').textContent='Keep event';
   $('calendar-details-status').textContent=valid&&(source.editable||source.deletable)?'Edits and deletion are enabled by the owner. The event is rechecked before a change.':'Read-only here. The owner can share supported calendar changes in Settings → Calendars & cameras.';
+  if(!invitationButton.hidden&&!valid)$('calendar-details-status').textContent='Guest changes are enabled by the owner. Review guests and notifications before confirming.';
   calendarDetails.showModal();
 }
 function closeCalendarDetails(){if(!deletingEvent)calendarDetails.close();}
@@ -140,12 +145,13 @@ $('calendar-details-close').onclick=closeCalendarDetails;
 calendarDetails.addEventListener('cancel',event=>{if(deletingEvent)event.preventDefault();});
 async function editCalendarDetails(scope='single'){
   let item=detailedEvent;
-  if(scope==='series'&&item.provider==='google'){
+  if(['series','following'].includes(scope)&&item.provider==='google'){
     const original=item,request=++masterRequest;$('calendar-details-confirm').disabled=true;
-    $('calendar-details-status').textContent='Loading the original series and its repeat pattern…';
+    const revision=data.sources.revision;
+    $('calendar-details-status').textContent=scope==='following'?'Checking the remaining events and repeat count…':'Loading the original series and its repeat pattern…';
     try{
-      const master=await api('/v1/display/calendar/master',{reference:item.reference,revision:data.sources.revision});
-      if(request!==masterRequest||!calendarDetails.open||detailedEvent!==original)return;
+      const master=await api('/v1/display/calendar/'+(scope==='following'?'following':'master'),{reference:item.reference,revision});
+      if(request!==masterRequest||!calendarDetails.open||detailedEvent!==original||revision!==data.sources.revision)return;
       item={...item,...master};
     }catch(error){if(request===masterRequest)$('calendar-details-status').textContent=error.message;return;}
     finally{if(request===masterRequest)$('calendar-details-confirm').disabled=false;}
@@ -168,6 +174,7 @@ async function editCalendarDetails(scope='single'){
     eventDialog.querySelector('h2').textContent='Edit entire series';$('calendar-event-submit').textContent='Save entire series';
     $('calendar-event-status').textContent='These are the original series dates, not the selected occurrence. Changes affect past and future events. Existing exceptions are handled by Google. Repeat pattern stays unchanged: '+item.repeat_summary;
   }
+  if(scope==='following'&&item.provider==='google')$('calendar-event-status').textContent=`${item.prior_count} earlier occurrences stay unchanged. This change covers ${item.remaining_count} occurrences, including the selected event. Review the new dates and time zone. Google applies the split in separate steps; if a step fails, Echo reports what needs checking.`;
 }
 function chooseCalendarScope(operation){
   detailsAction=operation;deleteDraft=null;
@@ -175,6 +182,7 @@ function chooseCalendarScope(operation){
   $('calendar-change-scope').innerHTML=scopes.map(scope=>`<option value="${scope}">${scopeNames[scope]}</option>`).join('');
   $('calendar-change-scope').disabled=false;scopePanel.hidden=!detailedEvent.recurring;
   $('calendar-details-delete').hidden=$('calendar-details-edit').hidden=true;
+  invitationButton.hidden=true;
   $('calendar-details-confirm').hidden=$('calendar-details-cancel').hidden=false;
   $('calendar-details-confirm').disabled=!scopes.length;
   $('calendar-details-cancel').textContent=operation==='edit'?'Cancel':'Keep event';
@@ -182,9 +190,11 @@ function chooseCalendarScope(operation){
   updateCalendarScope();
 }
 function updateCalendarScope(){
+  masterRequest++;followingReview=null;deleteDraft=null;
   const scope=$('calendar-change-scope').value;
   const edit=detailsAction==='edit';
-  $('calendar-details-confirm').textContent=edit?'Continue to edit':scope==='series'?'Delete entire series':scope==='following'?'Delete following events':scope==='occurrence'?'Delete this occurrence':'Delete event';
+  $('calendar-details-confirm').disabled=false;
+  $('calendar-details-confirm').textContent=edit?'Continue to edit':scope==='series'?'Delete entire series':scope==='following'&&detailedEvent.provider==='google'?'Review following events':scope==='following'?'Delete following events':scope==='occurrence'?'Delete this occurrence':'Delete event';
   $('calendar-scope-note').textContent=scope==='following'?'Earlier occurrences stay unchanged. The selected occurrence is included.':scope==='series'?'Includes past and future occurrences, including changed exceptions.':'Other occurrences stay unchanged.';
   $('calendar-details-status').textContent=edit?'Next, review the fields before saving. The repeat pattern will stay unchanged.':scope==='series'?'Delete the entire series from its calendar? This affects everyone who uses the calendar.':scope==='following'?'Delete this occurrence and all following occurrences? Earlier events will remain.':scope==='occurrence'?'Delete only this occurrence? The rest of the series will remain.':'Delete this event from its calendar? This removes the event for everyone who uses that calendar.';
 }
@@ -197,7 +207,21 @@ $('calendar-details-cancel').onclick=()=>{calendarDetails.close();showCalendarDe
 $('calendar-details-confirm').onclick=async()=>{
   if(deletingEvent)return;
   if(detailsAction==='edit')return editCalendarDetails($('calendar-change-scope').value);
-  if(!deleteDraft)deleteDraft={operation:'delete',reference:detailedEvent.reference,scope:$('calendar-change-scope').value,revision:data.sources.revision,request_id:crypto.randomUUID().replaceAll('-','')};
+  const scope=$('calendar-change-scope').value;
+  if(scope==='following'&&detailedEvent.provider==='google'&&!followingReview){
+    const original=detailedEvent,request=++masterRequest,revision=data.sources.revision;
+    $('calendar-details-confirm').disabled=true;$('calendar-details-status').textContent='Checking exactly which following events will be removed…';
+    try{
+      const review=await api('/v1/display/calendar/following',{reference:original.reference,revision});
+      if(request!==masterRequest||!calendarDetails.open||detailedEvent!==original||revision!==data.sources.revision)return;
+      followingReview={...review,revision};
+      $('calendar-details-status').textContent=`Delete ${review.remaining_count} occurrences, including this event? ${review.prior_count} earlier occurrences will remain. Nothing has been changed yet.`;
+      $('calendar-details-confirm').textContent='Delete '+review.remaining_count+' occurrences';
+    }catch(error){if(request===masterRequest)$('calendar-details-status').textContent=error.message;}
+    finally{if(request===masterRequest)$('calendar-details-confirm').disabled=false;}
+    return;
+  }
+  if(!deleteDraft)deleteDraft={operation:'delete',reference:followingReview?.reference||detailedEvent.reference,scope,revision:followingReview?.revision??data.sources.revision,request_id:crypto.randomUUID().replaceAll('-','')};
   $('calendar-change-scope').disabled=true;
   deletingEvent=true;$('calendar-details-confirm').disabled=true;$('calendar-details-cancel').disabled=true;
   try{

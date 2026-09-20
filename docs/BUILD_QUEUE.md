@@ -28,6 +28,18 @@ Execution is now tracked as bounded work items in
 [Remaining tasks and integration contracts](REMAINING_TASKS.md). That plan assigns
 file ownership, dependencies and acceptance criteria before parallel dispatch.
 
+**Bounded wave 2 checkpoint:** ECHO-02 adds reviewed following-only changes for
+simple finite Google COUNT series; ECHO-03 adds separate guest/notification review
+and explicit confirmation. Both are deployed to the private host and the Pi now
+serves the updated assets after its kiosk refresh. The combined calendar checks
+passed 78 Windows and 91 isolated Linux tests plus silent browser flows. Settings,
+grants and pairing were preserved; no real event, invitation or audio ran. Live
+Google acceptance remains open. The Pi is online, but native voice reports
+unavailable and remains part of ECHO-13. Volume is still 2%.
+
+ECHO-08's [casting investigation](CASTING_OPTIONS.md) recommends a default-off
+Bluetooth A2DP adapter; implementation and physical acceptance remain queued.
+
 **Bounded wave 1 checkpoint:** ECHO-01 adds optional direct Google writes,
 original-master review and COUNT-preserving whole-series editing. ECHO-05 adds
 encrypted, explicitly separate personal Hermes connections and per-person opt-in;
@@ -53,8 +65,9 @@ deployed, and the Pi serves matching assets after its kiosk reload. Pairing and
 private settings were preserved; its listener remains armed at 2%, with Spotify
 discoverable. No sound played and no real Google account was linked.
 The later ECHO-01 checkpoint extends this read path with reviewed writes and
-master editing. Following-only counted-series rescheduling, invitations and
-per-person private Google linking remain open. See [Google Calendar](GOOGLE_CALENDAR.md).
+master editing. Wave 2 above adds bounded following-only rescheduling and guest
+review. Per-person private Google linking and live provider acceptance remain
+open. See [Google Calendar](GOOGLE_CALENDAR.md).
 
 **Browser calling checkpoint:** Deck and browser displays now have optional
 LiveKit voice/video calls with owner configuration, encrypted provider credentials,
@@ -374,7 +387,8 @@ parity. Known gaps documented in the smart-display guide remain:
 - [x] Explicit occurrence/following edits and occurrence/following/whole-series deletion, preserving repeat patterns (software; live provider writes untested).
 - [x] Mini calendar draft review, explicit creation, cancellation and expiry (host deployed; firmware built, installation and physical acceptance pending).
 - [x] Direct Google master-event editing and whole-series rescheduling with the existing COUNT preserved (software; real calendar acceptance pending).
-- [ ] Following-only counted-series rescheduling and invitations.
+- [x] Following-only changes for simple finite Google COUNT series and separate invitation review (software; real Google changes and delivery unverified).
+- [ ] Private per-person Google linking without household grant inheritance.
 - [ ] Synchronized grouped music across endpoints.
       Music Assistant connection, library/queue selection, shared-output permissions,
       the native Pi player, private stream transport and local voice coordination

@@ -30,10 +30,16 @@ def event_reference(event,calendar,on_date):
     return result
 
 
+def invitation_reference(event,calendar,on_date):
+    uid=event.get('_google_invitation_uid')
+    if not event.get('_google') or not valid_identifier(uid):return None
+    return event_reference({**event,'uid':uid},calendar,on_date)
+
+
 def change_scopes(event):
     if not valid_identifier(event.get('uid')):return {'edit':[],'delete':[]}
     if event.get('_google'):
-        scopes=['occurrence','series'] if event.get('recurrence_id') else ['series'] if event.get('rrule') else ['single']
+        scopes=['occurrence','following','series'] if event.get('recurrence_id') else ['series'] if event.get('rrule') else ['single']
         return {'edit':scopes,'delete':scopes}
     if single_event(event):return {'edit':['single'],'delete':['single']}
     if valid_identifier(event.get('recurrence_id')):

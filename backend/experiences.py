@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from .home import HomeUnavailable
-from .calendar_reference import event_reference,change_scopes,following_start_locked
+from .calendar_reference import event_reference,invitation_reference,change_scopes,following_start_locked
 
 
 class ExperienceUnavailable(RuntimeError): pass
@@ -245,6 +245,7 @@ class Experiences:
                                        'description':str(event.get('description') or '')[:2000],
                                        'recurring':bool(event.get('rrule') or event.get('recurrence_id')),
                                        'reference':event_reference(event,identifier,began[:10]),
+                                       'invitation_reference':invitation_reference(event,identifier,began[:10]) if source.get('editable') else None,
                                        'change_scopes':change_scopes(event),
                                        'following_start_locked':following_start_locked(event),
                                        'provider':'google' if event.get('_google') else 'home_assistant',
@@ -255,7 +256,10 @@ class Experiences:
         events = events[:500]
         for e in events: e.pop('_sort')
         # Recheck permission after slow upstream calls, before returning data.
-        current = set(self.store.snapshot()['sources']['calendars'])
+        current_sources = self.store.snapshot()['sources']
+        current = set(current_sources['calendars'])
+        for event in events:
+            if event['calendar'] not in current_sources['managed_calendars']:event['invitation_reference']=None
         return {'status': sources['status'] if not calendars else 'partial' if failures else 'available',
                 'events': [e for e in events if e['calendar'] in current],
                 'unavailable': [identifier for identifier in failures if identifier in current], 'start': start, 'days': days}

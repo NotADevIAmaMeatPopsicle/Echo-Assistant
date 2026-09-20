@@ -173,9 +173,13 @@ class GoogleCalendarWriter:
 
     def change(self,operation,reference,event,revision,request_id,scope):
         from .calendar_events import CalendarEvent,EventReference
+        if scope=='following':
+            from .google_calendar_series import change_following
+            return change_following(self,operation,reference,event,revision,request_id)
         reference=EventReference.model_validate(reference)
         if operation not in {'edit','delete'} or scope not in {'single','occurrence','series'}:
-            raise ValueError('Use a single occurrence or the entire Google series; following-only edits are not supported here yet')
+            raise ValueError('Choose a supported calendar change scope')
+        if reference.following_version is not None:raise ValueError('A following-series review does not apply to this change scope')
         replacement=CalendarEvent.model_validate(event) if operation=='edit' else None
         if replacement and (replacement.calendar!=reference.calendar or replacement.recurrence):
             raise ValueError('Keep the calendar and existing recurrence pattern')
@@ -200,5 +204,7 @@ class GoogleCalendarWriter:
                 # attachments and provider metadata. COUNT remains unchanged.
                 return 'PATCH',self.path(calendar,item['id']),payload,item['etag']
             return 'DELETE',self.path(calendar,item['id']),None,item['etag']
-        return self.run(reference.calendar,revision,request_id,{'operation':operation,'reference':reference.model_dump(),
+        # Preserve receipts written before following-review references existed,
+        # including the original recurrence_id:null field in single-event digests.
+        return self.run(reference.calendar,revision,request_id,{'operation':operation,'reference':reference.model_dump(exclude={'following_version'}),
                         'event':replacement.model_dump() if replacement else None,'scope':scope},prepare)

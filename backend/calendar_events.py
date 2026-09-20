@@ -34,6 +34,7 @@ class EventReference(BaseModel):
     on_date:str=Field(pattern=r'^\d{4}-\d{2}-\d{2}$')
     version:str=Field(pattern=r'^[a-f0-9]{64}$')
     recurrence_id:str|None=Field(default=None,min_length=1,max_length=512)
+    following_version:str|None=Field(default=None,pattern=r'^[a-f0-9]{64}$')
 
     @field_validator('uid','recurrence_id')
     @classmethod
@@ -182,6 +183,7 @@ class CalendarWriter:
         if not self.enabled:raise PermissionError('Calendar changes are disabled on the validation host')
         if operation not in {'edit','delete'} or scope not in {'single','occurrence','following','series'} or not re.fullmatch('[a-f0-9]{32}',request_id):raise ValueError('Invalid calendar change')
         reference=EventReference.model_validate(reference)
+        if reference.following_version is not None:raise ValueError('Google following-series reviews cannot be used for a Home Assistant change')
         if operation=='edit':
             event=CalendarEvent.model_validate(event)
             if event.calendar!=reference.calendar or event.recurrence:raise ValueError('Keep the existing calendar and repeat pattern; use the calendar app to change recurrence rules')

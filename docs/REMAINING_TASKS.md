@@ -54,6 +54,49 @@ home-device action or audio was used. The Pi was offline during post-deployment
 verification, so its UI refresh and current physical status remain pending.
 Deployment status does not close any hardware or live-service acceptance task.
 
+## Dispatch wave 2
+
+Wave 1 is committed as `6f770b1`. The coordinator owns all edits to existing shared
+calendar/OAuth models, authorization lists, application registration and display
+assets during this wave. Workers must send the required integration edits to the
+coordinator, rather than changing another worker's interface in place.
+
+| Task | Worker boundary and handoff contract | Completion boundary |
+| --- | --- | --- |
+| ECHO-02 | New `backend/google_calendar_series.py`, focused new series tests and `docs/GOOGLE_CALENDAR_SERIES.md`. Expose a following-change entry point accepting the existing Google writer adapter plus operation/reference/replacement/revision/request ID. Reuse its access lock, source policy and encrypted receipt store. Request precise core-writer/scope/UI changes from the coordinator. | Preserve earlier occurrences and the remaining COUNT through a reviewed following-only change; report partial remote outcomes and prevent blind retries. No invitations or change to other recurrence scopes. |
+| ECHO-03 | New `backend/calendar_invitations.py`, new `web/display/calendar-invitations.js`/CSS, focused new checks and `docs/CALENDAR_INVITATIONS.md`. Owner/Household-only read/review/confirm routes under `/v1/display/calendar/invitations`; keep provider credentials and review state on the host. Coordinator registers routes, permits paired Household access and adds the event-details hook. | Explicit attendee/notification review, preserved existing guests and ETag conflict detection. No real invitations sent during development. Send the exact API/data contract before implementing shared integration. |
+| ECHO-08 | Bounded provider investigation in `docs/CASTING_OPTIONS.md`, with source/version evidence and an implementation recommendation. Inspect existing Pi audio-focus interfaces read-only. Do not edit or install a receiver before the supported protocol and permission boundary are established. | Verify what this Pi can genuinely receive from the intended phone/apps; distinguish receiver software from senders and official Chromecast compatibility. This investigation alone does not close ECHO-08 or claim casting works. |
+
+### Wave 2 result
+
+- **ECHO-02: software implemented and deployed to the private host.** Following-only
+  changes review every instance of a simple finite COUNT series, preserve earlier
+  events and the remaining count, refuse exceptions, and report partial provider
+  outcomes without repeating writes. The Pi serves the updated editor and review
+  route. Real Google acceptance remains ECHO-11.
+- **ECHO-03: software implemented and deployed to the private host.** The agenda
+  opens a separate guest editor with explicit notification review and confirmation.
+  Existing guests are preserved; Guest, Personal and Mini sessions cannot send
+  invitations. Actual invitation delivery has not been tested or requested.
+- **ECHO-08: investigation complete; implementation remains queued.**
+  [Casting options](CASTING_OPTIONS.md) recommends a default-off Bluetooth A2DP
+  receiver for the Pi and defines ECHO-08A's file/interface boundary. This adds no
+  receiver yet and makes no Chromecast compatibility claim.
+
+The combined calendar checks passed 78 tests on Windows and 91 on isolated Linux,
+plus focused and full-page silent browser flows. Integration review caught and
+fixed stale controls after a Google provider-role downgrade. Settings, source
+grants and pairing were preserved during deployment. The Pi is online again,
+serves matching assets, and its kiosk refreshed successfully. Its voice service
+reports **unavailable**, with a generic microphone/speaker/runtime/host-connection
+wait; that condition remains in ECHO-13. Volume stayed at 2%, Spotify remained
+discoverable, and no sound or real calendar action ran.
+
+**Next software dispatch:** ECHO-04 private Google linking and ECHO-08A's bounded
+Bluetooth adapter. Their owners must first confirm account/source isolation and
+Pi audio-focus interfaces respectively. ECHO-09 follows the supported media
+capability decision. Hardware and real-account acceptance remain separate tasks.
+
 ## Dependent software tasks
 
 | ID | Bounded deliverable | Depends on | Acceptance gate |

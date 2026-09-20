@@ -341,21 +341,28 @@ class GoogleCalendars:
             start,end=item.get('start'),item.get('end')
             if not isinstance(start,dict) or not isinstance(end,dict):continue
             row=self.event_row(item)
-            with self.lock:writable=self.account(identifier).get('write_access',False)
-            if not writable:row.pop('uid',None)
+            with self.lock:
+                current_account=self.account(identifier)
+                current_calendar=next((c for c in current_account['calendars'] if c['id']==remote and c['entity_id']==entity),None)
+                writable=bool(current_account.get('write_access',False) and current_calendar and current_calendar.get('access_role') in {'writer','owner'})
+            if not writable:
+                row.pop('uid',None);row.pop('_google_invitation_uid',None)
             rows.append(row)
         return rows
 
     @staticmethod
     def event_row(item):
         from .google_calendar_write import editable_event
+        from .calendar_invitations import invitation_event
         result={'summary':item.get('summary','Untitled event'),'description':item.get('description',''),
                 'location':item.get('location',''),'start':item.get('start'),'end':item.get('end'),
                 'rrule':'GOOGLE_RECURRING' if item.get('recurringEventId') or item.get('recurrence') else None,
                 '_google':True,'_google_etag':item.get('etag')}
         if editable_event(item):
             result['uid']=item['id']
-            if item.get('recurringEventId'):result['recurrence_id']=item['recurringEventId']
+        if invitation_event(item):result['_google_invitation_uid']=item['id']
+        if ('uid' in result or '_google_invitation_uid' in result) and item.get('recurringEventId'):
+            result['recurrence_id']=item['recurringEventId']
         return result
 
 

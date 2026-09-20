@@ -8,7 +8,8 @@ Nothing is shared just because an account was connected.
 Connections default to **read-only** access. An explicit optional Google editing
 grant enables reviewed creation, single-event/occurrence changes and original
 master-series editing, after the owner separately enables the relevant calendar
-permissions in Echo. Following-only series splits and invitations remain open.
+permissions in Echo. Simple counted series support reviewed following-only changes;
+eligible events have separate guest and notification controls described below.
 The existing Home Assistant calendar writer remains independent.
 
 ## Configure the installation
@@ -85,8 +86,8 @@ deletion** are separate owner choices. Both default off. Guest and Personal
 sessions remain read-only; a household connection does not grant them writing.
 The form and confirmation controls are described in [Calendars on Echo](CALENDARS.md).
 
-For a repeating event, choose **Only this occurrence** or **Every occurrence in
-the series**. Entire-series editing loads the original master dates, time zone,
+For a repeating event, choose **Only this occurrence**, **This and following
+occurrences**, or **Every occurrence in the series**. Entire-series editing loads the original master dates, time zone,
 fields and repeat rule before opening the editor. Moving those dates affects the
 whole series, including past events. The PATCH leaves the recurrence rule and
 its COUNT unchanged. All-day status stays fixed for a series. Additional recurrence
@@ -95,10 +96,20 @@ Existing exceptions remain subject to Google's series behavior; live acceptance
 of that behavior is still pending.
 
 Echo sends the reviewed event ETag as `If-Match` when editing or deleting. A
-change elsewhere requires a refresh and new review. Events with attendees,
-omitted attendee data, special event types or provider locks cannot be changed
-here. Echo does not send invitations, edit attendees or split following occurrences.
-Google writes request `sendUpdates=none`.
+change elsewhere requires a refresh and new review. Ordinary event edits exclude
+attendees, omitted attendee data, special event types and provider locks.
+Ordinary Google writes request `sendUpdates=none`.
+
+[Following-only changes](GOOGLE_CALENDAR_SERIES.md) review the complete finite
+COUNT series before editing or deleting its remaining occurrences. Earlier events
+and the remaining count are preserved. Stored exceptions and more complex rules
+require Google's editor; a partially completed split is reported without blind retries.
+
+[Guests & invitations](CALENDAR_INVITATIONS.md) is a separate review for organizer-owned
+single events or one selected occurrence. It preserves existing guests and requires
+an explicit notification choice and confirmation. Google controls delivery; even
+its no-notification option cannot guarantee silence. Whole-series invitations
+and real-account acceptance remain separate.
 
 An encrypted receipt is saved before dispatch. The same request ID is not sent
 again after a timeout or restart, even if the first result is unknown. Inserts

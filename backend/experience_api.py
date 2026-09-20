@@ -139,6 +139,14 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
         validate,access_lock=calendar_guard(request,principal)
         return call(lambda:GoogleCalendarWriter(writer,validate,access_lock).master(body.reference.model_dump(),body.revision))
 
+    @app.post('/v1/display/calendar/following')
+    def following_event(body:MasterEvent,request:Request,principal=Depends(authorize)):
+        if writer is None:raise HTTPException(503,'Calendar editing unavailable')
+        from .google_calendar_write import GoogleCalendarWriter
+        from .google_calendar_series import review_following
+        validate,access_lock=calendar_guard(request,principal)
+        return call(lambda:review_following(GoogleCalendarWriter(writer,validate,access_lock),body.reference.model_dump(),body.revision))
+
     @app.post('/v1/display/calendar/draft')
     async def draft_event(body:DraftRequest,request:Request,principal=Depends(authorize)):
         if drafts is None:raise HTTPException(503,'Calendar drafting unavailable')
