@@ -220,9 +220,28 @@ $('photo-files').onchange = event => { clearPhotos(); const files = [...event.ta
 $('clear-photos').onclick = () => { clearPhotos(); toast('Ambient photos cleared.'); };
 for (const type of ['pointerdown','keydown','touchstart']) document.addEventListener(type, () => lastInput = Date.now(), {passive:true});
 document.addEventListener('keydown', event => { if (!$('ambient').hidden) { if (event.key === 'Escape') ambient(false); if (event.key === 'Tab') { event.preventDefault(); $('wake-screen').focus(); } } });
+function renderClock(element, formatter, now) {
+  const label = formatter.format(now);
+  if (element.getAttribute('aria-label') === label) return;
+  const parts = formatter.formatToParts(now), period = parts.find(part => part.type === 'dayPeriod');
+  const digits = document.createElement('span');
+  digits.className = 'clock-digits';
+  digits.textContent = parts.filter(part => part.type !== 'dayPeriod').map(part => part.value).join('').trim();
+  digits.setAttribute('aria-hidden', 'true');
+  element.setAttribute('role', 'timer');
+  element.setAttribute('aria-label', label);
+  element.replaceChildren(digits);
+  if (period) {
+    const marker = document.createElement('span');
+    marker.className = 'clock-period'; marker.textContent = period.value;
+    marker.setAttribute('aria-hidden', 'true');
+    if (parts.indexOf(period) < parts.findIndex(part => part.type === 'hour')) element.prepend(marker);
+    else element.append(marker);
+  }
+}
 function tick() {
-  const now = new Date(), time = now.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',hour12:!preferences.clock24}), date = now.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'});
-  $('home-clock').textContent = time; $('ambient-clock').textContent = time; $('home-date').textContent = date; $('ambient-date').textContent = date;
+  const now = new Date(), formatter = new Intl.DateTimeFormat([], {hour:'numeric',minute:'2-digit',hour12:!preferences.clock24}), date = now.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'});
+  renderClock($('home-clock'), formatter, now); renderClock($('ambient-clock'), formatter, now); $('home-date').textContent = date; $('ambient-date').textContent = date;
   $('greeting').textContent = now.getHours() < 12 ? 'Good morning.' : now.getHours() < 18 ? 'Good afternoon.' : 'Good evening.';
   $('ambient').classList.toggle('dim', preferences.dim);
   if (preferences.idle && Date.now() - lastInput > preferences.idle * 1000 && !chatAbort && !displayCaptureBusy && !busy && !document.querySelector('dialog[open]') && $('ambient').hidden) ambient(true);

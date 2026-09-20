@@ -14,6 +14,9 @@ reserved for supporting information, not primary actions.
 - Blue for listening, lavender for thinking, mint for speaking, amber for mute,
   and slate for a lost connection. Status text supplies the same information.
 - Visible keyboard focus and reduced-motion support.
+- A large, steady clock with a smaller mint AM/PM marker and room for the date.
+  Both home and ambient clocks respect the saved 12/24-hour choice; screen
+  readers receive the complete localized time.
 
 The display styling is in `web/display/polish.css`. The bundled font's original
 [license and source notice](../web/fonts/README.md) travel with the project;
@@ -22,6 +25,8 @@ loading the interface does not contact a font service.
 ![Home at 1024 × 600, with synthetic household data](images/display-home.png)
 
 ![Conversation at 1024 × 600, with synthetic messages](images/display-echo.png)
+
+![Ambient clock with separate day-period marker, using synthetic data](images/display-ambient.png)
 
 ## Avoiding unnecessary scaling
 
@@ -48,3 +53,8 @@ the native listening controls. It is deployed on the Pi and its screen was
 captured after the kiosk restart. The gallery above uses synthetic data only.
 Physical screen clarity, touch calibration and microphone/speaker acceptance
 remain separate checks; screenshots cannot establish those properties.
+
+The live idle-screen capture exposed an oversized day-period suffix crowding
+the date. The clock now separates that suffix from the digits, keeps its edges
+unscaled, and leaves an explicit gap above the date. Focused browser checks
+cover 12/24-hour switching, date separation, and phone-width layout.
