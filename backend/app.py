@@ -188,6 +188,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     install_announcements(app,announcements,store,authorize,owner)
     install_intercom(app,Intercom(announcements),authorize)
     experiences = Experiences(home, SourceStore(runtime_root, store.protector))
+    from .member_agenda import MemberAgenda
+    personal_echo.agenda=MemberAgenda(experiences,displays,schedules)
     doorbells=Doorbells(experiences,runtime_root,store.protector)
     briefing=DailyBriefing(experiences,home,schedules,household)
     echo.briefing=briefing

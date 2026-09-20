@@ -24,6 +24,17 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Personal calendar voice checkpoint:** Deck and Mini personal sessions now answer
+agenda requests for today, tomorrow and the next seven days from approved sources.
+The local summary uses account/display/global grant intersections, excludes
+household lists and reminders, and does not send events to a model or search.
+Cancelled, locked and changed-access requests discard their result; partial
+calendar failures are reported explicitly. The host update is deployed with
+private settings, accounts and pairing preserved. Twenty focused tests pass on Windows
+and isolated Linux, including existing personal and Mini sign-in paths. No real
+calendar writes, home actions or audio were used. Personal provider sign-in and
+physical spoken acceptance remain open.
+
 **Mini personal sign-in checkpoint:** the private host now supports the same
 personal accounts on Deck and Mini. Owner assignment requires connected firmware
 0.19.0. Mini adds Settings → Me, a bounded account picker, masked eight-digit

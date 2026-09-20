@@ -48,6 +48,26 @@ household privileges. Passcodes travel over the existing trusted USB or paired
 TLS connection and are not written to firmware preferences or host status.
 Firmware installation and physical keypad/voice acceptance remain open.
 
+## Ask about your calendar
+
+While signed in on Deck or Mini, ask **“What's on my agenda today?”**, **“Read my
+calendar tomorrow”**, or **“Check my schedule this week.”** A personal daily
+briefing request also reads the permitted calendar agenda. “This week” covers
+the next seven days; the reply says that explicitly. Dates and times use the
+host's Home Assistant time zone, with Echo's configured schedule time zone as
+the fallback.
+
+The local summary reads only calendars allowed by the account, display and global
+source settings. It names up to five remaining events and reports unavailable
+calendars rather than claiming the day is empty. It does not include household
+tasks, reminders or shopping lists, and sends no calendar content to the model
+or web search. Turn off the lookup toggle for a private agenda request. Locking
+the session or changing its grants during a request discards the result.
+
+Calendar accounts are still connected through Home Assistant and assigned by
+the owner. This feature does not add personal Google sign-in, invitations, or
+calendar writes from a personal session.
+
 ## What is separate
 
 - Saved facts belong to the account. Up to 200 facts are supported per person,

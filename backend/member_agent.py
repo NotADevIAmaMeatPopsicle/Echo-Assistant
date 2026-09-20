@@ -2,6 +2,7 @@
 from .agent import EchoAgent
 from .lookup import lookup_request
 from .settings import PERSONALITY
+from .member_agenda import agenda_request
 
 
 class MemberSettings:
@@ -27,6 +28,7 @@ class MemberAgents:
     def __init__(self,members,store,provider,home,assistant):
         self.members,self.store,self.provider,self.home,self.assistant=members,store,provider,home,assistant
         self.agents={}
+        self.agenda=None
     def agent(self,principal):
         with self.members.lock:
             self.members.current(principal)
@@ -37,6 +39,9 @@ class MemberAgents:
             return self.agents[principal.nonce]
     def respond(self,text,principal,lookup=False,*,before,**kwargs):
         self.members.current(principal)
+        period=agenda_request(text)
+        if period and self.agenda:
+            return self.agenda.respond(period,principal,before,lookup=lookup,cancel=kwargs.get('cancel'))
         if self.home and not lookup and not lookup_request(text):
             result=self.home.respond(text,principal,before,allow_home=kwargs.get('allow_home_actions',False),cancel=kwargs.get('cancel'))
             if result is not None:return result
