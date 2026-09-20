@@ -44,7 +44,8 @@ Prioritize the Pi audio path before extending round intercom. See
 - [ ] Exact panel model and complete touch calibration.
 - [ ] Identify and configure the microphone and speaker to be attached to the Pi; physical mute/indicator wiring.
 - [x] Deploy the current display software and restricted gateway; Pi pairing and restart recovery.
-- [ ] Full power-off cold boot, extended network loss, and live revocation/re-enrollment.
+- [x] Live access revocation and re-enrollment through a temporary Pi bridge; primary pairing preserved.
+- [ ] Full power-off cold boot and extended network loss.
 - [ ] Quiet audio, wake/reply, interruption and feedback tests on each endpoint.
 - [ ] Physical enclosure fit, thermal behavior and final assembly instructions.
 
@@ -164,3 +165,12 @@ A fresh Pi hardware inventory still reports no capture device. It exposes only
 the built-in headphone and HDMI outputs; a connected, suitable microphone and
 speaker remain required for acoustic acceptance. No microphone, speaker or home
 device was exercised during this software checkpoint.
+
+A temporary bridge using the installed Pi client completed live enrollment,
+revocation and fresh enrollment against the running host. Revocation denied both
+bridge and direct credential access; the replacement credential restored scoped
+display access while the old credential remained denied. Owner settings and
+display administration stayed inaccessible. The private gateway also rejected
+cookie-only requests as intended. The primary kiosk pairing was unchanged and
+the temporary enrollments were removed. This does not establish cold-boot or
+extended network-outage recovery, and exercised no audio or home devices.
