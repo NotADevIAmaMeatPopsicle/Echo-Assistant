@@ -49,6 +49,7 @@ from .audio_destination import destination_for
 from .display_alerts import DisplayAlerts, install as install_display_alerts
 from .household_commands import parse as household_request
 from .display_auth import Displays,DisplayStorageUnavailable
+from .display_profiles import DisplayProfile,GuestSettings,ProfileAgent,home_view
 from .experiences import SourceStore, Experiences
 from .experience_api import install as install_experiences
 from .calendar_events import CalendarWriter
@@ -123,6 +124,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     echo.routines = routines
     auth = BrowserAuth(token)
     displays = Displays(runtime_root,store.protector)
+    guest_echo=EchoAgent(GuestSettings(store),echo.provider,MemoryStore(None,store.protector))
+    profiled_echo=ProfileAgent(echo,guest_echo,displays)
     speech_restart = SpeechRestart(runtime_root)
     speaker_check = SpeakerCheck(runtime_root)
     agent_apply = AgentApply(runtime_root, store)
@@ -147,11 +150,11 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     echo.briefing=briefing
     echo.calendar_drafts=CalendarDrafts(store,echo.provider,experiences,schedules)
     install_experiences(app, experiences, authorize, owner,
-        CalendarWriter(experiences,runtime_root,store.protector,enabled=deployment_mode=='device'),briefing,doorbells,echo.calendar_drafts)
+        CalendarWriter(experiences,runtime_root,store.protector,enabled=deployment_mode=='device'),briefing,doorbells,echo.calendar_drafts,displays)
     install_photos(app, Photos(runtime_root, store.protector), authorize, owner)
     install_media(app, MediaPresets(runtime_root, store.protector), authorize, owner)
-    display_voice=DisplayVoice(runtime_root,store,echo)
-    install_display_voice(app,display_voice,authorize,conversations,app.state.speech_stop,enable_home=deployment_mode=='device')
+    display_voice=DisplayVoice(runtime_root,store,profiled_echo)
+    install_display_voice(app,display_voice,authorize,conversations,app.state.speech_stop,enable_home=deployment_mode=='device',profile_state=displays.profile_for)
     hosts = ['127.0.0.1', 'localhost', 'testserver'] if runtime_root is None else ['127.0.0.1', 'localhost']
     if os.environ.get('ECHO_CONTAINER') == '1': hosts += ['api', 'echo-api']
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)
@@ -190,6 +193,36 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         model_config=ConfigDict(extra='forbid')
         code:str=Field(min_length=32,max_length=64)
 
+    class SetDisplayProfile(BaseModel):
+        model_config=ConfigDict(extra='forbid',strict=True)
+        revision:int=Field(ge=0)
+        profile:DisplayProfile
+
+    @app.put('/v1/displays/{identifier}/profile',dependencies=[Depends(owner)])
+    def set_display_profile(identifier:str,body:SetDisplayProfile):
+        # A profile change must not race a household tool call already in progress.
+        principal='display:'+identifier
+        if conversations.snapshot(principal).get('active'):
+            conversations.clear(principal)
+            raise HTTPException(409,'The active request is stopping. Save display access again when it has finished.')
+        profile=body.profile.model_dump()
+        previous=displays.profile_for(principal)
+        if profile['mode']=='guest':
+            old=previous['profile']['home_devices']
+            added={entity:grant for entity,grant in profile['home_devices'].items() if old.get(entity)!=grant and not (old.get(entity)=='control' and grant=='read')}
+            try:permitted=apply_policy(catalog.snapshot(),access.snapshot()['policy'])['devices'] if added else []
+            except HomeUnavailable as error:raise HTTPException(503,'Home devices are unavailable. Try again before granting new access.') from error
+            known={i['entity_id']:i['access'] for i in permitted}
+            for entity,grant in added.items():
+                if known.get(entity) not in ({'control'} if grant=='control' else {'read','control'}):
+                    raise HTTPException(422,'Grant the requested device access on Devices before sharing it with a guest')
+            sources=experiences.store.snapshot()['sources']
+            if any(not set(profile[key])<=set(sources[key]) for key in ('calendars','cameras','presence_sensors')):
+                raise HTTPException(422,'Share sources in Display settings before assigning them to a guest')
+        result=displays.save_profile(identifier,profile,body.revision)
+        echo.clear(principal);guest_echo.clear(principal);conversations.clear(principal)
+        return result
+
     @app.get('/v1/displays',dependencies=[Depends(owner)])
     def paired_displays(): return {'items':displays.snapshot()}
 
@@ -217,7 +250,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     @app.get('/v1/display/session')
     def current_display_session(session=Depends(authorize)):
         return {'role':'display' if session.startswith('display:') else 'owner',
-                'receiver_id':session.split(':',1)[1] if session.startswith('display:') else None}
+                'receiver_id':session.split(':',1)[1] if session.startswith('display:') else None,
+                **displays.profile_for(session)}
 
     @app.get('/v1/household', dependencies=[Depends(authorize)])
     def household_state(): return household.snapshot()
@@ -383,10 +417,10 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return access.snapshot()
 
     @app.get('/v1/display/home',dependencies=[Depends(authorize)])
-    def display_home():
+    def display_home(session=Depends(authorize)):
         try:
             saved=access.snapshot()
-            return {**apply_policy(catalog.snapshot(),saved['policy']),'revision':saved['revision']}
+            return {**home_view(apply_policy(catalog.snapshot(),saved['policy']),displays.profile_for(session)['profile']),'revision':saved['revision']}
         except HomeUnavailable as error: raise HTTPException(503,str(error)) from None
 
     class DisplayHomeAction(BaseModel):
@@ -398,7 +432,10 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         unit:Literal['°C','°F']|None=None
 
     @app.post('/v1/display/home/control',dependencies=[Depends(authorize)])
-    def display_home_action(body:DisplayHomeAction):
+    def display_home_action(body:DisplayHomeAction,session=Depends(authorize)):
+        profile=displays.profile_for(session)['profile']
+        if profile['mode']=='guest' and profile['home_devices'].get(body.entity_id)!='control':
+            raise HTTPException(403,'This device is not shared for guest control')
         if deployment_mode!='device': raise HTTPException(409,'Home actions are disabled in validation mode')
         if access.snapshot()['revision']!=body.revision: raise HTTPException(409,'Device permissions changed. Refresh before trying again.')
         try:
@@ -431,7 +468,21 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return voice_status(runtime_root) if runtime_root else {"status": "disconnected", "phrases": ["hey echo", "okay echo"]}
 
     @app.get("/v1/home", dependencies=[Depends(authorize)])
-    def home_state():
+    def home_state(session=Depends(authorize)):
+        profile=displays.profile_for(session)['profile']
+        if profile['mode']=='guest':
+            # Legacy room/speaker shortcuts have global bindings. Guests use the
+            # filtered individual-device controls instead of those broad endpoints.
+            devices={}
+            if home.config.entities.get('weather') in profile['home_devices']:
+                try:
+                    permitted=home_view(apply_policy(catalog.snapshot(),access.snapshot()['policy']),displays.profile_for(session)['profile'])
+                    weather=next((i for i in permitted['devices'] if i['entity_id']==home.config.entities['weather']),None)
+                    if weather:devices['weather']={'status':'available' if weather['available'] else 'unavailable','state':weather['state'],
+                        'attributes':{k:v for k,v in weather['attributes'].items() if k in {'temperature','temperature_unit','humidity'}}}
+                except HomeUnavailable:pass
+            return {'status':'available','devices':devices,'lights':{'status':'restricted','rooms':[]},
+                    'speakers':{'status':'restricted','choices':[]}}
         result = home.snapshot()
         try: result['lights'] = room_lights.snapshot()
         except (HomeUnavailable,HomeAccessUnavailable): result['lights'] = {'status':'unavailable','rooms':[]}
@@ -525,6 +576,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     @app.get("/v1/state")
     def state(request:Request,session=Depends(authorize)):
         result={"timers": assistant.timer_states()+schedules.timer_states(), "capabilities": ["clock", "timer", "schedules"]}
+        if displays.profile_for(session)['profile']['mode']=='guest':
+            result['timers']=[t for t in result['timers'] if t['destination']==session]
         if session=='device':
             for timer in result['timers']:
                 if timer['destination']!='round': timer['notified']=True
@@ -574,9 +627,13 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         # Browser actions require an explicit opt-in on this message, plus device grants.
         try: activity = conversations.begin(session)
         except ConversationBusy as error: raise HTTPException(409,str(error)) from None
-        return await run_conversation(connection, app.state.speech_stop,
-            partial(echo.respond,allow_home_actions=request.allow_home_actions,progress=activity.progress,calendar_review=request.calendar_review),
+        before=displays.profile_for(session)
+        result=await run_conversation(connection, app.state.speech_stop,
+            partial(profiled_echo.respond,allow_home_actions=request.allow_home_actions,progress=activity.progress,calendar_review=request.calendar_review),
             request.text, session,request.lookup,activity=activity)
+        authorize(connection)
+        if displays.profile_for(session)!=before:raise HTTPException(409,'Display access changed during the reply')
+        return result
 
     class RoutineSave(BaseModel):
         model_config=ConfigDict(extra='forbid')
@@ -819,7 +876,10 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             raise HTTPException(422, str(error)) from error
 
     @app.delete("/v1/timers/{timer_id}", dependencies=[Depends(authorize)])
-    def dismiss(timer_id: str):
+    def dismiss(timer_id: str,session=Depends(authorize)):
+        if displays.profile_for(session)['profile']['mode']=='guest':
+            items=assistant.timer_states()+schedules.timer_states()
+            if not any(t['id']==timer_id and t['destination']==session for t in items):raise HTTPException(404,'Timer not found')
         if not assistant.dismiss_timer(timer_id) and not schedules.event_action(timer_id,'dismiss'):
             raise HTTPException(404, "Timer not found")
         return {"dismissed": True}

@@ -86,14 +86,17 @@ class DisplayVoice:
             if self.worker:self.worker.close();self.worker=None
 
 
-def install(app,pipeline,authorize,conversations,shutdown,*,enable_home=True):
+def install(app,pipeline,authorize,conversations,shutdown,*,enable_home=True,profile_state=None):
     from fastapi import Depends,HTTPException,Request
     from .conversation_activity import ConversationBusy
     from .conversation_request import run_conversation
     app.state.display_voice=pipeline
 
     @app.get('/v1/display/voice',dependencies=[Depends(authorize)])
-    def status():return app.state.display_voice.status()
+    def status(session=Depends(authorize)):
+        result=app.state.display_voice.status()
+        if profile_state:result={**result,'access_revision':profile_state(session)['profile_revision']}
+        return result
 
     @app.post('/v1/display/voice')
     async def voice(request:Request,allow_home:bool=False,reply_audio:bool=True,capture_id:str|None=None,session=Depends(authorize)):

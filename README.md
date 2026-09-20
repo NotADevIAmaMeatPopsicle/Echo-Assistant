@@ -55,6 +55,7 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
 | **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, and answered two-way intercom. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
+| **Share deliberately** | Owner-assigned Household or Guest profiles for paired displays, selected home-device controls, read-only calendar/camera sources, and separate guest conversation. |
 
 Home Assistant, Spotify, and Hermes are optional integrations. Features that need
 an account, a selected source, or an audio device report their availability. The
@@ -67,6 +68,10 @@ Make the home screen your own: choose four tiles for time and Echo, weather,
 rooms, music, timers, lists or the thermostat. Music sits at bottom right by
 default, with live artwork and playback control. Swipe left or right between
 pages, or jump straight to a page from the sidebar.
+
+For a shared room, assign a [Guest display profile](docs/DISPLAY_ACCESS.md) and
+choose its devices and sources. General guest questions use separate temporary
+history; household memory and Hermes tools stay in the trusted workspace.
 
 Adjustable idle dimming and sleep keep the display from staying bright all day.
 Tap once to wake, or use an enabled wake word. Paired X11 Pi displays can also

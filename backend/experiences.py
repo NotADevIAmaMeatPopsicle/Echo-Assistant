@@ -190,7 +190,11 @@ class Experiences:
                 item=dict(known.get(identifier, {'entity_id': identifier, 'kind': kind[:-1], 'name': identifier, 'available': False}))
                 item['writable']=identifier in selected['writable_calendars'] and item.get('can_create',False)
                 items.append(item)
-        return {'status': 'available', 'items': items, 'revision':self.store.snapshot()['revision']}
+        current=self.store.snapshot()
+        allowed=set(current['sources']['calendars']+current['sources']['cameras'])
+        items=[item for item in items if item['entity_id'] in allowed]
+        for item in items:item['writable']=item['writable'] and item['entity_id'] in current['sources']['writable_calendars']
+        return {'status': 'available', 'items': items, 'revision':current['revision']}
 
     def agenda(self, start, days=7):
         first = date.fromisoformat(start)

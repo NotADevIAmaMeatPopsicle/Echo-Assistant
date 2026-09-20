@@ -28,6 +28,12 @@ class Bridge(BaseHTTPRequestHandler):
     voice=None
     screen=None
 
+    def access_profile(self,base,headers):
+        request=urllib.request.Request(base+'/v1/display/session',headers=headers)
+        with self.opener.open(request,timeout=5) as response:
+            result=json.loads(response.read(64000))
+        return result.get('profile',{'mode':'household'}),result.get('profile_revision',0)
+
     def local_screen(self,body):
         # Local screen comfort settings must work even when the host is offline.
         # proxy() has already enforced loopback Host and same-origin write headers.
@@ -54,8 +60,8 @@ class Bridge(BaseHTTPRequestHandler):
         # credential cannot edit this receiver through the kiosk.
         request=urllib.request.Request(base+'/v1/display/session',headers=headers)
         try:
-            with self.opener.open(request,timeout=5) as response:
-                if response.status!=200:return self.error_reply(403,'Pair this display before using local music')
+            profile,_=self.access_profile(base,headers)
+            if profile['mode']=='guest' and self.command=='PUT':return self.error_reply(403,'Music setup is managed by the owner')
         except urllib.error.HTTPError as error:return self.error_reply(error.code,'Pair this display before using local music')
         except (urllib.error.URLError,TimeoutError):return self.error_reply(503,'Echo host unavailable')
         try:
@@ -86,7 +92,8 @@ class Bridge(BaseHTTPRequestHandler):
     def local_alerts(self,body,base,headers):
         request=urllib.request.Request(base+'/v1/display/session',headers=headers)
         try:
-            with self.opener.open(request,timeout=8) as response:response.read(64000)
+            profile,_=self.access_profile(base,headers)
+            if profile['mode']=='guest' and self.command=='PUT':return self.error_reply(403,'Alert setup is managed by the owner')
         except urllib.error.HTTPError as error:return self.error_reply(error.code,'Display pairing is unavailable')
         except (OSError,urllib.error.URLError):return self.error_reply(503,'Echo host unavailable')
         try:
@@ -104,7 +111,10 @@ class Bridge(BaseHTTPRequestHandler):
     def local_voice(self,body,base,headers):
         request=urllib.request.Request(base+'/v1/display/session',headers=headers)
         try:
-            with self.opener.open(request,timeout=5) as response:response.read(64000)
+            profile,revision=self.access_profile(base,headers)
+            if profile['mode']=='guest':
+                if not profile.get('conversation',False):return self.error_reply(403,'Conversation is not shared with this display')
+                if self.command=='PUT':return self.error_reply(403,'Voice setup is managed by the owner')
         except urllib.error.HTTPError as error:return self.error_reply(error.code,'Display pairing is unavailable')
         except (OSError,urllib.error.URLError):return self.error_reply(503,'Echo host unavailable')
         try:
@@ -113,8 +123,11 @@ class Bridge(BaseHTTPRequestHandler):
             elif body and len(body)<=2048 and self.command=='POST':
                 value=json.loads(body)
                 if not isinstance(value,dict) or 'action' not in value or not set(value)<={'action','allow_home','reply_audio'}:raise ValueError()
+                if profile['mode']=='guest' and value.get('action')=='talk':value['allow_home']=False
                 result=self.voice.control(**value)
             else:return self.error_reply(405,'Unsupported Pi voice request')
+            result=dict(result)
+            if result.get('result') and result['result'].get('access_revision',0)!=revision:result['result']=None
             raw=json.dumps(result).encode();self.send_response(200)
             for key,value in {'Content-Type':'application/json','Content-Length':str(len(raw)),'Cache-Control':'no-store','X-Echo-Display-Bridge':'1'}.items():self.send_header(key,value)
             self.end_headers()

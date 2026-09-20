@@ -11,6 +11,7 @@ from threading import RLock
 import time
 
 from fastapi import HTTPException
+from .display_profiles import DisplayProfile,guest_allowed
 
 
 class DisplayStorageUnavailable(RuntimeError): pass
@@ -59,15 +60,18 @@ class Displays:
         self.devices=[]; self.pending={}; self.sessions={}; self.seen={}; self.error=False
         if self.path and self.path.exists():
             try:
-                if self.path.stat().st_size>100_000: raise ValueError()
+                if self.path.stat().st_size>1_000_000: raise ValueError()
                 envelope=json.loads(self.path.read_text())
                 if envelope['version']!=1: raise ValueError()
                 devices=json.loads(protector.decrypt(base64.b64decode(envelope['protected'],validate=True)))
                 if not isinstance(devices,list) or len(devices)>32: raise ValueError()
                 ids=set()
                 for d in devices:
-                    if set(d)!={'id','name','hash','created_at'} or not re.fullmatch('[a-f0-9]{32}',d['id']) or d['id'] in ids: raise ValueError()
+                    if set(d) not in ({'id','name','hash','created_at'},{'id','name','hash','created_at','profile','profile_revision'}) or not re.fullmatch('[a-f0-9]{32}',d['id']) or d['id'] in ids: raise ValueError()
                     if not isinstance(d['name'],str) or not 1<=len(d['name'])<=60 or not re.fullmatch('[a-f0-9]{64}',d['hash']): raise ValueError()
+                    if 'profile' in d:
+                        DisplayProfile.model_validate(d['profile'])
+                        if type(d['profile_revision']) is not int or d['profile_revision']<0:raise ValueError()
                     ids.add(d['id'])
                 self.devices=devices
             except (OSError,ValueError,TypeError,KeyError,RuntimeError): self.error=True
@@ -79,9 +83,11 @@ class Displays:
         if self.path:
             try:
                 raw=self.protector.encrypt(json.dumps(devices).encode())
+                document=json.dumps({'version':1,'protected':base64.b64encode(raw).decode()})
+                if len(document.encode())>1_000_000:raise DisplayStorageUnavailable('Display access storage is full')
                 self.path.parent.mkdir(parents=True,exist_ok=True)
                 temporary=self.path.with_suffix('.tmp')
-                temporary.write_text(json.dumps({'version':1,'protected':base64.b64encode(raw).decode()}))
+                temporary.write_text(document)
                 temporary.replace(self.path)
             except (OSError,RuntimeError): raise DisplayStorageUnavailable('Display credentials could not be saved.') from None
         self.devices=devices
@@ -145,12 +151,35 @@ class Displays:
                 from .web_auth import BrowserAuth
                 BrowserAuth.same_origin(request)
         if not allowed(request.method,request.url.path): raise HTTPException(403,'Open the owner workspace to administer Echo')
+        if not guest_allowed(request.method,request.url.path,self.profile_for('display:'+identifier)['profile']):
+            raise HTTPException(403,'This feature is not shared with this guest display')
         return 'display:'+identifier
+
+    def profile_for(self,principal):
+        with self.lock:
+            self.require()
+            if not principal.startswith('display:'):return {'profile':DisplayProfile().model_dump(),'profile_revision':0}
+            device=next((d for d in self.devices if d['id']==principal[8:]),None)
+            if device is None:raise HTTPException(401,'Display was revoked')
+            return {'profile':deepcopy(device.get('profile',DisplayProfile().model_dump())),
+                    'profile_revision':device.get('profile_revision',0)}
+
+    def save_profile(self,identifier,profile,revision):
+        with self.lock:
+            current=self.profile_for('display:'+identifier)
+            if current['profile_revision']!=revision:raise HTTPException(409,'Display access changed. Reload before saving.')
+            checked=DisplayProfile.model_validate(profile).model_dump()
+            devices=deepcopy(self.devices)
+            device=next(d for d in devices if d['id']==identifier)
+            device.update(profile=checked,profile_revision=revision+1)
+            self.commit(devices)
+            return self.profile_for('display:'+identifier)
 
     def snapshot(self):
         with self.lock:
             self.require()
-            return [{'id':d['id'],'name':d['name'],'created_at':d['created_at'],'last_seen':self.seen.get(d['id'])} for d in self.devices]
+            return [{'id':d['id'],'name':d['name'],'created_at':d['created_at'],'last_seen':self.seen.get(d['id']),
+                     **self.profile_for('display:'+d['id'])} for d in self.devices]
 
     def revoke(self,identifier):
         with self.lock:

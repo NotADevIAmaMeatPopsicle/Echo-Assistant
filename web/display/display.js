@@ -29,6 +29,7 @@ async function api(path, body, method = 'POST', signal) {
   return result;
 }
 function page(name) {
+  if(window.echoAllowedPages&&!window.echoAllowedPages.has(name))name='home';
   if (!titles[name]) name = 'home';
   document.querySelectorAll('.page').forEach(p => p.hidden = p.id !== `page-${name}`);
   document.querySelectorAll('[data-page]').forEach(b => { b.classList.toggle('selected', b.dataset.page === name); if (b.closest('nav') || b.classList.contains('rail-settings')) b.setAttribute('aria-current', b.dataset.page === name ? 'page' : 'false'); });
@@ -45,7 +46,7 @@ function guardButtons() {
     $(form).querySelector('button[type="submit"]').disabled = busy || !fresh(source);
   }
   document.querySelectorAll('[data-minutes]').forEach(b => b.disabled = busy || !fresh('timers'));
-  $('send-chat').disabled = !!chatAbort || displayCaptureBusy || !fresh('timers') || signInRequired;
+  $('send-chat').disabled = !!chatAbort || displayCaptureBusy || !fresh('timers') || signInRequired || (data.session?.profile?.mode==='guest'&&!data.session.profile.conversation);
 }
 async function action(callback, message = 'Command accepted. Checking the current state…') {
   if (busy) return; busy = true; guardButtons();

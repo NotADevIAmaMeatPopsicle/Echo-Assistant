@@ -6,7 +6,8 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.background import BackgroundTask
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
-from .experiences import Sources, ExperienceUnavailable, ExperienceConflict
+from .experiences import Sources, Experiences, ExperienceUnavailable, ExperienceConflict
+from .display_profiles import ScopedSources
 from .home import HomeUnavailable
 from .calendar_events import CalendarEvent
 from .conversation_request import run_conversation
@@ -32,7 +33,10 @@ class DraftRequest(BaseModel):
     timezone:str=Field(min_length=1,max_length=80)
 
 
-def install(app, experiences, authorize, owner, writer=None, briefing=None, doorbells=None, drafts=None):
+def install(app, experiences, authorize, owner, writer=None, briefing=None, doorbells=None, drafts=None,displays=None):
+    def scoped(session):
+        if displays is None:return experiences
+        return Experiences(experiences.home,ScopedSources(experiences.store,lambda:displays.profile_for(session)['profile'])) if displays.profile_for(session)['profile']['mode']=='guest' else experiences
     @app.exception_handler(ExperienceUnavailable)
     async def unavailable(request, error): return JSONResponse({'detail': str(error)}, status_code=503)
 
@@ -57,11 +61,11 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
     def select(body: Selection): return call(lambda: experiences.save_sources(body.sources.model_dump(), body.revision))
 
     @app.get('/v1/display/sources', dependencies=[Depends(authorize)])
-    def sources(): return call(experiences.sources)
+    def sources(session=Depends(authorize)): return call(scoped(session).sources)
 
     @app.get('/v1/display/presence', dependencies=[Depends(authorize)])
-    def presence(request: Request):
-        result = call(experiences.presence)
+    def presence(request: Request,session=Depends(authorize)):
+        result = call(scoped(session).presence)
         authorize(request)
         return result
 
@@ -76,8 +80,8 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
         return call(lambda:doorbells.dismiss(identifier))
 
     @app.get('/v1/display/agenda', dependencies=[Depends(authorize)])
-    def agenda(start: str = Query(pattern=r'^\d{4}-\d{2}-\d{2}$'), days: int = Query(default=7, ge=1, le=31)):
-        return call(lambda: experiences.agenda(start, days))
+    def agenda(start: str = Query(pattern=r'^\d{4}-\d{2}-\d{2}$'), days: int = Query(default=7, ge=1, le=31),session=Depends(authorize)):
+        return call(lambda: scoped(session).agenda(start, days))
 
     @app.get('/v1/display/briefing',dependencies=[Depends(authorize)])
     def daily_briefing(timezone:str=Query(min_length=1,max_length=80)):
@@ -100,14 +104,14 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
         except ValueError as error:raise HTTPException(422,str(error)) from None
 
     @app.get('/v1/display/cameras/{identifier}/snapshot', dependencies=[Depends(authorize)])
-    def snapshot(identifier: str, request: Request):
-        image, mime = call(lambda: experiences.camera(identifier))
+    def snapshot(identifier: str, request: Request,session=Depends(authorize)):
+        image, mime = call(lambda: scoped(session).camera(identifier))
         authorize(request)  # A revoked display must not receive a just-fetched frame.
         return Response(image, media_type=mime)
 
     @app.get('/v1/display/cameras/{identifier}/stream', dependencies=[Depends(authorize)])
-    async def stream(identifier: str, request: Request):
-        relay = CameraStream(experiences, identifier, lambda: authorize(request))
+    async def stream(identifier: str, request: Request,session=Depends(authorize)):
+        relay = CameraStream(scoped(session), identifier, lambda: authorize(request))
         try: await relay.open()
         except PermissionError as error: raise HTTPException(403, str(error)) from None
         except (HomeUnavailable, httpx.HTTPError, ValueError, StopAsyncIteration, TimeoutError):

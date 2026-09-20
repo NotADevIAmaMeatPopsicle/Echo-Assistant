@@ -198,11 +198,11 @@
     const target=event.target;if(panel.contains(target))return;
     clearTimeout(focusTimer);focusTimer=null;
     if(innerWidth>760&&eligible(target))focusTimer=setTimeout(()=>{if(document.activeElement===target)open(target);},0);
-    // Buttons finish their click before closing; reflow on focus can move Send/Save under a finger.
-    else if(!panel.hidden&&target.matches('input,textarea,select'))close();
+    // Other controls finish their click before closing. Reflow on focus can
+    // move checkboxes, pickers and Send/Save out from under the opening tap.
   });
   document.addEventListener('input',event=>{if(event.target===input&&!changing){replacement=null;if(!panel.hidden)completions();}});
-  document.addEventListener('keydown',event=>{if(event.target===input&&(event.key==='Escape'||event.key.length===1||event.key==='Backspace'||event.key==='Enter'))close();});
+  document.addEventListener('keydown',event=>{if(event.key==='Tab'||event.target===input&&(event.key==='Escape'||event.key.length===1||event.key==='Backspace'||event.key==='Enter'))close();});
   toggle.addEventListener('pointerdown',event=>event.preventDefault());
   toggle.addEventListener('click',()=>{if(panel.hidden||input!==chatInput){chatInput.focus({preventScroll:true});open(chatInput);}else close();});
   document.getElementById('voice-start').addEventListener('click',close);

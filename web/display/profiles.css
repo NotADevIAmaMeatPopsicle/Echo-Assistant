@@ -1,0 +1,16 @@
+#display-access-dialog{width:min(800px,calc(100vw - 30px));max-width:800px;max-height:calc(100dvh - 24px);padding:22px;overflow:hidden}
+#display-access-form{display:flex;flex-direction:column;max-height:calc(100dvh - 72px)}
+#display-access-scroll{overflow:auto;min-height:0;padding:0 10px 0 0;scrollbar-width:thin}
+#display-access-form>.row,#display-access-status{flex:none}
+#display-access-form h2{margin-bottom:5px}#display-access-status{margin:8px 0;font-size:12px;color:var(--soft)}
+.access-device{display:grid;grid-template-columns:1fr 140px;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding:8px 0;margin:0}
+.access-device span{overflow-wrap:anywhere}.access-device small{display:block;font-size:11px;color:var(--soft);margin-top:4px}
+.access-sources{border-top:1px solid var(--line);padding-top:12px;margin-top:16px}
+#display-profile-badge{color:var(--mint);font-size:11px;max-width:220px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.guest-display [data-page=lists],.guest-display [data-page=routines],.guest-display [data-page=planner],.guest-display [data-page=audio],
+.guest-display .daily-briefing,.guest-display #calendar-create,.guest-display #room-cards,.guest-display .devices-row,
+.guest-display #alarm-form,.guest-display #pi-voice-form,.guest-display #pi-audio-form,.guest-display #pi-voice-diagnostics,
+.guest-display #chat-home-permission,.guest-display #music-receiver option[value=round]{display:none!important}
+.guest-display #page-settings>.two-columns,.guest-display #page-music .home-speaker-controls{display:none!important}
+#guest-display-note{margin-bottom:14px;border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--soft);font-size:13px}
+@media(max-width:760px){#display-access-dialog{padding:15px}.access-device{grid-template-columns:1fr 110px}#display-profile-badge{max-width:100px}}

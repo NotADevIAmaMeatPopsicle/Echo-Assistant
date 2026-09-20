@@ -24,6 +24,18 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Display access checkpoint:** owner-assigned Household/Guest profiles are deployed
+to the private host and current Pi client. Guests receive only selected devices
+and read-only sources, with separate temporary conversation and no household
+memory or Hermes tools. The Pi clears stale replies after access changes. Existing
+Household pairings and private settings were preserved; the listener is armed,
+Spotify is discoverable, and the echo-cancellation service remains active.
+The full Windows suite passed 476 tests with seven platform-specific skips;
+64 focused Linux tests and the synthetic voice pipeline passed. Browser checks
+cover profile editing, guest layout and existing home/calendar/keyboard flows.
+No sound or home actions were used. Per-person accounts and scoped guest voice
+tools remain open; see [Display access](DISPLAY_ACCESS.md).
+
 **Calendar drafting checkpoint:** model-assisted drafts now run on the private host
 and the current Deck client. Both the event form and smart-display conversations
 offer editable fields before explicit creation. Twenty-seven focused Windows
@@ -129,6 +141,10 @@ parity. Known gaps documented in the smart-display guide remain:
 - [ ] Synchronized grouped music across endpoints.
 - [ ] External calling with a supported provider.
 - [ ] Household/guest profiles and per-user/per-room source policies.
+      Per-display Household/Guest profiles, selected home-device and read-only
+      source grants, and isolated guest conversation are implemented. Per-person
+      identities, separate member memory/accounts, scoped guest voice tools and
+      Mini profiles remain open; see [Display access](DISPLAY_ACCESS.md).
 - [ ] Supported casting/commercial-video integrations, subject to provider access
       and licensing; current local media and Spotify do not establish those features.
 - [ ] Full Windows host and Hermes disaster-recovery rehearsal.

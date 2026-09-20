@@ -105,7 +105,7 @@ class Listener:
         self.lock=threading.RLock();self.stop=threading.Event();self.cancel=threading.Event();self.talk=threading.Event();self.end_capture=threading.Event()
         self.thread=None;self.capture=None;self.player=None;self.detector=None;self.frames=None
         self.phase='disabled';self.error=None;self.config_error=False;self.request_id=None;self.cancel_sent=None;self.pending_http=None;self.talk_options=None
-        self.result=None;self.result_at=0.;self.client=secrets.token_hex(16);self.last_focus=0.;self.last_host=0.;self.host_ready=False;self.health_thread=None
+        self.result=None;self.result_at=0.;self.access_revision=None;self.client=secrets.token_hex(16);self.last_focus=0.;self.last_host=0.;self.host_ready=False;self.health_thread=None
         self.devices_at=0.;self.devices_in=[];self.devices_out=[]
         self.events=deque(maxlen=32);self.levels=deque(maxlen=125);self.level_at=0.;self.frame_count=0
         if self.path.exists():
@@ -223,8 +223,14 @@ class Listener:
             if not self.config['enabled'] or self.config['muted']:
                 self.host_ready=False;continue
             try:
-                self.host_ready=bool(self.request('/v1/display/voice')['available']);self.last_host=time.monotonic()
-            except Exception:self.host_ready=False
+                state=self.request('/v1/display/voice');revision=state.get('access_revision',0)
+                if self.access_revision is not None and revision!=self.access_revision:
+                    with self.lock:self.result=None;self.interrupt()
+                self.access_revision=revision;self.host_ready=bool(state['available']);self.last_host=time.monotonic()
+            except Exception as error:
+                self.host_ready=False
+                if getattr(error,'code',None) in (401,403):
+                    with self.lock:self.result=None;self.interrupt()
 
     def externally_busy(self):
         with self.music.lock:
@@ -309,7 +315,8 @@ class Listener:
             if self.detector.feed(frame):self.talk.set();raise InterruptedError()
         self.check(config);reply=result.result();self.request_id=None
         self.note('reply_received',elapsed_ms=round((time.monotonic()-request_at)*1000),transcript_characters=len(str(reply.get('transcript',''))))
-        self.result={'id':identifier,'text':str(reply.get('text',''))[:4000],'transcript':str(reply.get('transcript',''))[:1200],'status':reply.get('status','unavailable'),'home_actions':reply.get('home_actions',[])[:12]};self.result_at=time.monotonic()
+        self.result={'id':identifier,'text':str(reply.get('text',''))[:4000],'transcript':str(reply.get('transcript',''))[:1200],'status':reply.get('status','unavailable'),'home_actions':reply.get('home_actions',[])[:12],
+                     'access_revision':reply.get('access_revision',0)};self.result_at=time.monotonic()
         draft=reply.get('calendar_draft')
         if isinstance(draft,dict) and len(json.dumps(draft))<=12_000:self.result['calendar_draft']=draft
         if reply.get('audio'):

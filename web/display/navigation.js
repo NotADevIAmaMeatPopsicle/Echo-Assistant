@@ -29,7 +29,7 @@
     const dx = event.clientX - start.x, dy = event.clientY - start.y;
     if (Math.abs(dx) < Math.max(70, Math.min(110, main.clientWidth * .12)) || Math.abs(dx) < Math.abs(dy) * 2 || performance.now() - start.at > 1200) return;
     suppressClickUntil = performance.now() + 450;
-    const pages = [...document.querySelectorAll('#navigation [data-page],.rail-settings[data-page]')].map(b => b.dataset.page);
+    const pages = [...document.querySelectorAll('#navigation [data-page],.rail-settings[data-page]')].filter(b=>b.getClientRects().length&&(!window.echoAllowedPages||window.echoAllowedPages.has(b.dataset.page))).map(b => b.dataset.page);
     const index = pages.indexOf(location.hash.slice(1)), next = index + (dx < 0 ? 1 : -1);
     if (index < 0 || next < 0 || next >= pages.length) return;
     page(pages[next]);

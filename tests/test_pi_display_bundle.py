@@ -11,6 +11,8 @@ import unittest
 import urllib.request
 import urllib.error
 import httpx
+from io import BytesIO
+from unittest.mock import Mock
 
 PI=Path(__file__).resolve().parents[1]/'deploy/pi'
 sys.path.insert(0,str(PI))
@@ -21,6 +23,33 @@ setup=importlib.util.module_from_spec(spec);spec.loader.exec_module(setup)
 
 
 class BundleTests(unittest.TestCase):
+    def test_guest_bridge_hides_old_reply_and_denies_setup_changes(self):
+        access={'profile':{'mode':'guest','conversation':True},'profile_revision':1}
+        class Opener:
+            def open(self,*args,**kwargs):return BytesIO(json.dumps(access).encode())
+        class LocalBridge(Bridge):pass
+        LocalBridge.configuration={'url':'https://host.invalid/display','credential':'synthetic-display'}
+        LocalBridge.opener=Opener();LocalBridge.voice=Mock();LocalBridge.music=Mock();LocalBridge.alerts=Mock()
+        LocalBridge.voice.settings.return_value={'supported':True,'result':{'text':'Old private reply','access_revision':0}}
+        LocalBridge.voice.control.return_value={'accepted':True}
+        server=ThreadingHTTPServer(('127.0.0.1',0),LocalBridge)
+        thread=Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            with httpx.Client(base_url=f'http://127.0.0.1:{server.server_port}',trust_env=False,headers={'X-Echo-Request':'1'}) as client:
+                self.assertIsNone(client.get('/v1/display/local-voice').json()['result'])
+                for path in ('local-voice','music/settings','alert-settings'):
+                    self.assertEqual(client.put('/v1/display/'+path,json={}).status_code,403)
+                self.assertEqual(client.post('/v1/display/local-voice',json={'action':'talk','allow_home':True}).status_code,200)
+                LocalBridge.voice.control.assert_called_with(action='talk',allow_home=False)
+                self.assertEqual(client.post('/v1/display/local-voice',json={'action':'mute'}).status_code,200)
+                LocalBridge.voice.control.assert_called_with(action='mute')
+                LocalBridge.voice.settings.return_value['result']['access_revision']=1
+                self.assertIsNotNone(client.get('/v1/display/local-voice').json()['result'])
+                access['profile']['conversation']=False
+                self.assertEqual(client.get('/v1/display/local-voice').status_code,403)
+                LocalBridge.voice.configure.assert_not_called();LocalBridge.music.configure.assert_not_called();LocalBridge.alerts.configure.assert_not_called()
+        finally:server.shutdown();server.server_close();thread.join(2)
+
     def test_local_screen_controls_work_offline_but_reject_cross_origin(self):
         class LocalScreen:
             def __init__(self):self.wakes=0
