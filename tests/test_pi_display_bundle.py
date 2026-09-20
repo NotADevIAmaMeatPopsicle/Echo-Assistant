@@ -21,6 +21,30 @@ setup=importlib.util.module_from_spec(spec);spec.loader.exec_module(setup)
 
 
 class BundleTests(unittest.TestCase):
+    def test_local_screen_controls_work_offline_but_reject_cross_origin(self):
+        class LocalScreen:
+            def __init__(self):self.wakes=0
+            def snapshot(self):return {'supported':True}
+            def wake(self):self.wakes+=1
+        class Unreachable:
+            def open(self,*args,**kwargs):raise AssertionError('Screen control must remain local')
+        class LocalBridge(Bridge):pass
+        LocalBridge.configuration={'url':'https://host.invalid/display','credential':'test-private-credential'}
+        LocalBridge.opener=Unreachable();LocalBridge.screen=LocalScreen()
+        server=ThreadingHTTPServer(('127.0.0.1',0),LocalBridge)
+        thread=Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            base=f'http://127.0.0.1:{server.server_port}'
+            with httpx.Client(base_url=base,trust_env=False) as client:
+                self.assertEqual(client.get('/v1/display/screen').json(),{'supported':True})
+                self.assertEqual(client.post('/v1/display/screen',json={'action':'wake'}).status_code,403)
+                headers={'Origin':'https://untrusted.invalid','X-Echo-Request':'1'}
+                self.assertEqual(client.post('/v1/display/screen',headers=headers,json={'action':'wake'}).status_code,403)
+                headers['Origin']=base
+                self.assertEqual(client.post('/v1/display/screen',headers=headers,json={'action':'wake'}).status_code,200)
+                self.assertEqual(LocalBridge.screen.wakes,1)
+        finally:server.shutdown();server.server_close();thread.join(2)
+
     def test_first_boot_without_host_retries_without_exposing_credentials(self):
         class Unreachable:
             def open(self,*args,**kwargs):raise urllib.error.URLError('Synthetic network outage')

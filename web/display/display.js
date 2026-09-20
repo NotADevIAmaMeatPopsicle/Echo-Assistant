@@ -244,7 +244,7 @@ function tick() {
   renderClock($('home-clock'), formatter, now); renderClock($('ambient-clock'), formatter, now); $('home-date').textContent = date; $('ambient-date').textContent = date;
   $('greeting').textContent = now.getHours() < 12 ? 'Good morning.' : now.getHours() < 18 ? 'Good afternoon.' : 'Good evening.';
   $('ambient').classList.toggle('dim', preferences.dim);
-  if (preferences.idle && Date.now() - lastInput > preferences.idle * 1000 && !chatAbort && !displayCaptureBusy && !busy && !document.querySelector('dialog[open]') && $('ambient').hidden) ambient(true);
+  if (preferences.idle && Date.now() - lastInput > preferences.idle * 1000 && !chatAbort && !displayCaptureBusy && !busy && !document.body.classList.contains('screen-sleeping') && !document.querySelector('dialog[open]') && $('ambient').hidden) ambient(true);
   renderTimers(); guardButtons();
   renderConnection();
   if (!fresh('voice') || !fresh('timers') || signInRequired) renderVoice();

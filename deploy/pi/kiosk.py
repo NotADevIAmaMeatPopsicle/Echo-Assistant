@@ -91,6 +91,9 @@ def main():
     profile.mkdir(parents=True,exist_ok=True,mode=0o700)
     profile.chmod(0o700)
     browser = report['chromium']
+    from screen import Screen
+    try:Screen().apply()
+    except (OSError,subprocess.SubprocessError):pass
     os.execv(browser,[browser,'--kiosk','--no-first-run','--noerrdialogs',*dedicated_x11_flags(),*selected_audio_flags(Path.home()),f'--user-data-dir={profile}',url])
 
 

@@ -192,3 +192,13 @@ returned. The display now clears automatic service/microphone warnings when
 availability recovers, while retaining cancellation and request-result messages.
 The focused silent browser check covers service recovery, microphone removal
 and return, and delayed permission cancellation without opening an audio device.
+
+Deck screen comfort is installed: adjustable 2-minute dim / 10-minute sleep
+defaults, a black sleep cover, wake-only first touch/key, and opt-in X11 HDMI
+sleep. Voice requests and active calls/video keep the display awake; music alone
+does not. Synthetic checks cover timers, persistence, validation and preventing
+the wake tap from pressing a control underneath. The Pi reported DPMS Off and
+On during a silent sleep/wake check, and its native microphone remained armed.
+Physical backlight extinction and a real touch wake after idle remain unverified.
+Presence wake needs a configured sensor and is not implemented. Mini firmware
+does not inherit these Deck settings.

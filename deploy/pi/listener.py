@@ -93,7 +93,8 @@ class Segment:
 
 
 class Listener:
-    def __init__(self, request, music, home=None, *, captures=inputs, speakers=outputs, detector_factory=Detector, popen=subprocess.Popen):
+    def __init__(self, request, music, home=None, *, captures=inputs, speakers=outputs, detector_factory=Detector, popen=subprocess.Popen, wake_screen=None):
+        self.wake_screen=wake_screen
         self.request,self.music,self.captures,self.speakers,self.detector_factory,self.popen=request,music,captures,speakers,detector_factory,popen
         self.home=Path(home or Path.home());self.path=self.home/'.config/echo-display/voice.json'
         self.model=self.home/'.local/share/echo-display/runtime/voice-model'
@@ -203,6 +204,7 @@ class Listener:
             self.audio_focus(config,True);self.last_focus=time.monotonic()
 
     def audio_focus(self,config,active):
+        if active and self.wake_screen:self.wake_screen()
         if not active:
             self.music.focus(self.client,False)
             self.music.duck(self.client,False)

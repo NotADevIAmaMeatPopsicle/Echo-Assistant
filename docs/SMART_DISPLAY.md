@@ -47,9 +47,34 @@ separate event-creation permission, time zones and uncertain calendar responses.
 
 The initial layout targets **1024 × 600 landscape**, with responsive layouts for
 larger displays and phones. Its blue background, luminous ring, mint accents,
-and listening states share the round device's visual identity. Software dimming
-and reduced-motion support are included; software dimming does not switch off
-an LCD backlight.
+and listening states share the round device's visual identity. Reduced-motion
+support and idle screen protection are included.
+
+### Screen comfort
+
+In **Settings → Screen comfort**, choose separate dim and sleep timers. Defaults
+are **dim after 2 minutes** and **sleep after 10 minutes**. Choose Never to disable
+either timer, or use **Sleep now**. The first touch or key wakes the screen only;
+it cannot also activate a control underneath. Conversation, calls and playing
+video keep the screen awake. Music alone does not. An accepted local wake word
+wakes the Pi display without stopping the microphone or suspending the Pi.
+
+The browser dims the picture and uses a completely black sleep cover. On an
+X11 Pi bridge, **Switch off the display signal when sleeping** additionally
+enables HDMI DPMS. This is opt-in because Echo must not change a shared computer's
+desktop power policy. The Pi saves this choice in its private screen settings;
+ordinary browser companions save their timers locally. HDMI sleep remains
+available if the host connection drops. Touch wakes X11 independently of the host.
+Different HDMI panels may shut off their backlight, retain a black backlight, or
+show a brief no-signal notice; verify the actual panel. Software dimming alone
+does not reduce backlight power. This implementation does not configure Wayland.
+
+AMOLED pixels can develop permanent burn-in from prolonged static content. LCDs
+are much less susceptible, though temporary image retention is possible. These
+settings apply to the Deck/browser display; Mini firmware has separate brightness
+controls and does not inherit the Deck's power settings. No presence sensor is
+configured: touch and accepted wake words work, but camera, PIR and room-presence
+wake are not currently implemented. Echo does not infer occupancy from the mic.
 
 The [display design guide](DISPLAY_DESIGN.md) covers the bundled typeface,
 smooth status ring, touch sizing and native-resolution kiosk configuration.

@@ -68,6 +68,10 @@ rooms, music, timers, lists or the thermostat. Music sits at bottom right by
 default, with live artwork and playback control. Swipe left or right between
 pages, or jump straight to a page from the sidebar.
 
+Adjustable idle dimming and sleep keep the display from staying bright all day.
+Tap once to wake, or use an enabled wake word. Paired X11 Pi displays can also
+turn off the HDMI signal while music and the microphone keep running.
+
 ### A conversation with room to breathe
 
 Echo's status panel and settings sit beside the conversation. Type a message,

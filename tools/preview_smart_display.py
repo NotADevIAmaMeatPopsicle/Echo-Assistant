@@ -126,6 +126,8 @@ class DisplayPreview(Preview):
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
             return self.camera_sample(path.endswith('/stream'))
         assets = {'/assets/display/polish.css':('display/polish.css','text/css'),
+                  '/assets/display/screen.css':('display/screen.css','text/css'),
+                  '/assets/display/screen.js':('display/screen.js','text/javascript'),
                   '/assets/display/home.css':('display/home.css','text/css'),
                   '/assets/display/home.js':('display/home.js','text/javascript'),
                   '/assets/display/navigation.js':('display/navigation.js','text/javascript'),

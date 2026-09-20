@@ -1,0 +1,10 @@
+#screen-cover{position:fixed;inset:0;z-index:10000;border:0;border-radius:0;background:#000;color:transparent;opacity:0;pointer-events:none;transition:opacity .7s ease;cursor:none;width:100%;height:100%;padding:0;box-shadow:none}
+#screen-cover[data-mode=dim]{opacity:.68}
+#screen-cover[data-mode=sleep]{opacity:1;pointer-events:auto}
+#screen-settings{margin-top:16px}
+#screen-settings form{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px}
+#screen-settings .screen-wide{grid-column:1/-1}
+#screen-settings .row{gap:12px}
+body.screen-sleeping .orb,body.screen-sleeping .orb-core{animation-play-state:paused!important}
+@media(max-width:760px){#screen-settings form{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){#screen-cover{transition:none}}

@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 import ssl
 import stat
+import subprocess
 import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
@@ -16,6 +17,7 @@ from connect import NoRedirect
 from spotify import Spotify,Unavailable
 from alerts import Alerts
 from listener import Listener
+from screen import Screen
 
 
 class Bridge(BaseHTTPRequestHandler):
@@ -24,6 +26,28 @@ class Bridge(BaseHTTPRequestHandler):
     music=None
     alerts=None
     voice=None
+    screen=None
+
+    def local_screen(self,body):
+        # Local screen comfort settings must work even when the host is offline.
+        # proxy() has already enforced loopback Host and same-origin write headers.
+        try:
+            if self.command in {'GET','HEAD'}:result=self.screen.snapshot()
+            elif self.command=='PUT' and body and len(body)<=512:
+                result=self.screen.configure(json.loads(body))
+            elif self.command=='POST' and body and len(body)<=128:
+                value=json.loads(body)
+                if value=={'action':'wake'}:self.screen.wake()
+                elif value=={'action':'sleep'}:self.screen.sleep()
+                else:raise ValueError('Invalid screen action')
+                result={'ok':True}
+            else:return self.error_reply(405,'Unsupported screen method')
+            raw=json.dumps(result).encode();self.send_response(200)
+            for key,value in {'Content-Type':'application/json','Content-Length':str(len(raw)),'Cache-Control':'no-store','X-Echo-Display-Bridge':'1'}.items():self.send_header(key,value)
+            self.end_headers()
+            if self.command!='HEAD':self.wfile.write(raw)
+        except (ValueError,TypeError):return self.error_reply(422,'Choose valid screen settings; sleep must follow dimming')
+        except (OSError,subprocess.SubprocessError):return self.error_reply(503,'Display power control is unavailable')
 
     def local_music(self,path,body,base,headers):
         # Local controls retain the display's enrollment boundary. A revoked
@@ -143,6 +167,8 @@ a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
         path='/display' if self.path=='/' else self.path
         display_page=requested.path in {'/','/display'} and self.command in {'GET','HEAD'}
         headers={'Authorization':'Display '+self.configuration['credential'],'X-Echo-Request':'1','Origin':base}
+        if self.screen is not None and requested.path=='/v1/display/screen':
+            return self.local_screen(body)
         if self.voice is not None and requested.path=='/v1/display/local-voice':
             return self.local_voice(body,base,headers)
         if self.alerts is not None and requested.path=='/v1/display/alert-settings':
@@ -188,6 +214,9 @@ def main():
     Bridge.opener=urllib.request.build_opener(NoRedirect,urllib.request.HTTPSHandler(context=ssl.create_default_context()),urllib.request.ProxyHandler({}))
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Bridge)
     Bridge.music=Spotify();Bridge.music.start()
+    Bridge.screen=Screen()
+    try:Bridge.screen.apply()
+    except (OSError,subprocess.SubprocessError):pass  # X11 may start after the bridge.
     source=urlsplit(config['url']);base=f'{source.scheme}://{source.netloc}'
     def native_request(path,body=None,content_type="application/json",timeout=5):
         headers={'Authorization':'Display '+config['credential'],'Origin':base,'X-Echo-Request':'1','Content-Type':content_type}
@@ -198,7 +227,7 @@ def main():
             if len(raw)>12_000_000:raise ValueError('Native response exceeds its limit')
             return json.loads(raw)
     Bridge.alerts=Alerts(native_request,Bridge.music);Bridge.alerts.start()
-    Bridge.voice=Listener(native_request,Bridge.music);Bridge.voice.start()
+    Bridge.voice=Listener(native_request,Bridge.music,wake_screen=Bridge.screen.wake);Bridge.voice.start()
     print(f'Echo display bridge listening on loopback port {args.port}. Credentials stay outside the browser.',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass
