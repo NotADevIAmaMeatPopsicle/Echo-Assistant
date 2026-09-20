@@ -30,6 +30,6 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install -r config/host-linux.lock.txt
-      - run: python -m unittest tests.test_pi_display_bundle tests.test_pi_listener tests.test_pi_spotify tests.test_display_alerts tests.test_container_supervisor tests.test_linux_storage tests.test_host_packaging tests.test_recovery_archive
+      - run: python -m unittest tests.test_pi_display_bundle tests.test_pi_echo_audio tests.test_pi_listener tests.test_pi_spotify tests.test_display_alerts tests.test_container_supervisor tests.test_linux_storage tests.test_host_packaging tests.test_recovery_archive
       - run: python tools/check_pi_listener_pipeline.py
       - run: python tools/check_pi_music_pipeline.py

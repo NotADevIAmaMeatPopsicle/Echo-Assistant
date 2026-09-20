@@ -115,8 +115,9 @@ Bluetooth audio receivers are not included.
 Pi wake words remain active during Spotify. Choose pause mode, or lower music by
 80% through the cue and conversation with a shared audio output. Ducking restores
 the previous level afterward; pause mode waits for you to resume. Interrupting
-Echo's own spoken reply requires an echo-cancelled input; room pickup and feedback
-still need physical verification. See [display music](docs/MUSIC_DISPLAY.md), [Pi receiver
+Echo's own spoken reply requires an echo-cancelled input. An optional
+[Pi WebRTC audio service](docs/PI_ECHO_AUDIO.md) supplies that processing; room
+pickup and feedback still need physical verification. See [display music](docs/MUSIC_DISPLAY.md), [Pi receiver
 setup](docs/PI_SPOTIFY.md), and [voice setup](docs/PI_VOICE.md).
 
 ### Your day, lists, and reminders

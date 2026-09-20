@@ -50,12 +50,13 @@ previous output level returns afterward; Spotify's volume setting is unchanged.
 A cancelled request releases the reduction too. This never resumes a track that
 someone paused.
 
-Interrupting Echo's **own spoken reply** by voice still requires a selected
-microphone input that already cancels speaker echo, such as a hardware DSP or OS
-echo-cancelled source. Otherwise use Talk or Cancel during replies. This adapter
-does not implement acoustic echo cancellation. Music or nearby speech can still
-cause false wakes, especially when the microphone is close to a loud speaker;
-actual room performance remains a hardware check.
+Interrupting Echo's **own spoken reply** by voice requires an echo-cancelled
+input. Dedicated ALSA Pi builds can use the optional
+[WebRTC audio service](PI_ECHO_AUDIO.md), which routes the microphone and Echo's
+playback through one processor. Hardware DSP and an existing OS echo-cancelled
+source are alternatives. Without a processed input, use Talk or Cancel during
+replies. Music or nearby speech can still cause false wakes; actual room
+performance remains a hardware check.
 
 In pause mode Spotify stays paused after the conversation. Browser
 recording, calls and announcements take audio priority and suspend native wake
@@ -104,3 +105,6 @@ settings; silent browser checks cover the native state and controls.
 Actual wake accuracy, microphone gain, reply audibility and echo control remain
 physical acceptance. New installations keep listening disabled until their
 microphone and speaker are selected and the listener is enabled.
+The optional WebRTC service is installed on the current Pi with processed input
+frames verified and its shared playback route selected. This establishes routing,
+not measured echo reduction or an acoustic acceptance result.

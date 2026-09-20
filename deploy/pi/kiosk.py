@@ -75,6 +75,16 @@ def selected_audio_flags(home):
             if isinstance(value.get(key),str) and re.fullmatch(r'[A-Za-z0-9_.,:=+-]{1,120}',value[key])]
 
 
+def selected_audio_environment(home,uid):
+    # Chromium may prefer PulseAudio once it is installed. Keep its microphone,
+    # replies and intercom on the same explicitly selected Echo processing server.
+    flags=selected_audio_flags(home)
+    if ('--alsa-input-device=echo_cancelled' in flags and
+            '--alsa-output-device=echo_processed' in flags):
+        return {'PULSE_SERVER':f'unix:/run/user/{uid}/echo-audio/native'}
+    return {}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',type=Path,default=Path.home()/'.config/echo-display/config.json')
@@ -94,6 +104,7 @@ def main():
     from screen import Screen
     try:Screen().apply()
     except (OSError,subprocess.SubprocessError):pass
+    os.environ.update(selected_audio_environment(Path.home(),os.getuid()))
     os.execv(browser,[browser,'--kiosk','--no-first-run','--noerrdialogs',*dedicated_x11_flags(),*selected_audio_flags(Path.home()),f'--user-data-dir={profile}',url])
 
 

@@ -16,6 +16,19 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Pi audio checkpoint:** the optional WebRTC echo-cancellation service is installed
+on the Pi. The native recorder receives processed microphone frames, while
+Spotify, replies, alerts and the kiosk select the same playback-reference output.
+The listener is armed, Spotify is discoverable, and the existing hardware mixer
+gain and 2% output setting are preserved. Module startup was also checked with
+null audio devices. No test sound was played during this deployment. Actual
+music/wake/cue, echo reduction and spoken interruption still need human acceptance;
+the earlier headset playback confirmation predates this processing route.
+The listener recovered fresh frames in under four seconds after an audio-service
+restart. Nine focused configuration/bundle tests passed; this is not a cold-boot
+or physical listening result.
+Setup, privacy boundaries and rollback are in [Pi echo cancellation](PI_ECHO_AUDIO.md).
+
 **Recovery checkpoint:** archive version 2 now includes shared encrypted photos,
 room-audio settings, doorbell state and calendar dispatch receipts. A fresh
 network-isolated API, container restart and restore into a new volume passed,
@@ -52,6 +65,7 @@ or human-speech pickup. The next test needs someone speaking near the microphone
 - [x] Answered two-way intercom for paired displays and the round speaker (software; round firmware installation and physical audio acceptance pending).
 - [x] Pi push-to-talk/ALSA adapter and request-specific reply routing (software; simulated audio only).
 - [x] Pi local wake, cue/capture/replies, software mute and request interruption (software; USB headset listener configured).
+- [x] Optional Pi WebRTC echo cancellation and a shared playback reference for music, voice and kiosk audio (installed; acoustic performance unverified).
 - [ ] Physical Pi wake and echo-control acceptance, including playback and spoken interruption with the chosen microphone.
 - [x] Pi Spotify receiver, ALSA playback, output attenuation and endpoint-specific naming (initial headset playback owner-confirmed; shared-output listening and session recovery remain acceptance).
 - [x] Pi alarm/reminder chimes, saved destination routing and visible snooze/dismiss controls (software; physical audio pending).

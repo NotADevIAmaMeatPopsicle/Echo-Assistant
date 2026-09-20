@@ -62,6 +62,12 @@ amplifier's physical volume.
 
 ## Voice, calls and privacy
 
+For software echo cancellation as well as shared playback, use the optional
+[Pi WebRTC audio service](PI_ECHO_AUDIO.md). Select its `echo_processed` output
+for Spotify and voice, and `echo_cancelled` for the microphone. This replaces
+the need for the simpler mixer below and supplies a playback reference for
+reducing Echo's own sound in microphone capture.
+
 For music that continues quietly while Echo listens, create a shared ALSA output:
 
 ```bash
