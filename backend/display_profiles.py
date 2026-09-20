@@ -13,6 +13,7 @@ class DisplayProfile(BaseModel):
     name:str=Field(default='Household',min_length=1,max_length=60)
     room:str=Field(default='',max_length=60)
     conversation:bool=True
+    home_voice:bool=False
     home_devices:dict[str,Literal['read','control']]=Field(default_factory=dict,max_length=100)
     calendars:list[str]=Field(default_factory=list,max_length=12)
     cameras:list[str]=Field(default_factory=list,max_length=12)
@@ -104,13 +105,17 @@ class GuestSettings:
 
 class ProfileAgent:
     """Use a separate volatile conversation store and provider-only path for guests."""
-    def __init__(self,household,guest,displays):self.household,self.guest,self.displays=household,guest,displays
+    def __init__(self,household,guest,displays,home=None):self.household,self.guest,self.displays,self.home=household,guest,displays,home
     def respond(self,text,session='device',lookup=False,**kwargs):
         before=self.displays.profile_for(session);profile=before['profile']
         if profile['mode']=='guest':
             if not profile['conversation']:raise HTTPException(403,'Conversation is not shared with this display')
+            result=None
+            from .lookup import lookup_request
+            if self.home and not lookup and not lookup_request(text):
+                result=self.home.respond(text,session,before,allow_home=kwargs.get('allow_home_actions',False),cancel=kwargs.get('cancel'))
             kwargs.update(allow_home_actions=False,calendar_review=False)
-            result=self.guest.respond(text,session,lookup,**kwargs)
+            if result is None:result=self.guest.respond(text,session,lookup,**kwargs)
         else:result=self.household.respond(text,session,lookup,**kwargs)
         if self.displays.profile_for(session)!=before:raise HTTPException(409,'Display access changed during the reply')
         return {**result,'access_revision':before['profile_revision']}

@@ -10,7 +10,9 @@
 .guest-display [data-page=lists],.guest-display [data-page=routines],.guest-display [data-page=planner],.guest-display [data-page=audio],
 .guest-display .daily-briefing,.guest-display #calendar-create,.guest-display #room-cards,.guest-display .devices-row,
 .guest-display #alarm-form,.guest-display #pi-voice-form,.guest-display #pi-audio-form,.guest-display #pi-voice-diagnostics,
-.guest-display #chat-home-permission,.guest-display #music-receiver option[value=round]{display:none!important}
+.guest-display #music-receiver option[value=round]{display:none!important}
 .guest-display #page-settings>.two-columns,.guest-display #page-music .home-speaker-controls{display:none!important}
 #guest-display-note{margin-bottom:14px;border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--soft);font-size:13px}
 @media(max-width:760px){#display-access-dialog{padding:15px}.access-device{grid-template-columns:1fr 110px}#display-profile-badge{max-width:100px}}
+
+.guest-display:not(.guest-home-voice) #chat-home-permission{display:none!important}

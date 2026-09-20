@@ -126,7 +126,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     auth = BrowserAuth(token)
     displays = Displays(runtime_root,store.protector)
     guest_echo=EchoAgent(GuestSettings(store),echo.provider,MemoryStore(None,store.protector))
-    profiled_echo=ProfileAgent(echo,guest_echo,displays)
+    from .guest_home import GuestHome
+    profiled_echo=ProfileAgent(echo,guest_echo,displays,GuestHome(catalog,actions,displays))
     speech_restart = SpeechRestart(runtime_root)
     speaker_check = SpeakerCheck(runtime_root)
     agent_apply = AgentApply(runtime_root, store)

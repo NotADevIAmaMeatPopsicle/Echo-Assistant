@@ -27,8 +27,38 @@ sources. Select each item deliberately:
 - **Conversation:** optionally allow general questions and public web lookup
   through the configured provider. It uses separate temporary history and Echo's
   default personality. Household memory, private personality text, lists, routines,
-  calendar drafts and Hermes tools are not passed to the guest model. Use Rooms
-  for approved home actions; guest speech does not call household tools.
+  calendar drafts and Hermes tools are not passed to the guest model.
+- **Local guest home voice commands:** a separate option, off by default. When
+  enabled, clear typed/spoken commands can read or control only the selected home
+  devices. Processing is local to Echo; device names and state are not sent to a
+  model. The normal conversation provider has no home tools.
+
+## Guest home commands
+
+Enable **Allow local guest home voice commands** in that display's owner-managed
+Access page. Conversation must also be enabled. Examples:
+
+- “What devices are shared?” or “What is the status of Guest lamp?”
+- “Turn off Guest lamp” or “Set Guest room lights to 20 percent.”
+- “Set Guest thermostat to 21 Celsius.” Temperature units must be explicit.
+- “Pause Guest speaker,” “Unmute Guest speaker,” or “Set Guest speaker volume to 15 percent.”
+
+Use the actual names shown on Rooms. Room-light commands include only shared
+lights in that room. Unclear or duplicate names ask for clarification; pronouns,
+conditions, scenes, routines and arbitrary Home Assistant services are not
+interpreted as guest commands. Complex requests can use the explicit Rooms controls.
+
+Changes also require **Allow home actions** on the current typed/push-to-talk
+message. Native Pi wake requests use the owner's saved wake home-action setting.
+Both paths recheck global and display permissions before dispatch; View never
+becomes Control. Device capability/range validation and observed-state receipts
+use the same action engine as household controls. Cancellation or revocation
+stops new commands; an action already sent cannot be undone. Request results are
+not inserted into the general guest model's history.
+
+The current Pi client forwards push-to-talk permission only when this option is
+enabled. Older clients keep guest push-to-talk home actions disabled. No existing
+profile is opted in by the update, and no real home actions are used during installation.
 
 Guest displays retain their own local Spotify playback, clock, screen controls,
 and timers/alerts addressed to that display. Existing alerts for that endpoint
@@ -59,13 +89,17 @@ display page. Removing a profile grant does not delete household data.
 
 These are **per-device access profiles**, not per-person sign-in or voice
 identification. Anyone using a Household display receives its household access.
-Separate member identities, individual memory/calendar accounts, guest voice
-control through scoped tools, and profiles on the Mini remain open work.
+Separate member identities, individual memory/calendar accounts, and profiles on
+the Mini remain open work. Local guest home commands
+are implemented with the explicit scope described above.
 
 Synthetic API checks exercise denied direct routes, isolated typed and spoken
 conversation, selected-source filtering, global revocation, timer ownership,
-encryption/restart behavior and profile changes during a reply. Browser checks
-cover the owner editor and guest layout; these do not establish physical guest
+encryption/restart behavior and profile changes during a reply. Guest command checks
+cover exact device/room matching, current-message consent, read-only access,
+revocation before dispatch, unsupported values, cancellation and validation mode.
+Browser checks cover the owner editor, optional voice consent and guest layout;
+these do not establish physical guest
 use or replace the remaining hardware acceptance.
 
 The private host and current Pi client include this feature. Existing pairings

@@ -23,6 +23,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.screenshot({path:'output/playwright/display-access-profile.png',animations:'disabled'});
     assert.equal(saved,null);await page.locator('#display-access-save').tap();await page.locator('#display-access-dialog').waitFor({state:'hidden'});
     assert.equal(saved.revision,0);assert.equal(saved.profile.mode,'guest');assert.equal(saved.profile.home_devices[entity],'read');
+    assert.equal(saved.profile.home_voice,false);
     assert.deepEqual(saved.profile.calendars,['calendar.household_demo']);
     assert.deepEqual(saved.profile.cameras,['camera.porch_demo']);
     const guest=await browser.newPage({viewport:{width:1024,height:600},hasTouch:true});guest.on('pageerror',e=>errors.push(e.message));
@@ -38,9 +39,17 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await guest.locator('nav [data-page=assistant]').tap();assert.equal(await guest.locator('#allow-home').isVisible(),false);
     assert.equal(await guest.locator('#send-chat').isEnabled(),true);
     await guest.screenshot({path:'output/playwright/display-guest-conversation.png',animations:'disabled'});
+    let chat=null;
+    await guest.route('**/v1/chat',r=>{chat=r.request().postDataJSON();return r.fulfill({json:{status:'complete',capability:'home',text:'Synthetic guest command handled.',access_revision:2}});});
+    await guest.route('**/v1/display/session',r=>r.fulfill({json:{role:'display',receiver_id:display.id,profile_revision:2,profile:{...display.profile,home_voice:true}}}));
+    await guest.reload();await guest.locator('body.guest-home-voice').waitFor();
+    assert.equal(await guest.locator('#allow-home').isVisible(),true);
+    await guest.locator('#allow-home').check();await guest.locator('#chat-text').fill('Turn off Guest lamp');
+    await guest.locator('#send-chat').tap();await guest.getByText('Synthetic guest command handled.',{exact:true}).waitFor();
+    assert.equal(chat.allow_home_actions,true);assert.equal(await guest.locator('#allow-home').isChecked(),false);
     await page.setViewportSize({width:390,height:844});await page.locator('[data-profile-display]').tap();
     await page.locator('#display-access-save:not(:disabled)').waitFor();
     const bounds=await page.locator('#display-access-dialog').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=390&&bounds.y+bounds.height<=844);
-    assert.deepEqual(errors,[]);console.log('PASS: explicit owner grants, guest navigation/privacy labels, conversation controls and phone profile editor.');
+    assert.deepEqual(errors,[]);console.log('PASS: explicit owner grants, guest navigation/privacy labels, optional home voice consent and phone profile editor.');
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

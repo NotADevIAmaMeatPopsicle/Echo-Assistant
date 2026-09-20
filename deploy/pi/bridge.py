@@ -145,7 +145,7 @@ class Bridge(BaseHTTPRequestHandler):
             elif body and len(body)<=2048 and self.command=='POST':
                 value=json.loads(body)
                 if not isinstance(value,dict) or 'action' not in value or not set(value)<={'action','allow_home','reply_audio'}:raise ValueError()
-                if profile['mode']=='guest' and value.get('action')=='talk':value['allow_home']=False
+                if profile['mode']=='guest' and value.get('action')=='talk' and not profile.get('home_voice',False):value['allow_home']=False
                 result=self.voice.control(**value)
             else:return self.error_reply(405,'Unsupported Pi voice request')
             result=dict(result)

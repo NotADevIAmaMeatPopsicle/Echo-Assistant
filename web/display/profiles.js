@@ -2,7 +2,7 @@
 (()=>{
   'use strict';
   const dialog=document.createElement('dialog');dialog.id='display-access-dialog';
-  dialog.innerHTML='<form id="display-access-form"><div class="row spread"><div><span class="eyebrow">SHARE INTENTIONALLY</span><h2 id="display-access-title">Display access</h2></div><button type="button" class="icon-button" id="display-access-close" aria-label="Close display access">×</button></div><div id="display-access-scroll"><div class="two-columns"><label>Profile name<input id="display-access-name" maxlength="60" required></label><label>Room<input id="display-access-room" maxlength="60" placeholder="Optional"></label></div><label>Access level<select id="display-access-mode"><option value="household">Household · trusted shared device</option><option value="guest">Guest · only selected devices and sources</option></select></label><p class="tiny soft" id="display-access-description"></p><div id="display-access-guest" hidden><label class="check-label"><input type="checkbox" id="display-access-conversation">Allow guest conversation and public web lookup</label><p class="tiny soft">Uses the configured model with separate, temporary conversation history. Household memory, lists, routines, photos and Hermes tools are not shared. Guest home actions use the approved controls on Rooms.</p><h3>Home devices</h3><div id="display-access-devices"></div><div id="display-access-sources" class="access-sources"></div></div></div><p id="display-access-status" role="status"></p><div class="row spread"><button type="button" class="pill" id="display-access-cancel">Cancel</button><button class="pill primary" type="submit" id="display-access-save">Save access</button></div></form>';
+  dialog.innerHTML='<form id="display-access-form"><div class="row spread"><div><span class="eyebrow">SHARE INTENTIONALLY</span><h2 id="display-access-title">Display access</h2></div><button type="button" class="icon-button" id="display-access-close" aria-label="Close display access">×</button></div><div id="display-access-scroll"><div class="two-columns"><label>Profile name<input id="display-access-name" maxlength="60" required></label><label>Room<input id="display-access-room" maxlength="60" placeholder="Optional"></label></div><label>Access level<select id="display-access-mode"><option value="household">Household · trusted shared device</option><option value="guest">Guest · only selected devices and sources</option></select></label><p class="tiny soft" id="display-access-description"></p><div id="display-access-guest" hidden><label class="check-label"><input type="checkbox" id="display-access-conversation">Allow guest conversation and public web lookup</label><p class="tiny soft">Uses the configured model with separate, temporary conversation history. Household memory, lists, routines, photos and Hermes tools are not shared. Guest home actions stay within the selected devices.</p><label class="check-label"><input type="checkbox" id="display-access-home-voice">Allow local guest home voice commands</label><p class="tiny soft">Off by default. Supports named-device and shared-room commands without sending device data to a model. Home actions still need permission for the message or the owner’s wake-word setting.</p><h3>Home devices</h3><div id="display-access-devices"></div><div id="display-access-sources" class="access-sources"></div></div></div><p id="display-access-status" role="status"></p><div class="row spread"><button type="button" class="pill" id="display-access-cancel">Cancel</button><button class="pill primary" type="submit" id="display-access-save">Save access</button></div></form>';
   document.body.append(dialog);let editing=null,epoch=0;
   const badge=document.createElement('span');badge.id='display-profile-badge';badge.hidden=true;$('connection').before(badge);
   const note=document.createElement('div');note.id='guest-display-note';note.hidden=true;note.textContent='Only devices shared with this display appear below. Use their controls to make changes.';$('page-rooms').prepend(note);
@@ -14,7 +14,7 @@
     const version=++epoch,d=event.detail;editing=null;$('display-access-save').disabled=true;
     const profile=d.profile||{mode:'household',name:'Household',room:'',conversation:true,home_devices:{},calendars:[],cameras:[],presence_sensors:[]};
     $('display-access-title').textContent=d.name;$('display-access-name').value=profile.name;$('display-access-room').value=profile.room;
-    $('display-access-mode').value=profile.mode;$('display-access-conversation').checked=profile.conversation;mode();
+    $('display-access-mode').value=profile.mode;$('display-access-conversation').checked=profile.conversation;$('display-access-home-voice').checked=profile.home_voice===true;mode();
     $('display-access-devices').replaceChildren();$('display-access-sources').replaceChildren();$('display-access-status').textContent='Loading shared devices and sources…';dialog.showModal();
     try{
       const [home,sources]=await Promise.all([api('/v1/display/home'),api('/v1/display/source-settings')]);
@@ -34,7 +34,7 @@
   });
   $('display-access-form').onsubmit=async event=>{
     event.preventDefault();if(!editing)return;const target=editing,version=epoch;$('display-access-save').disabled=true;
-    const profile={mode:$('display-access-mode').value,name:$('display-access-name').value.trim(),room:$('display-access-room').value.trim(),conversation:$('display-access-conversation').checked,home_devices:{},calendars:[],cameras:[],presence_sensors:[]};
+    const profile={mode:$('display-access-mode').value,name:$('display-access-name').value.trim(),room:$('display-access-room').value.trim(),conversation:$('display-access-conversation').checked,home_voice:$('display-access-home-voice').checked,home_devices:{},calendars:[],cameras:[],presence_sensors:[]};
     dialog.querySelectorAll('[data-profile-entity]').forEach(el=>{if(el.value)profile.home_devices[el.dataset.profileEntity]=el.value;});
     dialog.querySelectorAll('[data-profile-source]:checked').forEach(el=>profile[el.dataset.profileSource].push(el.value));
     try{await api('/v1/displays/'+target.id+'/profile',{revision:target.revision,profile},'PUT');if(version!==epoch)return;dialog.close();pairingListAt=0;await loadPairedDisplays();toast('Display access saved.');}
@@ -46,7 +46,7 @@
     const version=(session.receiver_id||'owner')+':'+(session.profile_revision||0);
     if(accessVersion!==null&&accessVersion!==version){document.body.style.visibility='hidden';clearVoiceReply();void closeMic();location.reload();return;}
     accessVersion=version;const profile=session.profile,guest=session.role==='display'&&profile?.mode==='guest';
-    document.body.classList.toggle('guest-display',guest);note.hidden=!guest;badge.hidden=!guest;
+    document.body.classList.toggle('guest-display',guest);document.body.classList.toggle('guest-home-voice',guest&&profile.home_voice===true&&profile.conversation);note.hidden=!guest;badge.hidden=!guest;
     if(guest){
       badge.textContent='Guest · '+profile.name+(profile.room?' · '+profile.room:'');
       const welcome=$('chat-welcome');
@@ -60,7 +60,8 @@
       if(!profile.conversation){$('send-chat').disabled=true;$('voice-start').disabled=true;}
       if(typeof musicReceiver!=='undefined'&&musicReceiver!=='display'){musicReceiver='display';$('music-receiver').value='display';delete data.nowPlaying;delete received.nowPlaying;}
       if(!window.echoAllowedPages.has(location.hash.slice(1)))page('home');
-      const permission=$('allow-home');if(permission){permission.checked=false;permission.closest('label').hidden=true;}
+      const permission=$('allow-home');if(permission){const enabled=profile.home_voice===true&&profile.conversation;permission.closest('label').hidden=!enabled;if(!enabled)permission.checked=false;}
+      note.textContent=profile.home_voice?'Only shared devices appear here. You can also ask Echo for a named device or room, such as “Turn off Guest room lights.”':'Only devices shared with this display appear below. Use their controls to make changes.';
     }else window.echoAllowedPages=null;
   });
 })();

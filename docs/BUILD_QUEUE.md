@@ -24,6 +24,20 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Guest home voice checkpoint:** owner-enabled local guest commands are deployed
+to the private host and current Pi bundle. Guests can name shared devices or room
+lights for state, power, brightness, explicit-unit temperature and basic speaker
+commands. The global and per-display grants intersect on every request; actions
+also need current-message or owner wake permission. No device data goes to the
+guest model, and no profile was opted in during deployment.
+
+Thirty-eight focused checks pass on Windows and isolated Linux, including real
+API authorization with simulated devices, cancellation, ambiguous names, revoked
+access, unsupported values and spoken request routing. The browser flow covers
+the optional grant and per-message consent. Pi settings/pairing were preserved,
+its listener is armed at 2%, Spotify is discoverable and echo cancellation remains
+active. No real home device or audio was used. See [Display access](DISPLAY_ACCESS.md).
+
 **Calendar occurrence checkpoint:** the private host and Pi browser now support
 explicit occurrence/following edits and occurrence/following/whole-series deletion.
 The existing repeat rule stays intact; counted or unknown series keep their start
@@ -102,8 +116,8 @@ Spotify is discoverable, and the echo-cancellation service remains active.
 The full Windows suite passed 476 tests with seven platform-specific skips;
 64 focused Linux tests and the synthetic voice pipeline passed. Browser checks
 cover profile editing, guest layout and existing home/calendar/keyboard flows.
-No sound or home actions were used. Per-person accounts and scoped guest voice
-tools remain open; see [Display access](DISPLAY_ACCESS.md).
+No sound or home actions were used. Per-person accounts remain open; local guest
+home commands are covered in the checkpoint above.
 
 **Calendar drafting checkpoint:** model-assisted drafts now run on the private host
 and the current Deck client. Both the event form and smart-display conversations
@@ -216,8 +230,8 @@ parity. Known gaps documented in the smart-display guide remain:
 - [ ] External calling with a supported provider.
 - [ ] Household/guest profiles and per-user/per-room source policies.
       Per-display Household/Guest profiles, selected home-device and read-only
-      source grants, and isolated guest conversation are implemented. Per-person
-      identities, separate member memory/accounts, scoped guest voice tools and
+      source grants, isolated guest conversation and opt-in local guest home
+      voice commands are implemented. Per-person identities, separate member memory/accounts and
       Mini profiles remain open; see [Display access](DISPLAY_ACCESS.md).
 - [ ] Supported casting/commercial-video integrations, subject to provider access
       and licensing; current local media and Spotify do not establish those features.

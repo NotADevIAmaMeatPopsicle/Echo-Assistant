@@ -41,6 +41,11 @@ class BundleTests(unittest.TestCase):
                     self.assertEqual(client.put('/v1/display/'+path,json={}).status_code,403)
                 self.assertEqual(client.post('/v1/display/local-voice',json={'action':'talk','allow_home':True}).status_code,200)
                 LocalBridge.voice.control.assert_called_with(action='talk',allow_home=False)
+                access['profile']['home_voice']=True
+                self.assertEqual(client.post('/v1/display/local-voice',json={'action':'talk','allow_home':True}).status_code,200)
+                LocalBridge.voice.control.assert_called_with(action='talk',allow_home=True)
+                self.assertEqual(client.post('/v1/display/local-voice',json={'action':'talk','allow_home':False}).status_code,200)
+                LocalBridge.voice.control.assert_called_with(action='talk',allow_home=False)
                 self.assertEqual(client.post('/v1/display/local-voice',json={'action':'mute'}).status_code,200)
                 LocalBridge.voice.control.assert_called_with(action='mute')
                 LocalBridge.voice.settings.return_value['result']['access_revision']=1
