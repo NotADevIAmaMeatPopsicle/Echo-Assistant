@@ -22,7 +22,7 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-06 | Grouped music | Provider and physical acceptance; coordinator |
 | ECHO-07 | Voice/video calls | Provider setup and two-device acceptance; coordinator |
 | ECHO-08 | Phone music receiver | ECHO-08A adapter installed disabled; setup/playback open; media lane |
-| ECHO-09 | Commercial video | Ordinary YouTube software implemented; Linux check/deployment and real playback open; media lane |
+| ECHO-09 | Commercial video | Ordinary YouTube software deployed; real playback and paid-provider acceptance open; media lane |
 | ECHO-10 | Replacement-host provisioning | Tooling implemented; recovery lane |
 | ECHO-11 | Real Google account and calendar acceptance | Owner account configuration required; coordinator |
 | ECHO-12 | Install prepared Mini firmware | Board identity and backup verification required; coordinator |
@@ -219,11 +219,12 @@ displays. Personal, Guest and Mini do not inherit it. Only the player page gets
 the required YouTube script/frame and origin-referrer policy; other pages retain
 their existing policies. No real provider playback is part of automatic checks.
 
-### Wave 4 software checkpoint; deployment pending
+### Wave 4 software checkpoint; deployed
 
 The native adapter, provider permissions, owner settings, player UI and shared
-routes are implemented. The final combined Windows run passed 111 tests; the
-silent browser flow passed at desktop and phone sizes. Startup freshness,
+routes are installed on the private host and Pi. The final Linux image passed
+114 integration tests plus both real null-audio tests, with no skips; the silent
+browser flow passed at desktop and phone sizes. Startup freshness,
 cancelled leases, process-stop acknowledgment, account/source changes, encrypted
 recovery and narrow player-only response headers are covered. The Pi inventory
 confirms Chromium, PulseAudio and libpulse are present, but its selected USB
@@ -240,10 +241,11 @@ No images, volumes or application data were deleted; no host reboot was needed.
 
 The resumed Linux check exposed real PulseAudio JSON format differences in the
 native sink/module validation. These are fixed, with 34 focused synthetic tests
-and both real Linux null-audio tests passing. The final combined image check
-precedes coordinated host/Pi deployment. Wave 4 is not deployed and no real
-YouTube playback has been performed. The Pi still has no microphone capture
-device attached.
+also passing. Host and Pi asset hashes match the verified source, the Pi kiosk
+refreshed, and private settings, pairing and grants were preserved. Spotify is
+discoverable at 2%; Bluetooth and video remain disabled. No real YouTube playback,
+recording or physical audio was used. The Pi still has no microphone capture
+device attached, and provider/hardware acceptance remains open.
 
 **ECHO-23** retains permanent storage relocation to the larger drive. Docker's
 supported settings workflow and verified cold-backup procedure are documented in

@@ -28,15 +28,18 @@ Execution is now tracked as bounded work items in
 [Remaining tasks and integration contracts](REMAINING_TASKS.md). That plan assigns
 file ownership, dependencies and acceptance criteria before parallel dispatch.
 
-**Bounded wave 4 software checkpoint, not deployed:** ordinary YouTube owner
+**Bounded wave 4 software checkpoint, deployed:** ordinary YouTube owner
 selection, Household permissions, a dedicated player, native 2% output limiting
-and audio-focus stop handling are implemented. The combined Windows suite passed
-111 tests and the silent browser flow passed. The host's disk-full incident was
+and audio-focus stop handling are installed on the private host and Pi. The final
+Linux image passed 114 integration tests plus two real null-audio tests, with no
+skips; the silent browser flow also passed. The host's disk-full incident was
 recovered after owner-authorized Docker/WSL restart; Echo, Hermes and the Pi's host
 connection are working again, with existing data retained. The resumed isolated
 Linux audio check exposed PulseAudio format differences; the corrected backend
-passes both real null-audio tests and 34 focused synthetic tests. The final image
-check and deployment are next. Permanent host-storage relocation remains ECHO-23. [The task tracker](REMAINING_TASKS.md)
+also passed 34 focused synthetic tests. The Pi kiosk refreshed, private settings
+and pairing were preserved, and Spotify remains discoverable at 2% volume. Video
+stays disabled; actual provider playback and the missing USB microphone remain
+open acceptance items. Permanent host-storage relocation remains ECHO-23. [The task tracker](REMAINING_TASKS.md)
 records the pending checks and provider/hardware acceptance separately.
 
 **Bounded wave 3 checkpoint:** ECHO-04 adds private per-person Google linking and

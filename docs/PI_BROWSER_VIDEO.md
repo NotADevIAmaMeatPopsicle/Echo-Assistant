@@ -173,10 +173,11 @@ The backend now reads explicit module IDs from the short listing and validates
 both sides of the null monitor relationship plus driver and module ownership.
 Production output still requires the existing echo-cancellation sink.
 
-The final combined image check and deployment remain separate from those focused
-results. Run the Linux checks in a disposable container with no network,
-published ports, hardware devices or host mounts. No real browser, recording or
-physical playback is part of these checks. Real acceptance must still cover ordinary YouTube touch and
+The final Linux image passed 114 integration tests and both real null-audio tests
+with no skips. Host and Pi integration is deployed, with settings and pairing
+preserved and video disabled. Run the Linux checks in a disposable container with
+no network, published ports, hardware devices or host mounts. No real browser,
+recording or physical playback is part of these checks. Real acceptance must still cover ordinary YouTube touch and
 captions, its correct Referer/client identification, no-signal/error states,
 2%/duck behavior, Stop/voice/access revoke, selected-sink loss, returning to the
 kiosk, and no resume after service/browser/network failure. This work does not
