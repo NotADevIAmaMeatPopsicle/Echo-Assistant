@@ -20,6 +20,9 @@
   UI with synthetic state. They are captured by the checks listed in
   [package checks](../PACKAGE_CHECKS.md), without real cameras, calendars,
   microphones, speakers or household accounts.
+- `display-calendar-draft.png` shows the editable event form from the same
+  synthetic preview. Its event is a fixed example; the capture uses no model call
+  or calendar account.
 - Enclosure renders live in `enclosure/crescent-v1/preview`. They depict exported
   geometry and reference electronics. They are separate from the prototype
   photographs above.

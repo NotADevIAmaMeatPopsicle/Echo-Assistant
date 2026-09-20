@@ -23,19 +23,59 @@ document.body.append(eventDialog);
 const eventScroll=document.createElement('div');eventScroll.id='calendar-event-scroll';
 $('calendar-event-fields').before(eventScroll);eventScroll.append($('calendar-event-fields'));
 let eventDraft=null;
-createButton.onclick=()=>{
+let calendarDraftRequest=null;
+const draftComposer=document.createElement('details');draftComposer.className='calendar-draft-composer';
+draftComposer.innerHTML='<summary>Describe an event in your own words</summary><label for="calendar-draft-text">Describe the event<textarea id="calendar-draft-text" maxlength="2000" rows="2" placeholder="Lunch with Sam tomorrow at noon for an hour"></textarea></label><button class="pill" id="calendar-draft-build" type="button">Draft from words</button><p class="tiny soft">Uses your configured model. Review the fields below before creating anything.</p>';
+eventScroll.prepend(draftComposer);
+const draftNotes=document.createElement('ul');draftNotes.id='calendar-draft-notes';draftNotes.className='tiny soft';draftComposer.after(draftNotes);
+function openCalendarEvent(draft=null){
+  if(draft&&(!Number.isFinite(draft.expires_at)||draft.expires_at*1000<Date.now()))return toast('That draft expired. Describe the event again with the current date.');
   const writable=(data.sources?.items||[]).filter(i=>i.kind==='calendar'&&i.writable&&i.available);
-  if(!fresh('sources')||!writable.length)return toast('Enable event creation for a calendar under Settings → Calendars & cameras.');
-  eventDraft=null;$('calendar-event-form').reset();$('calendar-event-fields').disabled=false;$('calendar-event-submit').disabled=false;$('calendar-event-submit').textContent='Create event';
+  draftNotes.replaceChildren();draftComposer.open=false;$('calendar-draft-build').disabled=false;
+  eventDraft=null;$('calendar-event-form').reset();$('calendar-event-fields').disabled=false;$('calendar-event-submit').disabled=!fresh('sources')||!writable.length;$('calendar-event-submit').textContent='Create event';
   $('event-start').type=$('event-end').type='datetime-local';
-  $('event-calendar').innerHTML=writable.map(i=>`<option value="${esc(i.entity_id)}">${esc(i.name)}</option>`).join('');
+  $('event-calendar').innerHTML='<option value="">Choose a calendar</option>'+writable.map(i=>`<option value="${esc(i.entity_id)}">${esc(i.name)}</option>`).join('');
+  if(writable.length===1)$('event-calendar').value=writable[0].entity_id;
   const when=new Date();when.setMinutes(0,0,0);when.setHours(when.getHours()+1);const end=new Date(when.getTime()+3600000);
   const local=value=>`${localDate(value)}T${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`;
   $('event-start').value=local(when);$('event-end').value=local(end);$('event-timezone').value=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
-  $('calendar-event-status').textContent='This creates an event in the selected calendar through Home Assistant.';
+  $('calendar-event-status').textContent=writable.length?'This creates an event in the selected calendar through Home Assistant.':'You can draft an event now. Enable a writable calendar under Settings → Calendars & cameras before creating it.';
+  if(draft)applyCalendarDraft(draft);
   eventDialog.showModal();$('event-title').focus();
+}
+createButton.onclick=()=>openCalendarEvent();
+function applyCalendarDraft(draft){
+  const event=draft.event;if(!event||typeof event!=='object')return;
+  eventDraft=null;$('event-all-day').checked=event.all_day===true;
+  $('event-start').type=$('event-end').type=event.all_day?'date':'datetime-local';
+  for(const key of ['title','start','end','timezone','location','description','calendar'])$('event-'+key).value=typeof event[key]==='string'?event[key]:'';
+  if(event.all_day&&event.end){const last=new Date(event.end+'T12:00:00');last.setDate(last.getDate()-1);$('event-end').value=localDate(last);}
+  draftNotes.replaceChildren();for(const question of draft.questions||[]){const item=document.createElement('li');item.textContent=question;draftNotes.append(item);}
+  draftComposer.open=false;eventScroll.scrollTop=0;
+  $('calendar-event-status').textContent='Draft only. Nothing has been saved. Review the fields and any questions above.';
+}
+function attachCalendarDraft(message,draft){
+  const button=document.createElement('button');button.className='pill';button.type='button';button.textContent='Review calendar draft';
+  button.onclick=()=>openCalendarEvent(draft);message.append(button);
+}
+$('calendar-draft-build').onclick=async()=>{
+  const text=$('calendar-draft-text').value.trim();if(!text||calendarDraftRequest||$('calendar-event-submit').dataset.sending==='true')return;
+  const controller=new AbortController();calendarDraftRequest=controller;
+  $('calendar-draft-build').disabled=true;$('calendar-event-submit').disabled=true;$('calendar-event-fields').disabled=true;
+  $('calendar-event-status').textContent='Drafting the event. Nothing is being saved…';
+  try{
+    const result=await api('/v1/display/calendar/draft',{text,timezone:$('event-timezone').value||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'},'POST',controller.signal);
+    if(calendarDraftRequest!==controller||!eventDialog.open)return;
+    if(result.calendar_draft)applyCalendarDraft(result.calendar_draft);else $('calendar-event-status').textContent=result.text||'Draft unavailable. You can fill in the form manually.';
+  }catch(error){if(calendarDraftRequest===controller&&eventDialog.open)$('calendar-event-status').textContent=error.name==='AbortError'?'Draft cancelled.':error.message;}
+  finally{if(calendarDraftRequest===controller){calendarDraftRequest=null;resetDraftControls();}}
 };
+function resetDraftControls(){
+  $('calendar-draft-build').disabled=false;$('calendar-event-fields').disabled=false;
+  $('calendar-event-submit').disabled=!fresh('sources')||!(data.sources?.items||[]).some(i=>i.kind==='calendar'&&i.writable&&i.available);
+}
 function closeEvent(){if($('calendar-event-submit').dataset.sending==='true')return;eventDialog.close();createButton.focus();}
+eventDialog.addEventListener('close',()=>{calendarDraftRequest?.abort();calendarDraftRequest=null;resetDraftControls();});
 $('calendar-event-close').onclick=$('calendar-event-cancel').onclick=closeEvent;
 eventDialog.addEventListener('cancel',e=>{if($('calendar-event-submit').dataset.sending==='true')e.preventDefault();});
 $('event-all-day').onchange=()=>{
@@ -50,11 +90,12 @@ $('calendar-event-form').onsubmit=async event=>{
     eventDraft={revision:data.sources.revision,request_id:crypto.randomUUID().replaceAll('-',''),event:{calendar:$('event-calendar').value,title:$('event-title').value,description:$('event-description').value,location:$('event-location').value,start:$('event-start').value,end,all_day:$('event-all-day').checked,timezone:$('event-timezone').value,start_fold:Number($('event-start-fold').value),end_fold:Number($('event-end-fold').value)}};
   }
   button.dataset.sending='true';button.disabled=true;$('calendar-event-fields').disabled=true;$('calendar-event-status').textContent='Sending to your calendar…';
-  try{const result=await api('/v1/display/calendar/events',eventDraft);$('calendar-event-status').textContent=result.text;button.textContent=result.status==='accepted'?'Accepted':'Check your calendar';delete data.briefing;await refresh();}
+  $('calendar-draft-build').disabled=true;
+  try{const result=await api('/v1/display/calendar/events',eventDraft);$('calendar-event-status').textContent=result.text;button.textContent=result.status==='accepted'?'Accepted':'Check your calendar';delete data.briefing;void refresh();}
   catch(error){
     if([403,409,422].includes(error.status)){eventDraft=null;$('calendar-event-fields').disabled=false;button.textContent='Create event';$('calendar-event-status').textContent=error.message+' Review the fields and calendar permissions, then try again.';}
     else{$('calendar-event-status').textContent=error.message+' Check the agenda if the connection was lost. Retrying sends the same request identifier.';button.textContent='Retry same request';}
-    button.disabled=false;
+    button.disabled=false;$('calendar-draft-build').disabled=!!eventDraft;
   }
   finally{button.dataset.sending='false';}
 };

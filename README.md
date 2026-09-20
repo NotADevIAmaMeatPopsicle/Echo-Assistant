@@ -137,8 +137,9 @@ paired displays, with encrypted host storage.
 
 Calendars connect through Home Assistant. The owner selects which calendars to
 share and separately permits event creation. The touch form supports timed and
-all-day events; calendar editing, invitations, and natural-language event drafting
-are not implemented. [Daily briefing and calendar guide](docs/DAILY_BRIEFING.md).
+all-day events. Describe an event by voice or text on the smart display, review
+the model's editable draft, and choose **Create event** to save it. Calendar editing
+and invitations are not implemented. [Daily briefing and calendar guide](docs/DAILY_BRIEFING.md).
 
 ### Cameras, doorbells, and room audio
 

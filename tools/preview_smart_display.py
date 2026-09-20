@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import time
 from threading import RLock
 from urllib.parse import urlsplit
 
@@ -24,6 +25,7 @@ from backend.photos import Photos
 from backend.media_presets import MediaPresets
 from backend.experiences import Sources
 from backend.calendar_events import CalendarEvent
+from backend.calendar_drafts import draft_request
 from backend.announcements import Announcements
 from backend.announcement_api import Send,Configure
 from types import SimpleNamespace
@@ -243,7 +245,7 @@ class DisplayPreview(Preview):
             self.state['/v1/display/sources']={'status':'available' if identifiers else 'not_selected','revision':state['revision'],'items':[{**i,'writable':i['entity_id'] in sources['writable_calendars']} for i in state['items'] if i['entity_id'] in identifiers]}
             return {'sources':sources,'revision':state['revision']}
         if path=='/v1/demo/doorbell':
-            import secrets,time
+            import secrets
             bindings=self.state['/v1/display/source-settings']['sources']['doorbells']
             if not bindings:raise ValueError('Select a sample doorbell first')
             binding=bindings[0]
@@ -252,6 +254,13 @@ class DisplayPreview(Preview):
         if path.startswith('/v1/display/doorbells/events/') and self.command=='DELETE':
             state=self.state['/v1/display/doorbells'];state['events']=[e for e in state['events'] if e['id']!=path.rsplit('/',1)[1]]
             return state
+        if path=='/v1/display/calendar/draft' or path=='/v1/chat' and draft_request(body.get('text','')):
+            tomorrow=(date.today()+timedelta(days=1)).isoformat()
+            return {'status':'complete','capability':'calendar_draft','text':'Sample calendar draft. Nothing was saved and no model was called.',
+                'calendar_draft':{'event':{'calendar':'calendar.household_demo','title':'Lunch with Sam · sample',
+                    'start':tomorrow+'T12:00','end':tomorrow+'T13:00','all_day':False,
+                    'timezone':body.get('timezone','UTC'),'location':'','description':'','start_fold':0,'end_fold':0},
+                    'questions':['Review this synthetic example before creating it.'],'expires_at':time.time()+900}}
         if path=='/v1/display/calendar/events':
             event=CalendarEvent.model_validate(body['event']);policy=self.state['/v1/display/source-settings']
             if body['revision']!=policy['revision'] or event.calendar not in policy['sources']['writable_calendars']:raise ValueError()

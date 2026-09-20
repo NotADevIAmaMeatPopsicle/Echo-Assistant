@@ -54,6 +54,7 @@ def main():
         with wave.open(io.BytesIO(body),'rb') as wav:
             assert wav.getparams()[:3]==(1,2,16000) and 1600<=wav.getnframes()<=128000
         return {'status':'complete','text':'Synthetic reply','transcript':'Synthetic command',
+                'calendar_draft':{'event':{'title':'Synthetic draft'},'questions':[],'expires_at':time.time()+900},
                 'audio':{'data':base64.b64encode(result.getvalue()).decode()}}
     with tempfile.TemporaryDirectory() as home:
         listener=Listener(request,Music(),home,captures=lambda:[{'id':'mic'}],speakers=lambda:[{'id':'speaker'}],detector_factory=Detector,popen=popen)
@@ -65,6 +66,7 @@ def main():
             while time.monotonic()<deadline and not (len(outputs)>=2 and listener.phase=='armed'):time.sleep(.05)
             assert len(outputs)==2,('Expected cue and reply',listener.phase,listener.error)
             assert listener.result['text']=='Synthetic reply'
+            assert listener.result['calendar_draft']['event']['title']=='Synthetic draft'
             from array import array
             assert max(array('h',outputs[1]))==20,'Reply must be attenuated to 2%'
             listener.control('mute');time.sleep(.4)

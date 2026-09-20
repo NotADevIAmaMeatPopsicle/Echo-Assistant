@@ -173,6 +173,7 @@ class EchoAgent:
         self.routines = None
         self.household = None
         self.briefing = None
+        self.calendar_drafts = None
         self.local_assistant = None
         self.home_revision = None
 
@@ -240,7 +241,7 @@ class EchoAgent:
             self._sync_context()
             return deepcopy(self.history.get(session, (0, []))[1])
 
-    def respond(self, text, session='device', lookup=False, *, cancel=None, allow_home_actions=False, progress=None):
+    def respond(self, text, session='device', lookup=False, *, cancel=None, allow_home_actions=False, progress=None, calendar_review=False):
         if not text.strip(): raise ValueError('Enter a message for Echo')
         # Serialize short conversations to preserve turn order and bounded resource use.
         if not self.lock.acquire(blocking=False):
@@ -260,6 +261,11 @@ class EchoAgent:
                     self.record_local(text, reply, session, context_token)
                     return reply
             from .daily_briefing import briefing_request
+            from .calendar_drafts import draft_request
+            if self.calendar_drafts and draft_request(text):
+                if lookup:return {'status':'unavailable','capability':'calendar_draft','text':'Turn off web lookup to draft a private calendar event.'}
+                if not calendar_review:return {'status':'complete','capability':'calendar_draft','text':'Open My day → New event on the smart display, or ask from its Echo conversation to prepare an editable calendar draft. Nothing has been created.'}
+                return self.calendar_drafts.respond(text,session,cancel=cancel)
             if self.briefing and briefing_request(text):
                 if lookup:return {'status':'unavailable','capability':'briefing','text':'Turn off web lookup to read your private daily briefing.'}
                 try:reply=self.briefing.get()

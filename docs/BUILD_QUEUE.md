@@ -16,6 +16,15 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Calendar drafting checkpoint:** model-assisted drafts now run on the private host
+and the current Deck client. Both the event form and smart-display conversations
+offer editable fields before explicit creation. Twenty-seven focused Windows
+checks, thirteen Linux calendar checks and the synthetic native voice pipeline
+passed. Browser checks cover form/chat drafts, timed/all-day submission, permissions
+and phone layout. A synthetic Azure request and the live draft API returned event
+fields; neither created calendar events or played sound. The update preserved
+pairing and audio settings, and the Pi listener returned armed at 2%.
+
 **Pi audio checkpoint:** the optional WebRTC echo-cancellation service is installed
 on the Pi. The native recorder receives processed microphone frames, while
 Spotify, replies, alerts and the kiosk select the same playback-reference output.
@@ -56,6 +65,7 @@ or human-speech pickup. The next test needs someone speaking near the microphone
 - [x] Persistent, revocable display pairing and unattended Pi loopback bridge (software).
 - [x] Opt-in Home Assistant calendar agenda (read-only software).
 - [x] Daily briefing composition, spoken/typed briefing requests and calendar event creation forms (software; actual calendar writes untested).
+- [x] Model-assisted calendar drafts from smart-display text/voice and the event form; explicit review, date validation and existing write grants (software; real calendar creation and Mini review UI remain open).
 - [x] Camera discovery and opt-in refreshing snapshots (software).
 - [x] Live MJPEG camera streams and persistent silent doorbell event cards (software; real camera/doorbell acceptance pending).
 - [x] Encrypted shared photo albums and supported local/radio media playback (software).
@@ -99,6 +109,23 @@ Calendar accounts and camera services need actual configured integrations. Calls
 commercial video, and proprietary casting depend on supported third-party services;
 do not present a placeholder as a working integration. Expose clear availability
 and configuration states, and record any unsupported service explicitly.
+
+## Remaining feature parity work
+
+The completed software checkpoints above do not mean full Nest Hub/Echo Show
+parity. Known gaps documented in the smart-display guide remain:
+
+- [ ] Calendar event editing/deletion, recurring calendar events, invitations and
+      a calendar-review path for the Mini.
+- [ ] Synchronized grouped music across endpoints.
+- [ ] External calling with a supported provider.
+- [ ] Household/guest profiles and per-user/per-room source policies.
+- [ ] Supported casting/commercial-video integrations, subject to provider access
+      and licensing; current local media and Spotify do not establish those features.
+- [ ] Full Windows host and Hermes disaster-recovery rehearsal.
+
+These are separate from the physical and live-service acceptance above. Do not
+mark the overall goal complete while the required feature set remains open.
 
 ## Earlier software checkpoints
 

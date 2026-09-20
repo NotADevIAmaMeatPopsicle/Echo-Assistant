@@ -61,7 +61,7 @@ class DisplayVoice:
                 raise DisplayVoiceUnavailable('Local transcription stopped. Try again to reload the speech worker.') from None
             check_cancel(cancel)
             if not transcript:return {'status':'unavailable','capability':'conversation','text':'I did not catch that. Please try again.','transcript':''}
-            result=self.agent.respond(transcript,session,cancel=cancel,allow_home_actions=allow_home,progress=progress)
+            result=self.agent.respond(transcript,session,cancel=cancel,allow_home_actions=allow_home,progress=progress,calendar_review=True)
             check_cancel(cancel)
             result={**result,'transcript':transcript,'audio_destination':'requesting_display'}
             if reply_audio and result.get('status')=='complete' and result.get('text'):

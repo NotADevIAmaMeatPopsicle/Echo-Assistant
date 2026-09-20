@@ -203,9 +203,9 @@ preserved and reported, and writes use atomic replacement.
 Shared photos are limited to 60. Each upload must be a valid JPEG, PNG or WebP
 under 12 MB and 32 megapixels. Echo normalizes orientation, removes metadata,
 resizes to fit 1920 pixels and encrypts the resulting JPEG. Original filenames,
-EXIF and location tags are not retained. The small settings recovery archive
-includes new settings documents but **does not include the photo files**. Include
-`local/display-photos` in a private host backup along with the host encryption key.
+EXIF and location tags are not retained. Version 2 of the private recovery archive
+includes the encrypted photo files as well as settings. Preserve the archive and
+host encryption keys privately; see [recovery checks](PACKAGE_CHECKS.md#isolated-installation-and-recovery-rehearsal).
 
 Browser local storage contains only display preferences. Session-only photos and
 media remain an option; clearing them releases their local object URLs. Shared
@@ -215,7 +215,9 @@ a stream already opened directly in a browser; press Stop to end playback.
 ### Still ahead
 
 Push-to-talk capture, request cancellation and reply routing are implemented.
-Native Pi wake and request interruption are implemented; physical echo-control acceptance is still required. Further integrations include calendar event editing and natural-language drafting,
+Native Pi wake and request interruption are implemented; physical echo-control acceptance is still required.
+Natural-language calendar drafts can be reviewed and created on the smart display;
+see [calendar drafting](DAILY_BRIEFING.md#describe-an-event). Further integrations include calendar event editing,
 grouped audio, external calling,
 and household/guest profiles. These are not working features yet. Commercial
 video and proprietary casting depend on supported providers and licensing.

@@ -112,7 +112,8 @@ class DailyCalendarTests(unittest.TestCase):
 
     def test_spoken_and_typed_briefings_bypass_models_and_private_history(self):
         from backend.agent import EchoAgent
-        agent=EchoAgent(SettingsStore(protector=self.protector),provider=Mock())
+        from backend.memory import MemoryStore
+        agent=EchoAgent(SettingsStore(protector=self.protector),provider=Mock(),memory=MemoryStore(protector=self.protector))
         agent.briefing=Mock();agent.briefing.get.return_value={'status':'complete','text':'A private briefing','sources':{'calendar':'available'}}
         for phrase in ('Give me my daily briefing',"What's on my agenda today?"):
             result=agent.respond(phrase)

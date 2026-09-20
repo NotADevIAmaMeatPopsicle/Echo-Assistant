@@ -187,6 +187,7 @@ function finishChatMessage(message,result) {
   for(const source of result.sources || []){try{const url=new URL(source.url);if(!['https:','http:'].includes(url.protocol))continue;const a=document.createElement('a');a.href=url.href;a.textContent=source.title || url.hostname;a.target='_blank';a.rel='noopener noreferrer';links.append(a);}catch{}}
   if(links.children.length)message.append(links);
   if(result.home_actions?.length){const details=document.createElement('details');details.className='action-receipts';details.innerHTML='<summary>Home action results</summary>'+result.home_actions.map(item=>`<p>${esc(human(item.action))} · ${esc(item.entity_id)} · ${esc(human(item.status))}</p>`).join('');message.append(details);}
+  if(result.calendar_draft&&typeof attachCalendarDraft==='function')attachCalendarDraft(message,result.calendar_draft);
   $('chat-reply').scrollTop=$('chat-reply').scrollHeight;
 }
 function conversationChanged(){document.dispatchEvent(new Event('echo:conversation'));}
@@ -197,7 +198,7 @@ $('chat-form').onsubmit = async event => {
   chatAbort=new AbortController();$('stop-chat').hidden=false;guardButtons();conversationChanged();
   appendChatMessage('user',text);const answer=appendChatMessage('assistant','Thinking…',true);$('chat-text').value='';
   try {
-    const result=await api('/v1/chat',{text,lookup:false,allow_home_actions:allow},'POST',chatAbort.signal);
+    const result=await api('/v1/chat',{text,lookup:false,allow_home_actions:allow,calendar_review:true},'POST',chatAbort.signal);
     finishChatMessage(answer,result);
   } catch(error){finishChatMessage(answer,{text:error.name==='AbortError' ? 'Stopped waiting. Any action already sent may still complete.' : error.message});}
   finally{chatAbort=null;$('stop-chat').hidden=true;guardButtons();conversationChanged();refresh();}

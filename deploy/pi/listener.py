@@ -310,6 +310,8 @@ class Listener:
         self.check(config);reply=result.result();self.request_id=None
         self.note('reply_received',elapsed_ms=round((time.monotonic()-request_at)*1000),transcript_characters=len(str(reply.get('transcript',''))))
         self.result={'id':identifier,'text':str(reply.get('text',''))[:4000],'transcript':str(reply.get('transcript',''))[:1200],'status':reply.get('status','unavailable'),'home_actions':reply.get('home_actions',[])[:12]};self.result_at=time.monotonic()
+        draft=reply.get('calendar_draft')
+        if isinstance(draft,dict) and len(json.dumps(draft))<=12_000:self.result['calendar_draft']=draft
         if reply.get('audio'):
             self.phase='speaking';self.detector.reset()
             self.note('reply_playing')

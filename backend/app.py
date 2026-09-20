@@ -53,6 +53,7 @@ from .experiences import SourceStore, Experiences
 from .experience_api import install as install_experiences
 from .calendar_events import CalendarWriter
 from .daily_briefing import DailyBriefing, briefing_request
+from .calendar_drafts import CalendarDrafts, draft_request
 from .doorbells import Doorbells
 from .announcements import Announcements, AnnouncementUnavailable
 from .announcement_api import install as install_announcements
@@ -144,8 +145,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     doorbells=Doorbells(experiences,runtime_root,store.protector)
     briefing=DailyBriefing(experiences,home,schedules,household)
     echo.briefing=briefing
+    echo.calendar_drafts=CalendarDrafts(store,echo.provider,experiences,schedules)
     install_experiences(app, experiences, authorize, owner,
-        CalendarWriter(experiences,runtime_root,store.protector,enabled=deployment_mode=='device'),briefing,doorbells)
+        CalendarWriter(experiences,runtime_root,store.protector,enabled=deployment_mode=='device'),briefing,doorbells,echo.calendar_drafts)
     install_photos(app, Photos(runtime_root, store.protector), authorize, owner)
     install_media(app, MediaPresets(runtime_root, store.protector), authorize, owner)
     display_voice=DisplayVoice(runtime_root,store,echo)
@@ -292,6 +294,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return JSONResponse(status_code=503, content={'detail': str(error)})
 
     class TextRequest(BaseModel):
+        calendar_review: StrictBool = False
         text: str = Field(min_length=1, max_length=1200)
         lookup: bool = False
         allow_home_actions: bool = False
@@ -547,7 +550,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             if re.match(r'\s*(?:please\s+)?(?:research\b|look into\b|compare\b)',request.text,re.I):
                 task=research.start(session,request.text)
                 return {'status':'complete','capability':'research','text':'I’ll look into that. The report and sources will appear on the Tasks page.','task_id':task['id']}
-            if routine_request(request.text) or household_request(request.text) or briefing_request(request.text):
+            if routine_request(request.text) or household_request(request.text) or briefing_request(request.text) or draft_request(request.text):
                 return await run_conversation(connection,app.state.speech_stop,
                     partial(echo.respond,allow_home_actions=deployment_mode=='device'),request.text,session,request.lookup)
             if deployment_mode == 'validation' or memory_request(request.text) or request.lookup or lookup_request(request.text):
@@ -572,7 +575,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         try: activity = conversations.begin(session)
         except ConversationBusy as error: raise HTTPException(409,str(error)) from None
         return await run_conversation(connection, app.state.speech_stop,
-            partial(echo.respond,allow_home_actions=request.allow_home_actions,progress=activity.progress),
+            partial(echo.respond,allow_home_actions=request.allow_home_actions,progress=activity.progress,calendar_review=request.calendar_review),
             request.text, session,request.lookup,activity=activity)
 
     class RoutineSave(BaseModel):

@@ -35,9 +35,40 @@ are rejected rather than silently moved.
 
 ![Timed event form with synthetic data](images/display-calendar-event.png)
 
-Natural-language event drafting, event updates/deletion, recurring calendar events
-and invitation management are not implemented by this form. Create recurring Echo
-alarms or reminders on **Planner** instead.
+## Describe an event
+
+On the smart display, say or type **“Add lunch with Sam tomorrow at noon for an
+hour to my calendar.”** Echo returns a **Review calendar draft** button in that
+conversation. Pi wake-word replies and push-to-talk return the same editable draft.
+You can also open **New event → Describe an event in your own words** and choose
+**Draft from words**. The title, dates, time zone, location and notes remain editable.
+
+Drafting uses the provider and model selected in Echo Settings, including when
+Hermes is selected for conversation. It is a separate extraction call without
+agent tools, web search, saved memories or prior conversation. Only the description,
+current time and reference time zone go to that provider. A local compatible model
+can keep that extraction on the configured local server. If drafting is unavailable,
+the manual form still works. Clients without the review form, including the current
+Mini firmware, direct calendar requests to the smart display.
+
+![An editable calendar draft with synthetic event details](images/display-calendar-draft.png)
+
+Relative dates use the form's time zone. Spoken/chat requests use Home Assistant's
+time zone, falling back to the schedule time zone. Missing or ambiguous details
+appear as questions. A missing end may receive a clearly labelled one-hour suggestion
+(one day for all-day events); review it. Invalid intervals and clock changes are
+flagged, and multiple writable calendars require selection unless one was named
+unambiguously. Models can still misunderstand a request, so check every field.
+
+**Drafting never creates an event.** Only **Create event** submits the reviewed
+form through the existing write grant and duplicate-protection checks. Drafts are
+not saved in Echo memory or calendar storage. Review buttons expire after 15 minutes;
+the Pi retains its latest voice result for only two minutes. The browser keeps its
+conversation/form in that tab until reload. Closing a pending draft cancels its
+model request, and a delayed response cannot overwrite a newly opened form.
+
+Event updates/deletion, recurring calendar events and invitation management remain
+unimplemented. Create recurring Echo alarms or reminders on **Planner** instead.
 
 ## What “accepted” means
 
@@ -70,3 +101,9 @@ across restart/sign-in, uncertain responses, failed receipt writes, all-day date
 clock changes, partial briefing data, and keeping briefings out of model history.
 Browser checks cover the touch form, separate permissions and phone width. Live
 calendar creation and spoken briefing playback have not been physically accepted.
+Draft checks also cover tool-free extraction, invalid/refused/incomplete model
+output, calendar selection, clock changes, display authorization, and explicit
+submission from the form/chat UI. One synthetic request returned correct event
+fields from the configured Azure model; no real event was created. OpenAI/Azure
+requests follow the [Structured Outputs format](https://developers.openai.com/api/docs/guides/structured-outputs);
+local and Anthropic JSON replies receive the same server-side validation.

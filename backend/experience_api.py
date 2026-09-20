@@ -1,5 +1,6 @@
 """Selected-source display routes; owner-only source discovery and permissions."""
 from datetime import date
+from functools import partial
 from fastapi import Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.background import BackgroundTask
@@ -8,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .experiences import Sources, ExperienceUnavailable, ExperienceConflict
 from .home import HomeUnavailable
 from .calendar_events import CalendarEvent
+from .conversation_request import run_conversation
 from .camera_stream import CameraStream
 
 
@@ -24,7 +26,13 @@ class CreateEvent(BaseModel):
     event:CalendarEvent
 
 
-def install(app, experiences, authorize, owner, writer=None, briefing=None, doorbells=None):
+class DraftRequest(BaseModel):
+    model_config=ConfigDict(extra='forbid',strict=True)
+    text:str=Field(min_length=1,max_length=2000)
+    timezone:str=Field(min_length=1,max_length=80)
+
+
+def install(app, experiences, authorize, owner, writer=None, briefing=None, doorbells=None, drafts=None):
     @app.exception_handler(ExperienceUnavailable)
     async def unavailable(request, error): return JSONResponse({'detail': str(error)}, status_code=503)
 
@@ -82,6 +90,14 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
         result=call(lambda:writer.create(body.event.model_dump(),body.revision,body.request_id,principal))
         if briefing:briefing.invalidate()
         return result
+
+    @app.post('/v1/display/calendar/draft')
+    async def draft_event(body:DraftRequest,request:Request,principal=Depends(authorize)):
+        if drafts is None:raise HTTPException(503,'Calendar drafting unavailable')
+        try:
+            return await run_conversation(request,app.state.speech_stop,
+                partial(drafts.respond,zone_name=body.timezone),body.text,principal)
+        except ValueError as error:raise HTTPException(422,str(error)) from None
 
     @app.get('/v1/display/cameras/{identifier}/snapshot', dependencies=[Depends(authorize)])
     def snapshot(identifier: str, request: Request):
