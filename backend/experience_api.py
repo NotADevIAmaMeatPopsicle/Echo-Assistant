@@ -51,6 +51,12 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
     @app.get('/v1/display/sources', dependencies=[Depends(authorize)])
     def sources(): return call(experiences.sources)
 
+    @app.get('/v1/display/presence', dependencies=[Depends(authorize)])
+    def presence(request: Request):
+        result = call(experiences.presence)
+        authorize(request)
+        return result
+
     @app.get('/v1/display/doorbells',dependencies=[Depends(authorize)])
     def rings():
         if doorbells is None:raise HTTPException(503,'Doorbell observer unavailable')

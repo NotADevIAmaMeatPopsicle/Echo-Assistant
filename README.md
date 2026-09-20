@@ -70,7 +70,9 @@ pages, or jump straight to a page from the sidebar.
 
 Adjustable idle dimming and sleep keep the display from staying bright all day.
 Tap once to wake, or use an enabled wake word. Paired X11 Pi displays can also
-turn off the HDMI signal while music and the microphone keep running.
+turn off the HDMI signal while music and the microphone keep running. Optional
+Home Assistant motion/occupancy sensors can wake a selected display; source
+sharing and per-screen setup are covered in [Screen comfort](docs/SMART_DISPLAY.md#screen-comfort).
 
 ### A conversation with room to breathe
 
@@ -110,9 +112,11 @@ can choose Echo from the phone's device picker; it is not an account-linking cod
 Playlists, search, and queue browsing stay in Spotify. Chromecast, AirPlay, and
 Bluetooth audio receivers are not included.
 
-Pi Spotify pauses before microphone capture and remains paused afterward until
-you resume it. Wake-word interruption during playback requires an echo-cancelled
-microphone input. See [display music](docs/MUSIC_DISPLAY.md), [Pi receiver
+Pi wake words remain active during Spotify. Choose pause mode, or lower music by
+80% through the cue and conversation with a shared audio output. Ducking restores
+the previous level afterward; pause mode waits for you to resume. Interrupting
+Echo's own spoken reply requires an echo-cancelled input; room pickup and feedback
+still need physical verification. See [display music](docs/MUSIC_DISPLAY.md), [Pi receiver
 setup](docs/PI_SPOTIFY.md), and [voice setup](docs/PI_VOICE.md).
 
 ### Your day, lists, and reminders
@@ -439,9 +443,9 @@ checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 
 | Area | Evidence and remaining work |
 | --- | --- |
-| **Round speaker** | Physical prototype, existing voice/music path, and touch navigation exercised. New intercom firmware compiled; installation and physical call checks remain. Sustained playback, distant wake, battery operation, and repeatable enclosure fit need broader acceptance. |
+| **Round speaker** | Physical prototype, existing voice/music path, and touch navigation exercised. New intercom and OLED screen-protection firmware compiled; installation and physical checks remain. Sustained playback, distant wake, battery operation, and repeatable enclosure fit need broader acceptance. |
 | **Pi display** | Installed and running at 1024 × 600. Pairing, OS restart, live revocation/re-enrollment, and recovery after a 90-second Echo connection outage verified. Exact panel identification, complete touch calibration, cold power-on, and Wi-Fi/router restart checks remain. |
-| **Pi audio and room calls** | Native wake, push-to-talk, reply routing, Spotify, alarms, announcements, and intercom implemented and checked with synthetic audio. Attached microphone/speaker setup and physical audibility, feedback, and interruption tests remain. |
+| **Pi audio and room calls** | Native wake, push-to-talk, reply routing, Spotify, alarms, announcements, and intercom implemented. Provisional USB-headset Spotify playback is owner-confirmed; wake/cue/reply audibility, feedback, interruption, and final microphone/speaker assembly remain open. |
 | **Home and daily tools** | Controls, lists, reminders, briefing, calendar forms, camera relay, and doorbell UI implemented. Live calendar writes and camera/doorbell behavior need configured integrations and acceptance. |
 | **Packaging** | Host tests, firmware build, fresh Docker build, Linux Pi checks, browser flows, and source/privacy guards exercised. Broader fresh-install/provider coverage and a complete live disaster restore remain open. |
 

@@ -46,6 +46,9 @@ def fixtures():
         'items':deepcopy(data['/v1/display/sources']['items'])}
     data['/v1/display/source-settings']['items'].append({'entity_id':'event.porch_demo','kind':'event','name':'Front door press · sample','available':True})
     data['/v1/display/source-settings']['sources']['doorbells']=[]
+    data['/v1/display/source-settings']['sources']['presence_sensors']=[]
+    data['/v1/display/source-settings']['items'].append({'entity_id':'binary_sensor.study_demo','kind':'binary_sensor','name':'Study occupancy · sample','available':True,'can_detect_presence':True})
+    data['/v1/display/presence']={'status':'not_selected','items':[],'revision':0}
     data['/v1/display/doorbells']={'status':'not_selected','events':[],'revision':0}
     data['/v1/display/sources']['revision']=0
     data['/v1/display/agenda']={'status':'available','unavailable':[], 'events':[
@@ -235,6 +238,7 @@ class DisplayPreview(Preview):
             identifiers=set(sources['calendars']+sources['cameras'])
             if not identifiers<={i['entity_id'] for i in state['items']}:raise ValueError()
             state.update(sources=sources,revision=state['revision']+1)
+            self.state['/v1/display/presence']={'status':'available' if sources['presence_sensors'] else 'not_selected','revision':state['revision'],'items':[{'entity_id':i['entity_id'],'name':i['name'],'available':True,'occupied':False} for i in state['items'] if i['entity_id'] in sources['presence_sensors']]}
             self.state['/v1/display/doorbells']={'status':'available' if sources['doorbells'] else 'not_selected','events':[],'revision':state['revision']}
             self.state['/v1/display/sources']={'status':'available' if identifiers else 'not_selected','revision':state['revision'],'items':[{**i,'writable':i['entity_id'] in sources['writable_calendars']} for i in state['items'] if i['entity_id'] in identifiers]}
             return {'sources':sources,'revision':state['revision']}

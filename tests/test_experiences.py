@@ -26,6 +26,7 @@ class ExperienceTests(unittest.TestCase):
                 if response is not None:return response
             if request.url.path=='/api/states':return httpx.Response(200,json=[
                 {'entity_id':'calendar.demo','state':'off','attributes':{'friendly_name':'Demo agenda'}},
+                {'entity_id':'binary_sensor.study','state':'on','attributes':{'device_class':'occupancy','friendly_name':'Study'}},
                 {'entity_id':'camera.porch','state':'idle','attributes':{'friendly_name':'Porch','access_token':'never-export'}},
                 {'entity_id':'camera.private','state':'idle','attributes':{'friendly_name':'Private camera'}}])
             if request.url.path=='/api/calendars/calendar.demo':return httpx.Response(200,json=[
@@ -87,11 +88,15 @@ class ExperienceTests(unittest.TestCase):
             client.headers['Authorization']='Bearer '+'synthetic-owner-token-'*3
             code=client.post('/v1/displays/pairing',json={'name':'Demo display'}).json()['code']
             credential=client.post('/v1/displays/enroll',json={'code':code}).json()['credential']
-            selection={'revision':0,'sources':{'calendars':['calendar.demo'],'cameras':['camera.porch']}}
+            selection={'revision':0,'sources':{'calendars':['calendar.demo'],'cameras':['camera.porch'],'presence_sensors':['binary_sensor.study']}}
             self.assertEqual(client.put('/v1/display/source-settings',json=selection).status_code,200)
             client.headers['Authorization']='Display '+credential
             self.assertEqual(client.get('/v1/display/source-settings').status_code,403)
             self.assertEqual(client.put('/v1/display/source-settings',json=selection).status_code,403)
+            presence=client.get('/v1/display/presence')
+            self.assertEqual(presence.status_code,200)
+            self.assertTrue(presence.json()['items'][0]['occupied'])
+            self.assertEqual(presence.headers['cache-control'],'no-store')
             self.assertEqual(client.get('/v1/display/agenda?start=2026-09-19').status_code,200)
             self.assertEqual(client.get('/v1/display/cameras/camera.porch/snapshot').status_code,200)
             self.assertEqual(client.get('/v1/display/cameras/camera.private/snapshot').status_code,403)
@@ -108,6 +113,7 @@ class ExperienceTests(unittest.TestCase):
             self.assertEqual(client.put('/v1/display/source-settings',json={'revision':1,'sources':{}}).status_code,200)
             client.headers['Authorization']='Display '+credential
             self.assertEqual(client.get('/v1/display/cameras/camera.porch/snapshot').status_code,403)
+            self.assertEqual(client.get('/v1/display/presence').json()['items'],[])
 
 
 if __name__=='__main__':unittest.main()

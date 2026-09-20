@@ -73,9 +73,22 @@ AMOLED pixels can develop permanent burn-in from prolonged static content. LCDs
 are much less susceptible, though temporary image retention is possible. These
 settings apply to the Deck/browser display; the current Mini firmware adds its own
 Settings → Screen timers and does not inherit the Deck's settings. It needs a
-firmware update on existing boards. No presence sensor is
-configured: touch and accepted wake words work, but camera, PIR and room-presence
-wake are not currently implemented. Echo does not infer occupancy from the mic.
+firmware update on existing boards.
+
+For optional presence wake, connect a motion or occupancy sensor to Home Assistant.
+Open **Smart display** from the **owner workspace**, then **Settings → Calendars & cameras → Load sources**
+and share it under **Presence sensors**. Then, on the display in that room, choose
+it in **Screen comfort → Wake with presence** and save. The choice is stored only
+in that display's browser; no sensor is selected automatically.
+
+Echo checks approved sensors every five seconds and keeps the screen awake while
+the selected sensor reports presence. Only binary sensors with Home Assistant's
+`motion`, `occupancy` or `presence` device class qualify. Unavailable, revoked or
+stale readings do not hold the screen awake. **Sleep now** ignores an already
+active sensor until it reports clear and detects presence again; touch and wake
+words still work. The host stores no presence history, and Echo does not infer
+occupancy from a microphone, camera or a phone joining Wi-Fi. Software checks use
+synthetic sensors; physical sensor acceptance remains open.
 
 The [display design guide](DISPLAY_DESIGN.md) covers the bundled typeface,
 smooth status ring, touch sizing and native-resolution kiosk configuration.
@@ -382,8 +395,9 @@ settings and display administration return HTTP 403.
 The Pi runs at 1024 × 600 over HDMI with USB touch, Wi-Fi and healthy power.
 The owner confirmed the appearance, and the kiosk and authenticated bridge
 recovered after an OS restart. A local reconnecting page handles host/network
-startup before the main app loads. Microphone hardware is not detected, so
-physical capture, reply audio and wake-word acceptance remain open. The repo
+startup before the main app loads. A USB headset is configured and its Spotify
+playback has owner confirmation. The listener receives microphone samples, but
+room pickup, wake/cue/reply audibility and echo-control acceptance remain open. The repo
 stays private; version `0.27.0.dev1` is an internal build, not a public release.
 
 ### The conversation workspace

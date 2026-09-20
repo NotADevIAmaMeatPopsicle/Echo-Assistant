@@ -13,6 +13,9 @@ agendaEndpoint(); pageEndpoints.agenda='day';
 const sourceCard=document.createElement('article');sourceCard.className='card pairing-card';sourceCard.hidden=true;
 sourceCard.innerHTML='<span class="eyebrow">CHOOSE WHAT IS SHARED</span><h2>Calendars & cameras</h2><p class="soft">Choose sources for your paired displays. Nothing is selected automatically. Calendar accounts and doorbell cameras are connected through Home Assistant.</p><button class="pill" id="source-load" type="button">Load sources</button><form id="source-form" hidden><p id="source-status" class="tiny soft"></p><div id="source-choices"></div><button class="pill primary" type="submit">Save display sources</button></form>';
 $('page-settings').append(sourceCard);
+const presenceChoices=document.createElement('fieldset');presenceChoices.id='source-presence';
+presenceChoices.innerHTML='<legend>Presence sensors</legend><p class="tiny soft">Share motion or occupancy sensors here, then choose one under Screen comfort on each display. Sharing does not activate screen wake automatically.</p><div id="source-presence-choices"></div>';
+$('source-form').querySelector('button[type="submit"]').before(presenceChoices);
 let sourceRevision=null, cameraUrl=null, cameraActive=false, cameraBusy=false, cameraGeneration=0, cameraAbort=null;
 function stopCamera(){cameraAbort?.abort();cameraAbort=null;cameraActive=false;cameraGeneration++;$('camera-frame').hidden=true;$('camera-frame').removeAttribute('src');if(cameraUrl)URL.revokeObjectURL(cameraUrl);cameraUrl=null;$('camera-placeholder').hidden=false;}
 function localEventDate(event){return event.all_day ? event.start : localDate(new Date(event.start));}
@@ -50,12 +53,16 @@ $('source-load').onclick=()=>action(async()=>{
   $('source-status').textContent=state.status==='available' ? 'Checked sources are shared with paired displays. Uncheck to remove access.' : 'Home Assistant is unavailable or not configured. You can clear existing selections.';
   $('source-choices').innerHTML=items.map(i=>`<div class="source-permissions"><label class="source-choice"><input type="checkbox" data-source-read value="${esc(i.entity_id)}" ${selected.has(i.entity_id)?'checked':''}><span>${esc(i.name)}<small class="soft">${esc(i.entity_id)}${i.available ? '' : ' · unavailable'}</small></span></label>${i.can_create||writers.has(i.entity_id)?`<label class="check-label calendar-write-choice"><input type="checkbox" data-source-write value="${esc(i.entity_id)}" ${writers.has(i.entity_id)?'checked':''}>Allow event creation from Echo displays</label>`:''}</div>`).join('') || empty('No calendar or camera entities were found.');
   renderDoorbellChoices(state);
+  const shared=new Set(state.sources.presence_sensors||[]),sensors=state.items.filter(i=>i.can_detect_presence);
+  for(const id of shared)if(!sensors.some(i=>i.entity_id===id))sensors.push({entity_id:id,name:id,available:false});
+  $('source-presence-choices').innerHTML=sensors.map(i=>`<label class="source-choice"><input type="checkbox" value="${esc(i.entity_id)}" ${shared.has(i.entity_id)?'checked':''}><span>${esc(i.name)}<small class="soft">${esc(i.entity_id)}${i.available?'':' · unavailable'}</small></span></label>`).join('')||empty('No motion or occupancy sensors are connected to Home Assistant.');
   $('source-form').hidden=false;
 },'Sources loaded.');
 $('source-form').onsubmit=event=>{event.preventDefault();if(sourceRevision===null)return;action(async()=>{
   const selected=[...$('source-choices').querySelectorAll('[data-source-read]:checked')].map(i=>i.value);
   const writers=[...$('source-choices').querySelectorAll('[data-source-write]:checked')].map(i=>i.value);
-  const state=await api('/v1/display/source-settings',{revision:sourceRevision,sources:{calendars:selected.filter(i=>i.startsWith('calendar.')),cameras:selected.filter(i=>i.startsWith('camera.')),writable_calendars:writers,doorbells:doorbellSelection()}},'PUT');
+  const presence_sensors=[...$('source-presence-choices').querySelectorAll('input:checked')].map(i=>i.value);
+  const state=await api('/v1/display/source-settings',{revision:sourceRevision,sources:{calendars:selected.filter(i=>i.startsWith('calendar.')),cameras:selected.filter(i=>i.startsWith('camera.')),writable_calendars:writers,doorbells:doorbellSelection(),presence_sensors}},'PUT');
   sourceRevision=state.revision;stopCamera();
 },'Display sources saved.');};
 $('source-choices').addEventListener('change',event=>{

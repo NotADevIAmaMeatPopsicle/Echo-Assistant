@@ -1,7 +1,7 @@
 # Package and release status
 
 The repository is currently **private** while the round speaker and Pi smart
-display are completed together. Current firmware source is **0.14.0**; it has
+display are completed together. Current firmware source is **0.15.0**; it has
 not been published as a new release. [Build queue](BUILD_QUEUE.md) records open
 hardware and integration acceptance, and [package checks](PACKAGE_CHECKS.md)
 describes the reproducible software checks. The release notes below are historical.

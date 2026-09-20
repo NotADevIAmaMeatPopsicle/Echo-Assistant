@@ -16,15 +16,16 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
-**Current handoff:** Deck screen protection and in-memory voice troubleshooting
-are deployed. Known generated speech passes both wake phrases and the live host
+**Current handoff:** Deck screen protection, optional presence wake and in-memory
+voice troubleshooting are deployed. Known generated speech passes both wake phrases and the live host
 transcription/assistant path without playback. This does not verify room pickup:
 the observed USB-headset input is quiet and no owner wake event was observed in
 the latest diagnostic window. Use the input meter and stage history during the
 next real attempt. Mini firmware 0.15.0 builds with Screen settings and idle OLED
 protection; installation is pending because no USB Mini is attached to this laptop.
-No motion/occupancy/presence-class binary sensors are currently exposed by Home
-Assistant. Do not claim that presence wake or acoustic acceptance is complete.
+Presence wake now supports owner-approved Home Assistant motion/occupancy sensors
+and per-display selection. No qualifying sensors are currently exposed by Home
+Assistant, so physical presence-wake acceptance remains open.
 One quiet 2% headphone-to-microphone wake check produced no detected wake; its
 question was therefore not played. This does not establish a microphone fault
 or human-speech pickup. The next test needs someone speaking near the microphone.
@@ -52,6 +53,7 @@ or human-speech pickup. The next test needs someone speaking near the microphone
 - [x] Home tile selection and saved positions, Music tile with artwork/control, and horizontal page swipes that leave keyboard/control gestures intact (software).
 - [x] Native Pi wake recognition during Spotify, optional 80% music ducking and shared-output setup (software; live wake/cue/restore acceptance pending).
 - [x] Deck configurable idle dim/sleep and wake-only first touch; native HDMI Off/On reported by X11. Physical backlight/touch acceptance pending.
+- [x] Opt-in Deck presence wake, owner source permissions, per-display sensor selection, stale/offline fallback and manual-sleep behavior (software; no physical sensor configured).
 - [x] Pi input meter and bounded, volatile wake/capture/reply diagnostics; no recordings or ambient transcripts saved.
 - [x] Mini OLED idle dim/dark settings, touch wake and audio-preserving screen state (compiled and rendered; firmware installation pending).
 - [x] Integrated software verification, fresh Docker build, repeatable browser suite, and refreshed screenshots/documentation. Physical and external-service acceptance below remains open.
@@ -76,7 +78,7 @@ commercial video, and proprietary casting depend on supported third-party servic
 do not present a placeholder as a working integration. Expose clear availability
 and configuration states, and record any unsupported service explicitly.
 
-## Software checkpoint
+## Earlier software checkpoints
 
 The current private branch has 79 passing focused tests across the new display
 features and related existing home/timer paths. Silent browser checks pass for
@@ -125,7 +127,8 @@ camera and doorbell acceptance is still open.
 Pi Spotify software now includes a separately named receiver, explicit ALSA output,
 2% initial level, current-track controls and pause-before-microphone coordination.
 The ARM64 binary starts on the Pi; Linux pipe and silent UI checks pass. It is
-installed disabled until an output is chosen. See [Pi Spotify](PI_SPOTIFY.md).
+initially installed disabled until an output was chosen; the current headset
+receiver is enabled. See [Pi Spotify](PI_SPOTIFY.md).
 
 Physical Pi wake and acoustic acceptance need an identified microphone and
 speaker. Software coverage does not establish physical audio performance.
@@ -139,8 +142,9 @@ preferred HDMI timing and X11 is using that mode. Chromium is in kiosk mode.
 The dedicated kiosk now explicitly uses scale factor 1 and active monitor bounds.
 A higher accepted input mode does not establish a higher native panel resolution.
 
-The native Pi wake listener and pinned Vosk runtime are installed with listening
-disabled and software mute on. A synthetic Linux pipe check exercised the cue,
+The native Pi wake listener and pinned Vosk runtime were initially installed with
+listening disabled and software mute on; listening is now enabled for the selected
+USB headset. A synthetic Linux pipe check exercised the cue,
 command capture, reply attenuation and mute cleanup. Silent browser checks cover
 native state, conversation, Talk/Send/Stop and stale-adapter handling. See
 [Pi voice](PI_VOICE.md) for setup and the explicit echo-cancelled input requirement.
@@ -217,5 +221,9 @@ does not. Synthetic checks cover timers, persistence, validation and preventing
 the wake tap from pressing a control underneath. The Pi reported DPMS Off and
 On during a silent sleep/wake check, and its native microphone remained armed.
 Physical backlight extinction and a real touch wake after idle remain unverified.
-Presence wake needs a configured sensor and is not implemented. Mini firmware
-does not inherit these Deck settings.
+Presence wake is implemented using approved Home Assistant motion/occupancy sensors,
+with explicit selection on each display. Ten focused Python checks and two silent
+browser flows cover permission removal, bounded caching, unavailable sensors,
+manual sleep, persistence and first-touch protection. No actual sensor is configured,
+so physical presence wake remains unverified. Mini firmware does not inherit these
+Deck settings.

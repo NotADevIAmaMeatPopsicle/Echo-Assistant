@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 from threading import RLock
+from time import monotonic
 from urllib.parse import urlencode
 
 import httpx
@@ -31,11 +32,12 @@ class Sources(BaseModel):
     cameras: list[str] = Field(default_factory=list, max_length=12)
     writable_calendars: list[str] = Field(default_factory=list, max_length=12)
     doorbells: list[DoorbellSource] = Field(default_factory=list, max_length=12)
+    presence_sensors: list[str] = Field(default_factory=list, max_length=12)
 
-    @field_validator('calendars', 'cameras', 'writable_calendars')
+    @field_validator('calendars', 'cameras', 'writable_calendars', 'presence_sensors')
     @classmethod
     def identifiers(cls, values, info):
-        domain = 'camera' if info.field_name == 'cameras' else 'calendar'
+        domain = {'cameras': 'camera', 'presence_sensors': 'binary_sensor'}.get(info.field_name, 'calendar')
         if len(set(values)) != len(values) or any(not re.fullmatch(domain+r'\.[a-z0-9_]{1,128}', v) for v in values):
             raise ValueError('Choose unique sources from Home Assistant')
         return values
@@ -98,7 +100,15 @@ def temporal(value):
 
 
 class Experiences:
-    def __init__(self, home, store): self.home, self.store = home, store
+    def __init__(self, home, store):
+        self.home, self.store = home, store
+        self._presence_lock, self._presence_cache = RLock(), None
+
+    @staticmethod
+    def presence_capable(state):
+        attrs = state.get('attributes')
+        return (str(state.get('entity_id', '')).startswith('binary_sensor.') and
+                isinstance(attrs, dict) and attrs.get('device_class') in ('motion', 'occupancy', 'presence'))
 
     def discovery(self):
         if not self.home.config.enabled: return {'status': 'not_configured', 'items': []}
@@ -115,13 +125,14 @@ class Experiences:
             items.append({'entity_id': identifier, 'kind': identifier.split('.')[0],
                           'name': name[:160] if isinstance(name, str) else identifier,
                           'can_create':identifier.startswith('calendar.') and type(attrs.get('supported_features')) is int and bool(attrs['supported_features']&1),
+                          'can_detect_presence': self.presence_capable(state),
                           'available': state.get('state') not in {None, 'unknown', 'unavailable'}})
         items.sort(key=lambda i:(i['kind'] not in {'calendar','camera'},i['name']))
         return {'status': 'available', 'items': items[:512]}
 
     def save_sources(self, sources, revision):
         checked = Sources.model_validate(sources)
-        selected = set(checked.calendars+checked.cameras+[d.trigger for d in checked.doorbells])
+        selected = set(checked.calendars+checked.cameras+checked.presence_sensors+[d.trigger for d in checked.doorbells])
         # Removing all sources remains possible when Home Assistant is offline.
         if selected:
             inventory=self.discovery()['items']
@@ -129,7 +140,43 @@ class Experiences:
             if not selected <= known: raise ValueError('A selected source is no longer in Home Assistant')
             if not set(checked.writable_calendars)<={i['entity_id'] for i in inventory if i['can_create']}:
                 raise ValueError('A writable calendar does not support event creation')
+            if not set(checked.presence_sensors)<={i['entity_id'] for i in inventory if i['can_detect_presence']}:
+                raise ValueError('Choose motion, occupancy or presence binary sensors')
         return self.store.save(checked.model_dump(), revision)
+
+    def presence(self):
+        selection = self.store.snapshot()
+        identifiers = selection['sources']['presence_sensors']
+        if not self.home.config.enabled:
+            return {'status': 'not_configured', 'items': [], 'revision': selection['revision']}
+        if not identifiers:
+            return {'status': 'not_selected', 'items': [], 'revision': selection['revision']}
+        # Share one short-lived HA inventory across displays. Store only approved
+        # sensor states in memory, never the upstream attributes or a history.
+        with self._presence_lock:
+            cached = self._presence_cache
+            if cached and cached[0] == selection['revision'] and monotonic() - cached[1] < 4:
+                items = deepcopy(cached[2])
+            else:
+                states = self.home._request('GET', '/api/states')
+                if not isinstance(states, list): raise HomeUnavailable('Presence sensors unavailable')
+                known = {s['entity_id']: s for s in states if isinstance(s, dict) and s.get('entity_id') in identifiers}
+                items = []
+                for identifier in identifiers:
+                    state = known.get(identifier, {})
+                    capable = self.presence_capable(state)
+                    attrs = state.get('attributes') if capable else {}
+                    name = attrs.get('friendly_name')
+                    available = capable and state.get('state') in ('on', 'off')
+                    items.append({'entity_id': identifier, 'name': name[:160] if isinstance(name, str) else identifier,
+                                  'available': available, 'occupied': state.get('state') == 'on' if available else None})
+                self._presence_cache = (selection['revision'], monotonic(), deepcopy(items))
+        # Permission may have changed during the upstream request or cache read.
+        current = self.store.snapshot()
+        allowed = current['sources']['presence_sensors']
+        items = [i for i in items if i['entity_id'] in allowed]
+        return {'status': 'not_selected' if not allowed else 'available' if all(i['available'] for i in items) else 'partial',
+                'items': items, 'revision': current['revision']}
 
     def sources(self):
         selected = self.store.snapshot()['sources']
