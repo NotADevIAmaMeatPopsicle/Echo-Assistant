@@ -1,9 +1,35 @@
-param([ValidateSet('Save','SavePolicy','SaveApi','Recover','RecoverApi','Status')][string]$Mode='Recover')
+param(
+    [ValidateSet('Save','SavePolicy','SaveApi','RestoreBootstrap','Recover','RecoverApi','Status')][string]$Mode='Recover',
+    [ValidatePattern('^[a-f0-9]{12}$')][string]$RehearsalId,
+    [string]$RehearsalDirectory,
+    [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}$')][string]$DockerContext
+)
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 Add-Type -AssemblyName System.Security
 $echoRoot=Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Echo'
 $echoDocker=(Get-Command docker.exe -ErrorAction Stop).Source
+$echoDockerOptions=@()
+$echoApiName='echo-api'; $echoAgentName='echo-agent'
+if ($DockerContext -and -not $RehearsalId) { throw 'Docker context override requires an isolated rehearsal' }
+if ($RehearsalDirectory -and -not $RehearsalId) { throw 'Directory override requires an isolated rehearsal' }
+if ($RehearsalId) {
+    $echoParent=Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'EchoRecoveryChecks'
+    $echoRoot=Join-Path $echoParent $RehearsalId
+    if ($RehearsalDirectory) {
+        if (-not [IO.Path]::IsPathRooted($RehearsalDirectory)) { throw 'Rehearsal path must be absolute' }
+        $echoRoot=[IO.Path]::GetFullPath($RehearsalDirectory)
+        $echoParent=Split-Path -Parent $echoRoot
+        if ((Split-Path -Leaf $echoRoot) -cne $RehearsalId -or (Split-Path -Leaf $echoParent) -cne 'EchoRecoveryChecks') { throw 'Invalid rehearsal path' }
+    }
+    foreach ($path in @($echoParent,$echoRoot)) {
+        if (-not (Test-Path -LiteralPath $path) -or ((Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Invalid rehearsal directory' }
+    }
+    if ([IO.File]::ReadAllText((Join-Path $echoRoot 'owner')) -cne $RehearsalId) { throw 'Unowned rehearsal directory' }
+    $echoApiName='echo-recovery-check-'+$RehearsalId+'-api'
+    $echoAgentName='echo-recovery-check-'+$RehearsalId+'-agent'
+    if ($DockerContext) { $echoDockerOptions=@('--context',$DockerContext) }
+}
 $echoBundle=Join-Path $echoRoot 'agent-bootstrap.dpapi'
 $echoPolicy=Join-Path $echoRoot 'home-access.dpapi'
 $echoApiBundle=Join-Path $echoRoot 'api-bootstrap.dpapi'
@@ -34,10 +60,12 @@ function Check-Policy($Policy) {
     }
 }
 function Run-Container([string]$Script,[string]$InputText,[ValidateSet('echo-agent','echo-api')][string]$Container='echo-agent') {
+    $actual=if ($Container -eq 'echo-api') { $echoApiName } else { $echoAgentName }
+    Assert-Container $actual
     $start=New-Object Diagnostics.ProcessStartInfo
     $start.FileName=$echoDocker
     $python=if ($Container -eq 'echo-agent') { '/opt/hermes/.venv/bin/python' } else { '/usr/local/bin/python' }
-    $start.Arguments='exec -i --user 10000:10000 '+$Container+' '+$python+' -c "'+$Script+'"'
+    $start.Arguments=($echoDockerOptions -join ' ')+' exec -i --user 10000:10000 '+$actual+' '+$python+' -c "'+$Script+'"'
     $start.UseShellExecute=$false
     $start.CreateNoWindow=$true
     $start.RedirectStandardInput=$true
@@ -57,6 +85,52 @@ function Run-Container([string]$Script,[string]$InputText,[ValidateSet('echo-age
         return $output.Result.Trim()
     } finally { $process.Dispose() }
 }
+function Assert-Container([string]$Name) {
+    if (-not $RehearsalId) { return }
+    $labels=& $echoDocker @echoDockerOptions inspect $Name --format '{{json .Config.Labels}}' 2>$null
+    if ($LASTEXITCODE -ne 0 -or ($labels|ConvertFrom-Json).'org.echo.recovery-check' -cne $RehearsalId) { throw 'Refusing unowned rehearsal container' }
+}
+function Read-Health([ValidateSet('api','agent')][string]$Service) {
+    if ($RehearsalId) {
+        $port=if ($Service -eq 'api') { '8768' } else { '8642' }
+        return (Run-Container ("import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:"+$port+"/health',timeout=2).read().decode())") '' ('echo-'+$Service))|ConvertFrom-Json
+    }
+    $port=if ($Service -eq 'api') { '18668' } else { '18642' }
+    return Invoke-RestMethod ('http://127.0.0.1:'+$port+'/health') -TimeoutSec 3
+}
+function Restore-Bootstrap($Value) {
+    Check-Policy $Value.agent.home_access
+    Check-Policy $Value.api.home_access
+    if (-not $Value.agent.config -or $Value.agent.secrets.API_SERVER_KEY.Length -lt 32 -or
+        -not $Value.api.settings -or $Value.api.api_token.Length -lt 32 -or $Value.api.home_tools_token.Length -lt 32 -or
+        [Convert]::FromBase64String($Value.api.storage_key).Length -ne 32) { throw 'Invalid recovery bootstrap' }
+    $values=@{'agent-bootstrap.dpapi'=$Value.agent;'api-bootstrap.dpapi'=$Value.api;'home-access.dpapi'=$Value.agent.home_access}
+    $previous=@{}; $staged=@{}; $changed=@()
+    try {
+        foreach ($name in $values.Keys) {
+            $path=Join-Path $echoRoot $name
+            $previous[$name]=if (Test-Path -LiteralPath $path) { [IO.File]::ReadAllBytes($path) } else { $null }
+            $raw=[Text.Encoding]::UTF8.GetBytes(($values[$name]|ConvertTo-Json -Depth 40 -Compress))
+            try { $sealed=[Security.Cryptography.ProtectedData]::Protect($raw,$null,$echoScope) }
+            finally { [Array]::Clear($raw,0,$raw.Length) }
+            $temporary=$path+'.restore-'+[Guid]::NewGuid().ToString('N')
+            [IO.File]::WriteAllBytes($temporary,$sealed); $staged[$name]=$temporary
+        }
+        foreach ($name in $values.Keys) {
+            Move-Item -LiteralPath $staged[$name] -Destination (Join-Path $echoRoot $name) -Force
+            $changed+=$name
+        }
+    } catch {
+        foreach ($name in $changed) {
+            $path=Join-Path $echoRoot $name
+            if ($null -eq $previous[$name]) { Remove-Item -LiteralPath $path -Force }
+            else { [IO.File]::WriteAllBytes($path,$previous[$name]) }
+        }
+        throw
+    } finally {
+        foreach ($path in $staged.Values) { if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force } }
+    }
+}
 function Report([string]$State) {
     $result=@{state=$State;checked_at=[DateTime]::UtcNow.ToString('o')}
     if ($script:echoFailure) { $result.failure=$script:echoFailure }
@@ -69,10 +143,11 @@ function Report([string]$State) {
 
 function Recover-Api {
     if (-not (Test-Path -LiteralPath $echoApiBundle)) { return 'not_provisioned' }
-    $running=& $echoDocker inspect echo-api --format '{{.State.Status}}' 2>$null
+    Assert-Container $echoApiName
+    $running=& $echoDocker @echoDockerOptions inspect $echoApiName --format '{{.State.Status}}' 2>$null
     if ($LASTEXITCODE -ne 0 -or $running.Trim() -ne 'running') { return 'container_not_running' }
     try {
-        $health=Invoke-RestMethod 'http://127.0.0.1:18668/health' -TimeoutSec 3
+        $health=Read-Health 'api'
         if ($health.product -eq 'round-voice') { return 'ready' }
     } catch {}
     $probe=Run-Container "from pathlib import Path; print('bootstrapped' if Path('/run/echo/bootstrapped').exists() else 'waiting')" '' 'echo-api'
@@ -85,6 +160,7 @@ function Recover-Api {
 }
 
 function Recover-Discovery {
+    if ($RehearsalId) { return 'not_provisioned' }
     $config=Join-Path $echoRoot 'discovery.json'
     if (-not (Test-Path -LiteralPath $config)) { return 'not_provisioned' }
     $settings=Get-Content -LiteralPath $config -Raw|ConvertFrom-Json
@@ -99,7 +175,7 @@ function Recover-Discovery {
 
 function Get-AgentConfiguration {
     try {
-        $health=Invoke-RestMethod 'http://127.0.0.1:18642/health' -TimeoutSec 2
+        $health=Read-Health 'agent'
         if ($health.status -eq 'ok') {
             return (Run-Container "from pathlib import Path; print(Path('/opt/data/echo-configuration').read_text())" '')
         }
@@ -148,7 +224,8 @@ function Apply-AgentSettings {
         $apiPayload.settings=$change.settings
         $apiPayload.provider_key=$change.provider_key
         Save-Protected $echoApiBundle ([Text.Encoding]::UTF8.GetBytes(($apiPayload|ConvertTo-Json -Depth 30 -Compress)))
-        $null=& $echoDocker restart --time 10 echo-agent 2>$null
+        Assert-Container $echoAgentName
+        $null=& $echoDocker @echoDockerOptions restart --time 10 $echoAgentName 2>$null
         if ($LASTEXITCODE -ne 0) { throw 'Agent restart failed' }
         $script="import sys,json,os; from pathlib import Path; p=Path('/opt/data/.echo-bootstrap.json'); data=sys.stdin.buffer.read(); json.loads(data); assert not Path('/opt/data/runtime.log').exists(); t=p.with_suffix('.tmp'); t.write_bytes(data); os.chmod(t,0o600); t.replace(p); print('provisioned')"
         $null=Run-Container $script ($payload|ConvertTo-Json -Depth 30 -Compress)
@@ -179,11 +256,14 @@ try {
         else { Write-Output '{"state":"not_checked"}' }
         exit 0
     }
-    if ($Mode -in @('Save','SavePolicy','SaveApi')) {
+    if ($Mode -in @('Save','SavePolicy','SaveApi','RestoreBootstrap')) {
         $incoming=[Console]::In.ReadToEnd()
         if ($incoming.Length -gt 500000) { throw 'Bootstrap is too large' }
         $value=$incoming|ConvertFrom-Json
-        if ($Mode -eq 'Save') {
+        if ($Mode -eq 'RestoreBootstrap') {
+            Restore-Bootstrap $value
+            Report 'bootstrap_restored'
+        } elseif ($Mode -eq 'Save') {
             Check-Policy $value.home_access
             if (-not $value.config -or -not $value.secrets.API_SERVER_KEY -or
                 -not ($value.secrets.AZURE_FOUNDRY_API_KEY -or $value.secrets.OPENAI_API_KEY -or $value.secrets.ANTHROPIC_API_KEY)) { throw 'Invalid bootstrap' }
@@ -224,7 +304,8 @@ try {
     if ($Mode -eq 'RecoverApi' -and $script:echoApiState -eq 'recovery_failed') { Report 'recovery_failed'; exit 1 }
     if ($Mode -eq 'RecoverApi') { Report $script:echoApiState; exit 0 }
     if (-not (Test-Path -LiteralPath $echoBundle)) { Report 'not_provisioned'; exit 0 }
-    $container=& $echoDocker inspect echo-agent --format '{{.State.Status}}' 2>$null
+    Assert-Container $echoAgentName
+    $container=& $echoDocker @echoDockerOptions inspect $echoAgentName --format '{{.State.Status}}' 2>$null
     if ($LASTEXITCODE -ne 0) { Report 'waiting_for_docker_or_container'; exit 0 }
     if ($container.Trim() -ne 'running') { Report 'container_not_running'; exit 0 }
     if ($script:echoApiState -eq 'ready') {
@@ -233,7 +314,7 @@ try {
     }
     # A deliberate stop is respected; recovery never creates or starts containers.
     try {
-        $health=Invoke-RestMethod 'http://127.0.0.1:18642/health' -TimeoutSec 3
+        $health=Read-Health 'agent'
         if ($health.status -eq 'ok') { Report 'ready'; exit 0 }
     } catch {}
     $probe=Run-Container "from pathlib import Path; print('bootstrapped' if Path('/opt/data/runtime.log').exists() else 'waiting')" ''

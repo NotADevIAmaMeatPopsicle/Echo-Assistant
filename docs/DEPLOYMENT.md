@@ -61,10 +61,12 @@ downloaded only when this explicit build command is run.
 
 Use the repository Python for these scripts. Startup thereafter uses
 `tools/remote_device.py start`, and the desktop launcher targets the selected host.
-Recovery archives use `tools/backup_remote.py`. A fresh API bootstrap, container
-restart and encrypted-archive restore into a new volume have been exercised with
-synthetic data. The full Windows recovery-task and Hermes disaster restore remain
-acceptance items; the isolated API check does not prove those paths.
+Recovery archives use `tools/backup_remote.py`. Synthetic recovery checks cover
+fresh API and Hermes startup, their authenticated endpoints, an actual Windows
+Scheduled Task after container restart, and encrypted-archive restoration into a
+fresh data volume and fresh containers. These checks use the same Windows account;
+they do not establish recovery after losing that account's DPAPI keys or reinstalling
+Windows, Docker, speech models and network access from scratch.
 
 ### Back up and restore saved data
 
@@ -93,6 +95,10 @@ that profile when planning recovery onto another computer.
 **Restore replaces the saved snapshot.** It first creates and verifies a recovery
 point for the current installation, then stops the API and Hermes, stages all
 replacement data, and restores the protected bootstrap before restarting them.
+The archive's saved API home-access policy is authoritative: it replaces the
+policy in both bootstraps and the separate Windows policy file. A newer policy
+left on the host cannot override the restored snapshot. Older archives containing
+the encrypted API policy receive the same treatment.
 Ordinary file-write failures roll back the changed files; interrupted host power
 still requires recovery from the retained archive. Queued announcements are
 cancelled and previously claimed deliveries are marked uncertain, so restoring an
@@ -103,6 +109,28 @@ Version 1 archives remain readable. They lack shared photos and the newer room
 and calendar-receipt stores, so those are empty after a version 1 restore. The
 automatically created version 2 pre-restore archive preserves the current data.
 Use a recent archive when recovering calendar dispatch records.
+
+### Rehearse recovery without touching the installation
+
+On Windows, with both images already built and a working Docker context, run:
+
+```text
+python tools/check_stack_recovery.py --context YOUR_DOCKER_CONTEXT --api-image YOUR_ECHO_IMAGE --agent-image YOUR_HERMES_IMAGE
+```
+
+The check creates temporary containers with networking disabled, synthetic keys
+and data, and a temporary current-user Windows Scheduled Task. It verifies API
+pairing restrictions, saved notes/photos/room settings/calendar receipts, Hermes
+configuration and authentication, and replacement of a stale host policy. It
+then removes its task, containers, volumes and temporary files. No production
+volumes, published ports, model calls or sound are used. Account memory restore
+and damaged-archive rejection also have focused automated coverage.
+
+The rehearsal uses ignored `output/EchoRecoveryChecks` directories so packaged
+desktop-app AppData virtualization cannot hide its script from Task Scheduler.
+Both the installed task and rehearsal use an absolute PowerShell executable.
+Recovery still requires the original Windows account's DPAPI material. Keep that
+limitation in the recovery plan; an archive alone is not a portable new-host backup.
 
 ## Browser access and storage
 

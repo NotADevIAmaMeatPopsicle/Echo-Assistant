@@ -16,8 +16,8 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from backend import deployment
 from backend.settings import WindowsProtector
-from backend.remote_host import _powershell, manage
-from tools.recovery_archive import FILES,LIMITS,read_archive as load_archive,read_photo,write_archive
+from backend.remote_host import _powershell, manage, install
+from tools.recovery_archive import FILES,LIMITS,read_archive as load_archive,read_photo,write_archive,restored_bootstrap
 
 # Kept as self-contained scripts so a recovery client can work with older images.
 COLLECT="""import base64,hashlib,json,re,sys; from pathlib import Path
@@ -80,10 +80,19 @@ foreach($name in @('api','agent')) {
     [Array]::Clear($raw,0,$raw.Length)
 }
 $result.api.PSObject.Properties.Remove('migration')
+$policyPath=Join-Path $root 'home-access.dpapi'
+if (Test-Path -LiteralPath $policyPath) {
+    $raw=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($policyPath),$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)
+    $policy=[Text.Encoding]::UTF8.GetString($raw)|ConvertFrom-Json
+    [Array]::Clear($raw,0,$raw.Length)
+    $result.agent.home_access=$policy
+    $result.api.home_access=$policy
+}
 Write-Output ($result|ConvertTo-Json -Depth 40 -Compress)
 '''
     bootstrap=json.loads(_powershell(script))
     payload={'kind':'echo-remote','version':2,'created_at':time.time(),**saved,'bootstrap':bootstrap}
+    payload['bootstrap']=restored_bootstrap(payload)
     destination=ROOT/'backups'/(time.strftime('echo-host-%Y%m%d-%H%M%S-')+secrets.token_hex(4)+'.echo-backup')
     destination.parent.mkdir(exist_ok=True)
     write_archive(destination,payload,WindowsProtector(),
@@ -97,6 +106,8 @@ Write-Output ($result|ConvertTo-Json -Depth 40 -Compress)
 
 def restore(path):
     payload=read_archive(path)
+    payload['bootstrap']=restored_bootstrap(payload)
+    install(ROOT) # The restored policy uses the same serialized recovery helper.
     # Preserve current data before the explicit replacement; never import the old
     # migration snapshot over newer routines, facts or speaker selection.
     previous=create()
@@ -117,20 +128,7 @@ def restore(path):
             if process.wait(timeout=90):raise RuntimeError('Recovery staging or application failed')
         finally:
             if process.poll() is None:process.kill();process.wait(timeout=5)
-    script=r'''
-$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.Security
-$root=(Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Echo');$data=[Console]::In.ReadToEnd()|ConvertFrom-Json
-foreach($name in @('api','agent')) {
-    $path=Join-Path $root ($name+'-bootstrap.dpapi')
-    $raw=[Text.Encoding]::UTF8.GetBytes(($data.$name|ConvertTo-Json -Depth 40 -Compress))
-    $sealed=[Security.Cryptography.ProtectedData]::Protect($raw,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)
-    [IO.File]::WriteAllBytes(($path+'.restore-tmp'),$sealed)
-    Move-Item -LiteralPath ($path+'.restore-tmp') -Destination $path -Force
-    [Array]::Clear($raw,0,$raw.Length)
-}
-Write-Output '{"restored":true}'
-'''
-    _powershell(script,json.dumps(payload['bootstrap']).encode())
+    manage('RestoreBootstrap',payload['bootstrap'])
     docker('start','echo-agent','echo-api');manage('Recover')
     return previous
 

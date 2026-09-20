@@ -24,6 +24,15 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Windows/Hermes recovery checkpoint:** the actual Windows recovery helper and
+a temporary Scheduled Task recovered both services after container restart.
+A DPAPI archive then restored into fresh containers and a fresh data volume,
+preserving synthetic pairing, notes, photos, room policy and calendar receipts;
+Hermes configuration and authentication were verified. A stale host home-access
+policy is now replaced from the archive. Twelve focused checks also pass.
+No production service, model call or audio was used in the rehearsal. Fresh-OS
+provisioning and recovery without the original Windows DPAPI keys remain open.
+
 **Personal calendar voice checkpoint:** Deck and Mini personal sessions now answer
 agenda requests for today, tomorrow and the next seven days from approved sources.
 The local summary uses account/display/global grant intersections, excludes
@@ -318,6 +327,10 @@ parity. Known gaps documented in the smart-display guide remain:
 - [ ] Supported casting/commercial-video integrations, subject to provider access
       and licensing; current local media and Spotify do not establish those features.
 - [ ] Full Windows host and Hermes disaster-recovery rehearsal.
+      Same-account Windows task recovery and fresh-container/volume API/Hermes
+      archive restoration are verified with synthetic data. Fresh Windows/Docker
+      provisioning, model restoration and recovery after losing the Windows
+      account's DPAPI keys remain open; see [Deployment](DEPLOYMENT.md).
 
 These are separate from the physical and live-service acceptance above. Do not
 mark the overall goal complete while the required feature set remains open.

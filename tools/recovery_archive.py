@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import zipfile
+from copy import deepcopy
 
 LEGACY_FILES=('echo-settings.json','echo-memory.json','echo-routines.json','echo-household.json',
               'echo-schedules.json','echo-displays.json','echo-experiences.json','home-access.json',
@@ -17,6 +18,28 @@ MAX_ENVELOPE=24_000_000
 MAX_PHOTO=6_000_000
 MAX_ARCHIVE=MAX_ENVELOPE+60*MAX_PHOTO+100_000
 ENVELOPE='recovery.dpapi'
+
+
+def restored_bootstrap(payload):
+    """Align both bootstraps to the archive's authoritative encrypted API policy."""
+    from backend.home_policy import validate_policy
+    from backend.linux_protection import MAGIC, CONTEXT
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    validate(payload)
+    result=deepcopy(payload['bootstrap'])
+    saved=payload['files'].get('home-access.json')
+    if saved:
+        envelope=json.loads(base64.b64decode(saved['data'],validate=True))
+        raw=base64.b64decode(envelope['protected'],validate=True)
+        if envelope.get('version')!=1 or not raw.startswith(MAGIC) or len(raw)<36:
+            raise ValueError('Invalid archived home policy')
+        key=base64.b64decode(result['api']['storage_key'],validate=True)
+        policy=json.loads(AESGCM(key).decrypt(raw[8:20],raw[20:],CONTEXT))['policy']
+    else:
+        policy=result['agent']['home_access']
+    result['api']['home_access']=validate_policy(policy)
+    result['agent']['home_access']=validate_policy(policy)
+    return result
 
 
 def photo_name(name):

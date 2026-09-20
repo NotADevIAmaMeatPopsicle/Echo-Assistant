@@ -27,7 +27,7 @@ def _powershell(script, data=b'', timeout=45):
 
 
 def manage(mode, payload=None):
-    if mode not in {'Save', 'SavePolicy', 'SaveApi', 'Recover', 'RecoverApi', 'Status'}: raise ValueError('Unknown recovery action')
+    if mode not in {'Save', 'SavePolicy', 'SaveApi', 'RestoreBootstrap', 'Recover', 'RecoverApi', 'Status'}: raise ValueError('Unknown recovery action')
     script = "$ProgressPreference='SilentlyContinue'; & " + HELPER + " -Mode " + mode + '; exit $LASTEXITCODE'
     data = b'' if payload is None else json.dumps(payload, ensure_ascii=True).encode()
     return json.loads(_powershell(script, data, timeout=90 if mode == 'Recover' else 45))
@@ -42,7 +42,7 @@ $ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'
 $path=(Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Echo/recover.ps1')
 $task=Get-ScheduledTask -TaskName 'Echo Runtime Recovery' -ErrorAction SilentlyContinue
 $current=$false
-if ((Test-Path -LiteralPath $path) -and $task -and $task.Actions.Arguments.Contains($path)) {
+if ((Test-Path -LiteralPath $path) -and $task -and $task.Actions.Arguments.Contains($path) -and $task.Actions.Execute -eq (Join-Path $PSHOME 'powershell.exe')) {
     $current=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -eq 'DIGEST'
 }
 Write-Output (@{current=$current}|ConvertTo-Json -Compress)
@@ -69,7 +69,7 @@ $path=Join-Path $directory 'recover.ps1'
 $name='Echo Runtime Recovery'
 $existing=Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
 if ($existing -and -not $existing.Actions.Arguments.Contains($path)) { throw 'Recovery task name is already in use' }
-$action=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "'+$path+'" -Mode Recover')
+$action=New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'powershell.exe') -WorkingDirectory $directory -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "'+$path+'" -Mode Recover')
 $logon=New-ScheduledTaskTrigger -AtLogOn -User $identity.Name
 $periodic=New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
 $principal=New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Limited

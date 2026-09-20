@@ -12,7 +12,7 @@ from unittest.mock import patch
 import zipfile
 
 from backend.linux_protection import LinuxProtector
-from tools.recovery_archive import FILES,LIMITS,ENVELOPE,read_archive,read_photo,write_archive,validate
+from tools.recovery_archive import FILES,LIMITS,ENVELOPE,read_archive,read_photo,write_archive,validate,restored_bootstrap
 from tools.recovery_restore import restore
 
 
@@ -21,6 +21,26 @@ def record(raw):
 
 
 class RecoveryTests(unittest.TestCase):
+    def test_restored_bootstraps_use_saved_api_policy_not_stale_agent_grants(self):
+        policy={'default_access':'hidden','devices':{'light.synthetic':{'access':'read','room':'Study'}}}
+        self.payload['bootstrap']['agent']['home_access']={'default_access':'read','devices':{}}
+        raw=json.dumps({'version':1,'protected':base64.b64encode(self.protector.encrypt(json.dumps({'policy':policy}).encode())).decode()}).encode()
+        self.payload['files']['home-access.json']=record(raw)
+        self.write();loaded=read_archive(self.archive,self.protector);value=restored_bootstrap(loaded)
+        self.assertEqual(value['agent']['home_access'],policy)
+        self.assertEqual(value['api']['home_access'],policy)
+        self.assertEqual(loaded['bootstrap']['agent']['home_access']['default_access'],'read')
+
+    def test_legacy_missing_policy_uses_archive_bootstrap_and_rejects_damaged_ciphertext(self):
+        policy={'default_access':'hidden','devices':{}}
+        self.payload['bootstrap']['agent']['home_access']=policy
+        self.assertEqual(restored_bootstrap(self.payload)['api']['home_access'],policy)
+        blob=self.protector.encrypt(json.dumps({'policy':policy}).encode())
+        blob=blob[:-1]+bytes([blob[-1]^1])
+        self.payload['files']['home-access.json']=record(json.dumps({'version':1,'protected':base64.b64encode(blob).decode()}).encode())
+        from cryptography.exceptions import InvalidTag
+        with self.assertRaises(InvalidTag):restored_bootstrap(self.payload)
+
     def test_personal_accounts_and_memory_survive_restore_without_live_sessions(self):
         from backend.members import Members
         from backend.display_profiles import DisplayProfile
