@@ -101,6 +101,7 @@ def install(app,pipeline,authorize,conversations,shutdown,*,enable_home=True,pro
     @app.post('/v1/display/voice')
     async def voice(request:Request,allow_home:bool=False,reply_audio:bool=True,capture_id:str|None=None,session=Depends(authorize)):
         import re
+        before=profile_state(session) if profile_state else None
         if capture_id is not None and not re.fullmatch(r"[a-f0-9]{32}",capture_id):raise HTTPException(422,"Invalid capture identifier")
         if request.headers.get('content-type','').split(';')[0] not in {'audio/wav','audio/x-wav'}:raise HTTPException(415,'Send PCM WAV audio')
         raw=bytearray()
@@ -116,6 +117,7 @@ def install(app,pipeline,authorize,conversations,shutdown,*,enable_home=True,pro
             result=await run_conversation(request,shutdown,partial(app.state.display_voice.respond,progress=activity.progress),
                 pcm,session,allow_home and enable_home,reply_audio,activity=activity)
             authorize(request)  # Do not return a reply to an endpoint revoked during generation.
+            if profile_state and profile_state(session)!=before:raise HTTPException(409,'Account access changed. This reply was discarded.')
             return result
         except DisplayVoiceUnavailable as error:raise HTTPException(503,str(error)) from None
 

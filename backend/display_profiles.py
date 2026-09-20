@@ -18,6 +18,13 @@ class DisplayProfile(BaseModel):
     calendars:list[str]=Field(default_factory=list,max_length=12)
     cameras:list[str]=Field(default_factory=list,max_length=12)
     presence_sensors:list[str]=Field(default_factory=list,max_length=12)
+    members:list[str]=Field(default_factory=list,max_length=16)
+
+    @field_validator('members')
+    @classmethod
+    def member_ids(cls,value):
+        if len(set(value))!=len(value) or any(not re.fullmatch('[a-f0-9]{32}',v) for v in value):raise ValueError('Choose unique personal accounts')
+        return value
 
     @field_validator('name','room')
     @classmethod
@@ -47,6 +54,11 @@ class DisplayProfile(BaseModel):
 def guest_allowed(method,path,profile):
     """Default deny; direct endpoints and all indirect household tools stay private."""
     if profile['mode']!='guest':return True
+    if method=='GET' and path=='/v1/members/available' or method in {'POST','DELETE'} and path=='/v1/member/session':return True
+    if profile.get('personal'):
+        if method in {'GET','PUT'} and path=='/v1/member/preferences':return True
+        if method in {'GET','POST','DELETE'} and path=='/v1/memory' or method in {'PUT','DELETE'} and re.fullmatch('/v1/memory/[a-f0-9]{32}',path):return True
+        if method in {'GET','DELETE'} and path=='/v1/chat':return True
     if method=='GET' and path in {'/v1/display/session','/v1/state','/v1/home','/v1/display/home',
             '/v1/display/sources','/v1/display/agenda','/v1/display/presence',
             '/v1/display/music/now-playing','/v1/display/music/settings','/v1/display/alert-settings','/v1/display/alerts'}:return True
@@ -105,10 +117,15 @@ class GuestSettings:
 
 class ProfileAgent:
     """Use a separate volatile conversation store and provider-only path for guests."""
-    def __init__(self,household,guest,displays,home=None):self.household,self.guest,self.displays,self.home=household,guest,displays,home
+    def __init__(self,household,guest,displays,home=None):
+        self.household,self.guest,self.displays,self.home=household,guest,displays,home
+        self.personal=None
     def respond(self,text,session='device',lookup=False,**kwargs):
         before=self.displays.profile_for(session);profile=before['profile']
-        if profile['mode']=='guest':
+        if profile.get('personal') and self.personal:
+            if not profile['conversation']:raise HTTPException(403,'Conversation is not shared with this display')
+            result=self.personal.respond(text,session,lookup,before=before,**kwargs)
+        elif profile['mode']=='guest':
             if not profile['conversation']:raise HTTPException(403,'Conversation is not shared with this display')
             result=None
             from .lookup import lookup_request

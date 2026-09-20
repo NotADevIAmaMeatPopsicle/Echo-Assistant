@@ -18,6 +18,9 @@ class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if method=='GET' and path in {'/v1/members/available','/v1/member/preferences','/v1/chat'}:return True
+    if method in {'POST','DELETE'} and path=='/v1/member/session' or method=='PUT' and path=='/v1/member/preferences':return True
+    if method=='DELETE' and path in {'/v1/memory','/v1/chat'}:return True
     if method=='GET' and path=='/v1/display/local-voice':return True
     if method=='POST' and re.fullmatch(r'/v1/display/voice/[a-f0-9]{32}/stop',path):return True
     if method=='GET' and path in {'/v1/display/alerts','/v1/display/alert-settings'}:return True
@@ -58,6 +61,7 @@ class Displays:
         self.path=Path(root)/'local/echo-displays.json' if root else None
         self.protector,self.clock,self.lock=protector,clock,RLock()
         self.round_profile=round_profile
+        self.members=None
         self.devices=[]; self.pending={}; self.sessions={}; self.seen={}; self.error=False
         if self.path and self.path.exists():
             try:
@@ -139,7 +143,7 @@ class Displays:
             self.sessions[token]={'id':identifier,'expires_at':self.clock()+8*3600}
             return token
 
-    def authorize(self,request):
+    def identity(self,request):
         header=request.headers.get('authorization','')
         if header.startswith('Display '): identifier=self.credential(header)
         else:
@@ -151,12 +155,19 @@ class Displays:
             if request.method not in {'GET','HEAD'}:
                 from .web_auth import BrowserAuth
                 BrowserAuth.same_origin(request)
-        if not allowed(request.method,request.url.path): raise HTTPException(403,'Open the owner workspace to administer Echo')
-        if not guest_allowed(request.method,request.url.path,self.profile_for('display:'+identifier)['profile']):
-            raise HTTPException(403,'This feature is not shared with this guest display')
         return 'display:'+identifier
 
+    def authorize(self,request,principal=None):
+        principal=principal if principal is not None else self.identity(request)
+        if not allowed(request.method,request.url.path): raise HTTPException(403,'Open the owner workspace to administer Echo')
+        if not guest_allowed(request.method,request.url.path,self.profile_for(principal)['profile']):
+            raise HTTPException(403,'This feature is not shared with this guest display')
+        return principal
+
     def profile_for(self,principal):
+        if self.members:
+            from .members import PersonalPrincipal
+            if isinstance(principal,PersonalPrincipal):return self.members.profile_for(principal)
         if principal=='round' and self.round_profile is not None:return self.round_profile.snapshot()
         with self.lock:
             self.require()

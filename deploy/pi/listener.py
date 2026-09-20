@@ -290,6 +290,7 @@ class Listener:
 
     def command(self,config):
         if self.pending_http is not None and not self.pending_http.done():raise Unavailable('The previous voice request is still stopping')
+        access_revision=self.access_revision
         options=self.talk_options or {'allow_home':config['allow_home'],'reply_audio':True};self.talk_options=None
         self.talk.clear();self.phase='cue';self.audio_focus(config,True);self.last_focus=time.monotonic()
         self.note('cue_started')
@@ -307,13 +308,18 @@ class Listener:
         self.note('request_sent');request_at=time.monotonic()
         result=Future();self.pending_http=result
         def ask():
-            try:result.set_result(self.request('/v1/display/voice?allow_home='+str(options['allow_home']).lower()+'&reply_audio='+str(options['reply_audio']).lower()+'&capture_id='+identifier,wav(pcm),'audio/wav',120))
+            try:result.set_result(self.request('/v1/display/voice?allow_home='+str(options['allow_home']).lower()+'&reply_audio='+str(options['reply_audio']).lower()+'&capture_id='+identifier+'&access_revision='+str(access_revision if access_revision is not None else 0),wav(pcm),'audio/wav',120))
             except Exception as error:result.set_exception(error)
         threading.Thread(target=ask,name='pi-voice-request',daemon=True).start()
         while not result.done():
             frame=next(self.frames)
             if self.detector.feed(frame):self.talk.set();raise InterruptedError()
         self.check(config);reply=result.result();self.request_id=None
+        # Recheck after the network reply, before exposing text or opening output.
+        current=self.request('/v1/display/voice').get('access_revision',0)
+        expected=access_revision if access_revision is not None else 0
+        if current!=expected or reply.get('access_revision',0)!=expected:
+            self.result=None;raise InterruptedError()
         self.note('reply_received',elapsed_ms=round((time.monotonic()-request_at)*1000),transcript_characters=len(str(reply.get('transcript',''))))
         self.result={'id':identifier,'text':str(reply.get('text',''))[:4000],'transcript':str(reply.get('transcript',''))[:1200],'status':reply.get('status','unavailable'),'home_actions':reply.get('home_actions',[])[:12],
                      'access_revision':reply.get('access_revision',0)};self.result_at=time.monotonic()

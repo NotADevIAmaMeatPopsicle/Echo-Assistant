@@ -29,6 +29,8 @@ from backend.calendar_drafts import draft_request
 from backend.announcements import Announcements
 from backend.announcement_api import Send,Configure
 from types import SimpleNamespace
+from fastapi import HTTPException
+from tools.preview_members import PreviewMembers
 
 
 def fixtures():
@@ -39,6 +41,8 @@ def fixtures():
     data['/v1/display/local-voice']={'supported':False,'phase':'unavailable'}
     data['/v1/display/alert-settings']={'supported':False,'status':'Silent preview'}
     data['/v1/displays']={'items':[]}
+    data['/v1/members']={'items':[],'limit':16}
+    data['/v1/members/available']={'items':[],'session_minutes':15,'supported':True}
     data['/v1/round/profile']={'profile':{'mode':'household','name':'Household','room':'','conversation':True,'home_voice':False,
         'home_devices':{},'calendars':[],'cameras':[],'presence_sensors':[]},'profile_revision':0,'firmware_ready':True}
     data['/v1/display/voice']={'available':False,'mode':'push_to_talk','message':'Silent preview.'}
@@ -93,6 +97,7 @@ def fixtures():
 
 
 class DisplayPreview(Preview):
+    members=PreviewMembers()
     state = fixtures()
     timers = Assistant()
     household = HouseholdStore(None, None)
@@ -139,6 +144,8 @@ class DisplayPreview(Preview):
 
     def do_GET(self):
         path = urlsplit(self.path).path
+        personal=self.members.read(path)
+        if personal is not None:return self.json_reply(personal)
         if path in {'/', '/display'}:
             return self.reply(200, (WEB/'display/index.html').read_bytes(), 'text/html; charset=utf-8')
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
@@ -148,6 +155,8 @@ class DisplayPreview(Preview):
                   '/assets/display/group-music.js':('display/group-music.js','text/javascript'),
                   '/assets/display/group-music.css':('display/group-music.css','text/css'),
                   '/assets/display/profiles.js':('display/profiles.js','text/javascript'),
+                  '/assets/display/members.js':('display/members.js','text/javascript'),
+                  '/assets/display/members.css':('display/members.css','text/css'),
                   '/assets/display/screen.css':('display/screen.css','text/css'),
                   '/assets/display/screen.js':('display/screen.js','text/javascript'),
                   '/assets/display/home.css':('display/home.css','text/css'),
@@ -237,12 +246,15 @@ class DisplayPreview(Preview):
             with self.lock:
                 result = self.mutate(path,body)
             return self.json_reply(result)
+        except HTTPException as error:return self.json_reply({'detail':error.detail},error.status_code)
         except (HouseholdConflict,ScheduleConflict) as error: return self.json_reply({'detail':str(error)},409)
         except (ValueError,TypeError,KeyError): return self.json_reply({'detail':'Invalid demo request'},422)
 
     do_PATCH = do_DELETE = do_PUT = do_POST
 
     def mutate(self, path, body):
+        personal=self.members.mutate(self.command,path,body)
+        if personal is not None:return personal
         if path=='/v1/round/profile':
             from backend.display_profiles import DisplayProfile
             current=self.state[path]

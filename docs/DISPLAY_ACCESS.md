@@ -89,7 +89,8 @@ display page. Removing a profile grant does not delete household data.
 
 These are **per-device access profiles**, not per-person sign-in or voice
 identification. Anyone using a Household display receives its household access.
-Separate member identities and individual memory/calendar accounts remain open.
+[Personal accounts](PERSONAL_ACCOUNTS.md) add explicit Deck sign-in and separate
+member memory and conversations. External calendar-account sign-in remains open.
 [Mini profiles](ROUND_ACCESS.md) use the same grants with native home cards;
 their firmware is built and awaits installation. Local guest home commands
 are implemented with the explicit scope described above.

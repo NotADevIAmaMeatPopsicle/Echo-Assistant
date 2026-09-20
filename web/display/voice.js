@@ -1,6 +1,6 @@
 'use strict';
 endpoints.displayVoice='/v1/display/voice';
-let micStream=null,micContext=null,micNode=null,micChunks=[],micSamples=0,micOpening=false,voiceRequest=null,voiceReplyUrl=null,voiceRequestHome=false,voiceEpoch=0,voiceCancelling=false,microphoneState=null;
+let micStream=null,micContext=null,micNode=null,micChunks=[],micSamples=0,micOpening=false,voiceRequest=null,voiceReplyUrl=null,voiceRequestHome=false,voiceRequestAccess=0,voiceEpoch=0,voiceCancelling=false,microphoneState=null;
 const voicePlayer=$('voice-reply');voicePlayer.volume=.02;
 const voiceAvailabilityMessages=new Set([
   'Checking the speech service…', 'Preview only · voice capture is off.',
@@ -73,7 +73,7 @@ async function finishVoice(){
   try{
     const timeout=setTimeout(()=>{if(voiceRequest===controller)cancelVoice();},120000);
     let response;
-    try{response=await fetch('/v1/display/voice?allow_home='+voiceRequestHome+'&reply_audio='+$('voice-speak').checked,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'audio/wav','X-Echo-Request':'1'},body:recording,signal:controller.signal});}finally{clearTimeout(timeout);}
+    try{response=await fetch('/v1/display/voice?allow_home='+voiceRequestHome+'&reply_audio='+$('voice-speak').checked,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'audio/wav','X-Echo-Request':'1','X-Echo-Profile-Revision':String(voiceRequestAccess)},body:recording,signal:controller.signal});}finally{clearTimeout(timeout);}
     const result=await response.json();if(!response.ok)throw new Error(result.detail || 'Echo could not finish this recording.');
     if(epoch!==voiceEpoch)return;
     finishChatMessage(spoken,{text:result.transcript || 'Voice message'});finishChatMessage(answer,result);
@@ -90,7 +90,7 @@ $('voice-start').onclick=async()=>{
   if(!data.displayVoice?.available || voiceRequest || micStream || micOpening || voiceCancelling || chatAbort)return;
   const epoch=++voiceEpoch;
   clearVoiceReply();player.pause();micOpening=true;voiceButtons();$('display-voice-status').textContent='Opening the microphone…';
-  voiceRequestHome=$('allow-home').checked;$('allow-home').checked=false;
+  voiceRequestAccess=data.session?.profile_revision||0;voiceRequestHome=$('allow-home').checked;$('allow-home').checked=false;
   try{
     if(typeof prepareLocalAudio==='function')await prepareLocalAudio();
     if(!micOpening || epoch!==voiceEpoch)return;

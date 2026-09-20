@@ -145,6 +145,9 @@ class Bridge(BaseHTTPRequestHandler):
             elif body and len(body)<=2048 and self.command=='POST':
                 value=json.loads(body)
                 if not isinstance(value,dict) or 'action' not in value or not set(value)<={'action','allow_home','reply_audio'}:raise ValueError()
+                expected=self.headers.get('X-Echo-Profile-Revision')
+                if value['action']=='talk' and (expected is not None or profile.get('personal')) and expected!=str(revision):
+                    return self.error_reply(409,'Account access changed. Refresh before speaking.')
                 if profile['mode']=='guest' and value.get('action')=='talk' and not profile.get('home_voice',False):value['allow_home']=False
                 result=self.voice.control(**value)
             else:return self.error_reply(405,'Unsupported Pi voice request')
@@ -213,7 +216,7 @@ a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
         if self.music is not None and requested.path.startswith('/v1/display/music/'):
             if not re.fullmatch(r'/v1/display/music/(?:now-playing|settings|control|focus|artwork/[a-f0-9]{64})',requested.path):return self.error_reply(404,'Unknown local music route')
             return self.local_music(requested.path,body,base,headers)
-        for key in ('Content-Type','Range','Accept'):
+        for key in ('Content-Type','Range','Accept','X-Echo-Profile-Revision'):
             if self.headers.get(key): headers[key]=self.headers[key]
         request=urllib.request.Request(base+path,data=body,method=self.command,headers=headers)
         started=False

@@ -18,12 +18,12 @@ const fresh = key => data[key] && Date.now() - (received[key] || 0) < 20000;
 function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => $('toast').hidden = true, 6500); }
 async function api(path, body, method = 'POST', signal) {
   const response = await fetch(path, {method:body === undefined ? 'GET' : method, credentials:'same-origin',
-    headers:body === undefined ? {} : {'Content-Type':'application/json','X-Echo-Request':'1'}, body:body === undefined ? undefined : JSON.stringify(body),
+    headers:{...(body === undefined ? {} : {'Content-Type':'application/json','X-Echo-Request':'1'}),...(data.session?{'X-Echo-Profile-Revision':String(data.session.profile_revision||0)}:{})}, body:body === undefined ? undefined : JSON.stringify(body),
     signal:signal || AbortSignal.timeout(10000), cache:'no-store'});
   let result; try { result = await response.json(); } catch { throw new Error('Echo returned an unreadable response.'); }
   if (!response.ok) {
-    if (response.status === 401) { signInRequired = true; $('notice').textContent = response.headers.get('X-Echo-Display-Bridge')==='1' ? 'This display needs pairing again. Open Displays in the owner’s Echo settings to create a new pairing code.' : 'Sign in through the Echo launcher, then open Display. This screen needs an active Echo session.'; $('notice').hidden = false; }
-    const error=new Error(response.status === 401 ? 'Echo sign-in required.' : typeof result.detail === 'string' ? result.detail : `The request was not accepted (${response.status}).`);error.status=response.status;throw error;
+    if (response.status === 401 && path!=='/v1/member/session' && !data.session?.member) { signInRequired = true; $('notice').textContent = response.headers.get('X-Echo-Display-Bridge')==='1' ? 'This display needs pairing again. Open Displays in the owner’s Echo settings to create a new pairing code.' : 'Sign in through the Echo launcher, then open Display. This screen needs an active Echo session.'; $('notice').hidden = false; }
+    const error=new Error(response.status === 401 && path!=='/v1/member/session' && !data.session?.member ? 'Echo sign-in required.' : typeof result.detail === 'string' ? result.detail : `The request was not accepted (${response.status}).`);error.status=response.status;throw error;
   }
   if (path === '/v1/state') signInRequired = false;
   return result;

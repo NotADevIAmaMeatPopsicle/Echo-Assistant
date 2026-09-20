@@ -25,6 +25,27 @@ class Music:
 
 
 class PiListenerTests(unittest.TestCase):
+    def test_account_switch_after_capture_discards_reply_before_playback(self):
+        with TemporaryDirectory() as directory:
+            paths=[];played=[]
+            def request(path,*args):
+                paths.append(path)
+                if path=='/v1/display/voice':return {'available':True,'access_revision':42}
+                return {'status':'complete','text':'Old personal reply','access_revision':41,'audio':{'data':'never decode'}}
+            listener=Listener(request,Music(),directory);listener.access_revision=41
+            listener.config.update(enabled=True,muted=False,input='mic',output='speaker')
+            listener.host_ready=True;listener.last_host=time.monotonic()
+            class FakeDetector:
+                def reset(self):pass
+                def feed(self,pcm):return False
+            listener.detector=FakeDetector();voice=array('h',[1000,-1000]*640).tobytes()
+            def frames():
+                for _ in range(5):yield voice
+                while True:yield b'\0'*2560
+            listener.frames=frames();listener.play=lambda *args,**kwargs:played.append(listener.phase)
+            with self.assertRaises(InterruptedError):listener.command(dict(listener.config))
+            self.assertIn('&access_revision=41',paths[0]);self.assertEqual(played,['cue']);self.assertIsNone(listener.result)
+
     def test_diagnostics_are_bounded_measurements_without_recordings(self):
         with TemporaryDirectory() as directory:
             listener=Listener(lambda *args:None,Music(),directory)

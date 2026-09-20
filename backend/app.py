@@ -52,6 +52,8 @@ from .display_auth import Displays,DisplayStorageUnavailable
 from .display_profiles import DisplayProfile,GuestSettings,ProfileAgent,home_view
 from .round_profile import RoundProfile,RoundProfileUnavailable
 from .round_home import RoundHome
+from .members import Members,PersonalPrincipal,MembersUnavailable
+from .member_agent import MemberAgents
 from .experiences import SourceStore, Experiences
 from .experience_api import install as install_experiences
 from .calendar_events import CalendarWriter
@@ -132,23 +134,39 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     guest_echo=EchoAgent(GuestSettings(store),echo.provider,MemoryStore(None,store.protector))
     from .guest_home import GuestHome
     profiled_echo=ProfileAgent(echo,guest_echo,displays,GuestHome(catalog,actions,displays))
+    members=Members(runtime_root,store.protector);members.base_profile=displays.profile_for;displays.members=members
+    personal_echo=MemberAgents(members,store,echo.provider,profiled_echo.home,assistant);profiled_echo.personal=personal_echo
+    def lock_personal(principal):
+        conversations.clear(str(principal));personal_echo.clear(principal)
+    members.on_lock=lock_personal
+    app.state.members=members
     speech_restart = SpeechRestart(runtime_root)
     speaker_check = SpeakerCheck(runtime_root)
     agent_apply = AgentApply(runtime_root, store)
     voice_check_lock = Lock()
+    def check_access_revision(request,principal):
+        if request.url.path in {'/v1/display/session','/v1/members/available'}:return principal
+        value=request.headers.get('x-echo-profile-revision') or request.query_params.get('access_revision')
+        private=(request.url.path.startswith('/v1/memory') or request.url.path=='/v1/member/preferences' or
+                 request.url.path=='/v1/chat' or request.method=='POST' and request.url.path in {'/v1/display/voice','/v1/display/home/control','/v1/timers'})
+        if value is not None or isinstance(principal,PersonalPrincipal) and private:
+            if value!=str(displays.profile_for(principal)['profile_revision']):raise HTTPException(409,'Account access changed. Refresh this screen before continuing.')
+        return principal
     def authorize(request:Request):
         header=request.headers.get('authorization','')
         if request.headers.get('x-echo-endpoint'):
             auth.bearer(request)
             if request.headers['x-echo-endpoint']!='round':raise HTTPException(403,'Unknown host endpoint')
             return round_profile.authorize(request)
-        if header.startswith('Display '): return displays.authorize(request)
-        if header.startswith('Bearer ') or request.cookies.get('echo_session'): return auth.authorize(request)
-        if request.cookies.get('echo_display_session'): return displays.authorize(request)
-        return auth.authorize(request)
+        if header.startswith('Display ') or (not header.startswith('Bearer ') and not request.cookies.get('echo_session') and request.cookies.get('echo_display_session')):
+            principal=members.resolve(displays.identity(request))
+            return check_access_revision(request,displays.authorize(request,principal))
+        principal=members.resolve(auth.authorize(request))
+        if isinstance(principal,PersonalPrincipal):members.authorize(request,principal)
+        return check_access_revision(request,principal)
     def owner(request:Request):
         principal=authorize(request)
-        if principal=='round' or principal.startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
+        if isinstance(principal,PersonalPrincipal) or principal=='round' or principal.startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
     install_group_music(app,GroupMusic(runtime_root,store.protector,enabled=deployment_mode=='device'),authorize,owner,displays)
     install_schedules(app,schedules,authorize)
     install_display_alerts(app,DisplayAlerts(assistant,schedules),authorize)
@@ -200,6 +218,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     @app.exception_handler(RoundProfileUnavailable)
     async def round_profile_error(request,error):return JSONResponse({'detail':str(error)},status_code=503)
 
+    @app.exception_handler(MembersUnavailable)
+    async def members_error(request,error):return JSONResponse({'detail':str(error)},status_code=503)
+
     class PairDisplay(BaseModel):
         model_config=ConfigDict(extra='forbid')
         name:str=Field(min_length=1,max_length=60)
@@ -228,6 +249,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return result
 
     def validate_guest_profile(profile,previous):
+        if any(identifier not in members.records for identifier in profile.get('members',[])):
+            raise HTTPException(422,'Choose existing personal accounts')
         if profile['mode']=='guest':
             old=previous['profile']['home_devices']
             added={entity:grant for entity,grant in profile['home_devices'].items() if old.get(entity)!=grant and not (old.get(entity)=='control' and grant=='read')}
@@ -240,6 +263,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             sources=experiences.store.snapshot()['sources']
             if any(not set(profile[key])<=set(sources[key]) for key in ('calendars','cameras','presence_sensors')):
                 raise HTTPException(422,'Share sources in Display settings before assigning them to a guest')
+    from .member_api import install as install_members
+    install_members(app,members,personal_echo,authorize,owner,validate_guest_profile,conversations,
+                    lambda principal:(echo.clear(principal),guest_echo.clear(principal)))
     @app.get('/v1/round/profile')
     def mini_access(principal=Depends(authorize)):
         if principal.startswith('display:'):raise HTTPException(403,'Open the owner workspace to manage Echo Mini')
@@ -286,7 +312,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
 
     @app.get('/v1/display/session')
     def current_display_session(session=Depends(authorize)):
-        return {'role':'display' if session=='round' or session.startswith('display:') else 'owner',
+        return {'role':'display' if isinstance(session,PersonalPrincipal) or session=='round' or session.startswith('display:') else 'owner',
                 'receiver_id':session.split(':',1)[1] if session.startswith('display:') else None,
                 **displays.profile_for(session)}
 
@@ -801,40 +827,57 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return JSONResponse(status_code=503,content={'detail':str(error)})
 
     @app.get('/v1/memory',dependencies=[Depends(authorize)])
-    def memories():
-        return {'items':memory.snapshot(),'enabled':store.snapshot()[0].memory_enabled,'limit':200}
+    def memories(session=Depends(authorize)):
+        target=members.memory(session) if isinstance(session,PersonalPrincipal) else memory
+        enabled=store.snapshot()[0].memory_enabled
+        if isinstance(session,PersonalPrincipal):enabled &= members.preferences(session)['memory_enabled']
+        return {'items':target.snapshot(),'enabled':enabled,'limit':200,'scope':'personal' if isinstance(session,PersonalPrincipal) else 'household'}
 
     @app.post('/v1/memory',dependencies=[Depends(authorize)])
-    def add_memory(request:MemoryRequest):
-        try:item=memory.save(request.text)
+    def add_memory(request:MemoryRequest,session=Depends(authorize)):
+        target=members.memory(session) if isinstance(session,PersonalPrincipal) else memory
+        try:item=target.save(request.text)
         except ValueError as error:raise HTTPException(422,str(error)) from None
-        echo.clear();return {'item':item}
+        if isinstance(session,PersonalPrincipal):personal_echo.changed_memory(session)
+        else:echo.clear()
+        return {'item':item}
 
     @app.put('/v1/memory/{identifier}',dependencies=[Depends(authorize)])
-    def edit_memory(identifier:str,request:MemoryRequest):
-        try:item=memory.save(request.text,identifier)
+    def edit_memory(identifier:str,request:MemoryRequest,session=Depends(authorize)):
+        target=members.memory(session) if isinstance(session,PersonalPrincipal) else memory
+        try:item=target.save(request.text,identifier)
         except KeyError:raise HTTPException(404,'Memory was not found') from None
         except ValueError as error:raise HTTPException(422,str(error)) from None
-        echo.clear();return {'item':item}
+        if isinstance(session,PersonalPrincipal):personal_echo.changed_memory(session)
+        else:echo.clear()
+        return {'item':item}
 
     @app.delete('/v1/memory/{identifier}',dependencies=[Depends(authorize)])
-    def remove_memory(identifier:str):
-        try:memory.delete(identifier)
+    def remove_memory(identifier:str,session=Depends(authorize)):
+        target=members.memory(session) if isinstance(session,PersonalPrincipal) else memory
+        try:target.delete(identifier)
         except KeyError:raise HTTPException(404,'Memory was not found') from None
-        echo.clear();return {'status':'deleted'}
+        if isinstance(session,PersonalPrincipal):personal_echo.changed_memory(session)
+        else:echo.clear()
+        return {'status':'deleted'}
 
     @app.delete('/v1/memory',dependencies=[Depends(authorize)])
-    def clear_memories():
-        memory.clear();echo.clear();return {'status':'cleared'}
+    def clear_memories(session=Depends(authorize)):
+        target=members.memory(session) if isinstance(session,PersonalPrincipal) else memory
+        target.clear()
+        if isinstance(session,PersonalPrincipal):personal_echo.changed_memory(session)
+        else:echo.clear()
+        return {'status':'cleared'}
 
     @app.get('/v1/chat')
     def chat_history(session=Depends(authorize)):
-        return {'messages': echo.messages(session)}
+        return {'messages': (personal_echo.agent(session) if isinstance(session,PersonalPrincipal) else echo).messages(session)}
 
     @app.delete('/v1/chat')
     def clear_chat(session=Depends(authorize)):
         conversations.clear(session)
-        echo.clear(session)
+        if isinstance(session,PersonalPrincipal):personal_echo.clear(session)
+        else:echo.clear(session)
         return {'cleared': True}
 
     @app.get('/v1/echo', dependencies=[Depends(authorize)])

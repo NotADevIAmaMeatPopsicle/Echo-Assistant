@@ -21,6 +21,23 @@ def record(raw):
 
 
 class RecoveryTests(unittest.TestCase):
+    def test_personal_accounts_and_memory_survive_restore_without_live_sessions(self):
+        from backend.members import Members
+        from backend.display_profiles import DisplayProfile
+        members=Members(self.root,self.protector)
+        members.base_profile=lambda _: {'profile':DisplayProfile().model_dump(),'profile_revision':0}
+        account=members.create('Synthetic member');principal=members.login('owner',account['id'],account['passcode'])
+        members.memory(principal).save('Synthetic member fact')
+        self.payload['files']['echo-members.json']=record(members.path.read_bytes());self.write()
+        destination=self.root/'restored';destination.mkdir();restore(destination,self.stream())
+        # Recovery restores files into the chosen local data directory.
+        restored_root=self.root/'replacement';(restored_root/'local').mkdir(parents=True)
+        (destination/'echo-members.json').replace(restored_root/'local/echo-members.json')
+        loaded=Members(restored_root,self.protector);loaded.base_profile=members.base_profile
+        self.assertEqual(loaded.sessions,{})
+        principal=loaded.login('owner',account['id'],account['passcode'])
+        self.assertEqual(loaded.memory(principal).snapshot()[0]['text'],'Synthetic member fact')
+
     def setUp(self):
         self.temp=TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.key=os.urandom(32);key_path=self.root/'key';key_path.write_bytes(self.key);key_path.chmod(0o600)

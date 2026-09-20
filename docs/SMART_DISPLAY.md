@@ -14,7 +14,8 @@ Private installation data remains outside Git even while the repository is priva
 Paired displays support owner-assigned **Household** and **Guest** access profiles.
 Choose shared devices and read-only sources in **Settings → Your displays → Access**
 from the owner workspace. See [Display access](DISPLAY_ACCESS.md) for guest
-conversation, current Pi-client requirements and the remaining per-person work.
+conversation and current Pi-client requirements. [Personal accounts](PERSONAL_ACCOUNTS.md)
+add explicit Deck sign-in, separate saved memory and individual personality preferences.
 
 The `/display` page is included in Echo's existing web server. Open **Smart
 display** from the web workspace, or run the existing launcher with `--display`:

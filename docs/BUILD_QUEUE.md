@@ -24,6 +24,24 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Personal account checkpoint:** the private host and current Pi bundle now support
+owner-created accounts, explicit per-display assignment, an eight-digit touch
+passcode, separate saved memory and personality, and a 15-minute personal session.
+Personal conversations use the configured model directly; shared household Hermes
+context and private household data remain excluded. Device/source grants intersect
+with the display and global policy. Lockout persists, and old login requests cannot
+write into a new account or return stale speech after synthesis.
+
+Fifty focused tests pass on Windows and isolated Linux, including encrypted account
+restore and a native listener account switch before playback. Silent browser flows
+cover account creation, grants, keypad sign-in, memory, locking, existing Guest/Mini
+editing and phone layout. The synthetic preview supports temporary accounts too.
+The host and Pi update preserved private files and pairing; the listener returned
+armed at 2%, Spotify remained discoverable, and no sound or home devices were used.
+No real accounts were created. Personal Mini sign-in, separate personal Hermes tools,
+external account linking and physical account-use acceptance remain open. See
+[Personal accounts](PERSONAL_ACCOUNTS.md).
+
 **Mini access checkpoint:** encrypted Household/Guest profiles, selected home
 cards, isolated conversation and optional local guest home voice commands are
 implemented. Guest speaker selection does not change the household choice.
@@ -147,7 +165,8 @@ Spotify is discoverable, and the echo-cancellation service remains active.
 The full Windows suite passed 476 tests with seven platform-specific skips;
 64 focused Linux tests and the synthetic voice pipeline passed. Browser checks
 cover profile editing, guest layout and existing home/calendar/keyboard flows.
-No sound or home actions were used. Per-person accounts remain open; local guest
+No sound or home actions were used. The later personal-account checkpoint adds
+Deck sign-in and separate memory; local guest
 home commands are covered in the checkpoint above.
 
 **Calendar drafting checkpoint:** model-assisted drafts now run on the private host
@@ -263,8 +282,9 @@ parity. Known gaps documented in the smart-display guide remain:
 - [ ] Household/guest profiles and per-user/per-room source policies.
       Per-display Household/Guest profiles, selected home-device and read-only
       source grants, isolated guest conversation and opt-in local guest home
-      voice commands and Mini profile software are implemented. Per-person identities
-      and separate member memory/accounts remain open; Mini installation and physical
+      voice commands and Mini profile software are implemented. Deck personal identities and separate memory/accounts are implemented. Personal
+      Mini sign-in, separate personal Hermes tools and external accounts remain open;
+      Mini installation and physical
       acceptance are pending. See [Display access](DISPLAY_ACCESS.md).
 - [ ] Supported casting/commercial-video integrations, subject to provider access
       and licensing; current local media and Spotify do not establish those features.
