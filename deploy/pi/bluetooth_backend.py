@@ -373,7 +373,8 @@ def inventory(commands=None, *, system=platform.system, which=shutil.which):
     if which('apt-cache'):
         for package in ('bluez', 'pulseaudio', 'pulseaudio-module-bluetooth', 'pulseaudio-utils', 'systemd'):
             try:
-                text = commands.text(['apt-cache', 'policy', package])
+                # Pi apt-cache can take longer than the live audio probe budget.
+                text = commands.text(['apt-cache', 'policy', package], timeout=5)
                 values = dict(re.findall(r'^\s*(Installed|Candidate):\s*([A-Za-z0-9.+:~_()-]+)\s*$', text, re.MULTILINE))
                 result['packages'][package] = {k.lower(): v for k, v in values.items()}
             except BackendUnavailable:

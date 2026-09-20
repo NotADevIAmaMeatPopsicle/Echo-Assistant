@@ -38,7 +38,10 @@ and Spotify remains discoverable at the unchanged 2% volume. The selected USB
 audio card is absent, so actual voice acceptance remains open. The combined image
 passed 147 isolated Linux tests plus focused Windows and silent browser checks.
 No real calendar action, Bluetooth pairing, recording or audio ran. ECHO-09's
-commercial-video compatibility investigation is the next bounded software task.
+commercial-video compatibility investigation is complete. Its
+[provider decision](VIDEO_PROVIDER_OPTIONS.md) identifies ordinary YouTube as a
+possible official-player integration, with native audio-focus work required
+first. Paid catalogs and actual provider playback remain unverified.
 
 **Bounded wave 2 checkpoint:** ECHO-02 adds reviewed following-only changes for
 simple finite Google COUNT series; ECHO-03 adds separate guest/notification review
@@ -401,7 +404,7 @@ parity. Known gaps documented in the smart-display guide remain:
 - [x] Mini calendar draft review, explicit creation, cancellation and expiry (host deployed; firmware built, installation and physical acceptance pending).
 - [x] Direct Google master-event editing and whole-series rescheduling with the existing COUNT preserved (software; real calendar acceptance pending).
 - [x] Following-only changes for simple finite Google COUNT series and separate invitation review (software; real Google changes and delivery unverified).
-- [ ] Private per-person Google linking without household grant inheritance.
+- [x] Private per-person Google linking and explicit calendar selection without household grant inheritance (software deployed; actual account approval unverified).
 - [ ] Synchronized grouped music across endpoints.
       Music Assistant connection, library/queue selection, shared-output permissions,
       the native Pi player, private stream transport and local voice coordination

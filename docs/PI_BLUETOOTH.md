@@ -203,3 +203,9 @@ termination of a harmless local Python child and simulated Pulse stream-removal
 acknowledgement. Python compilation passed. The inspect-only command correctly
 reported `linux_pulseaudio_required` on Windows and opened no audio. These are
 not Linux backend, real Bluetooth or Pi playback acceptance results.
+
+The later read-only Pi preflight confirmed an available matching distribution
+module, but that module is not installed and the Bluetooth radio is blocked.
+The package-cache timeout was adjusted for Pi performance and the focused suite
+still passes. No package or radio setting was changed; this does not establish
+actual A2DP reception.

@@ -6,6 +6,37 @@ not close an external-service or physical acceptance task. The repository remain
 private. No release, push, firmware flash, sound playback or home-device action is
 part of an agent's automated checks.
 
+## Current task index
+
+Each ID below has its own completion boundary in the dispatch or acceptance
+tables. Software marked deployed still requires the separately listed provider
+or hardware acceptance. Coordinator ownership includes integration and deployment.
+
+| ID | Work item | Current state / owner |
+| --- | --- | --- |
+| ECHO-01 | Direct Google writes and whole-series editing | Software deployed; calendar lane |
+| ECHO-02 | Following-only series editing | Software deployed; series lane |
+| ECHO-03 | Reviewed invitations | Software deployed; invitation lane |
+| ECHO-04 | Private Google accounts | Software deployed; account lane |
+| ECHO-05 | Separate personal Hermes routing | Software deployed; agent lane |
+| ECHO-06 | Grouped music | Provider and physical acceptance; coordinator |
+| ECHO-07 | Voice/video calls | Provider setup and two-device acceptance; coordinator |
+| ECHO-08 | Phone music receiver | ECHO-08A adapter installed disabled; setup/playback open; media lane |
+| ECHO-09 | Commercial video | Research complete; supported implementation and real playback open; media lane |
+| ECHO-10 | Replacement-host provisioning | Tooling implemented; recovery lane |
+| ECHO-11 | Real Google account and calendar acceptance | Owner account configuration required; coordinator |
+| ECHO-12 | Install prepared Mini firmware | Board identity and backup verification required; coordinator |
+| ECHO-13 | Pi audio acceptance | Diagnostic fix deployed; selected USB audio hardware absent; coordinator |
+| ECHO-14 | Mini audio acceptance | Depends on ECHO-12 and physical testing; coordinator |
+| ECHO-15 | Panel and touch acceptance | Physical panel identification/calibration open; coordinator |
+| ECHO-16 | Dim, off, touch and presence acceptance | Physical checks and selected presence sensor open; coordinator |
+| ECHO-17 | Camera and doorbell acceptance | Selected live sources required; coordinator |
+| ECHO-18 | Cold boot and router recovery | Stable hardware and controlled outage required; coordinator |
+| ECHO-19 | Final enclosures and build guide | Final hardware/fit/thermal results required; coordinator |
+| ECHO-20 | Fresh-machine recovery | Disposable replacement machine required; recovery lane |
+| ECHO-21 | Integrated package review | Depends on required tasks and explicit scope decisions; coordinator |
+| ECHO-22 | Personal Hermes instances | Server provisioning and real identity/tool checks open; agent lane |
+
 ## Integration contract
 
 - The coordinator owns shared application wiring, deployment, queue updates and
@@ -126,6 +157,9 @@ Hardware reconnection remains separate from this diagnostic software fix.
   focus-stop acknowledgment. No Bluetooth packages, radio settings or pairing
   changed. Supported prerequisites, phone setup and audible playback remain
   ECHO-08; installation of adapter code does not establish receiver readiness.
+  Read-only Pi inspection confirms the Bluetooth PulseAudio module is absent and
+  Bluetooth is radio-blocked; the local package cache offers a matching module.
+  These prerequisites were recorded without changing them.
 - **ECHO-13: diagnostic fix installed; physical acceptance open.** Voice status
   now identifies missing actual processed audio routes even when their ALSA names
   still exist. The selected USB card is absent, so reconnecting the intended audio
@@ -139,13 +173,31 @@ callback completion, account removal, revision races and restoration into a fres
 application. The private host and Pi serve the verified update; the kiosk was
 refreshed, Spotify remains discoverable, and pairing/configuration were preserved.
 
-### Next bounded dispatch
+### ECHO-09 research handoff and next boundaries
 
-ECHO-09 is assigned to the media worker for official-provider compatibility
-research in `docs/VIDEO_PROVIDER_OPTIONS.md` only. Deliver a supported Pi/browser
-route and exact integration contract, or evidence requiring a product decision.
-No installs, provider sign-ins, playback or changes to shared media code belong
-to this investigation. The coordinator owns any subsequent implementation.
+The media worker completed [official-provider research](VIDEO_PROVIDER_OPTIONS.md).
+An ordinary YouTube embed is a documented permitted route; it does not establish
+paid-video support or actual Pi playback. Netflix and Prime remain unverified on
+this Pi. No provider sign-in, installation or playback occurred.
+
+Implementation must be split before further dispatch:
+
+- **ECHO-09A, native browser audio admission:** define and implement a local
+  browser-output stop/attenuation boundary with the coordinator-owned focus
+  service. Preserve the 2% ceiling and confirm actual output silence before
+  capture. An iframe's pause event is insufficient. Own new Pi adapter/tests;
+  request shared bridge/Spotify integration from the coordinator. This task
+  cannot change provider UI, global mixers or other audio sources.
+- **ECHO-09B, ordinary YouTube UI:** depends on ECHO-09A's precise interface.
+  Follow the researched owner configuration, per-display permission, explicit
+  load, official player and narrow referrer/CSP contract. Own new backend/UI
+  provider modules and focused checks; request shared route/asset registration
+  from the coordinator. No paid catalogs, arbitrary embedded URLs or claimed
+  provider acceptance. Real playback remains a separate ECHO-09 gate.
+
+Neither implementation subtask has been dispatched yet. Paid subscription video
+requires a supported browser/provider test or a decision to use an external
+supported device; ordinary YouTube playback cannot silently replace that scope.
 
 ## Dependent software tasks
 
