@@ -18,6 +18,7 @@ class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if method=='GET' and path=='/v1/display/video':return True
     if personal_google_allowed(method,path):return True
     if method=='POST' and path in {'/v1/display/calendar/master','/v1/display/calendar/following',
         '/v1/display/calendar/invitations/read','/v1/display/calendar/invitations/review','/v1/display/calendar/invitations/confirm'}:return True

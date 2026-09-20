@@ -22,7 +22,7 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-06 | Grouped music | Provider and physical acceptance; coordinator |
 | ECHO-07 | Voice/video calls | Provider setup and two-device acceptance; coordinator |
 | ECHO-08 | Phone music receiver | ECHO-08A adapter installed disabled; setup/playback open; media lane |
-| ECHO-09 | Commercial video | Research complete; supported implementation and real playback open; media lane |
+| ECHO-09 | Commercial video | Ordinary YouTube software implemented; Linux check/deployment and real playback open; media lane |
 | ECHO-10 | Replacement-host provisioning | Tooling implemented; recovery lane |
 | ECHO-11 | Real Google account and calendar acceptance | Owner account configuration required; coordinator |
 | ECHO-12 | Install prepared Mini firmware | Board identity and backup verification required; coordinator |
@@ -36,6 +36,7 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-20 | Fresh-machine recovery | Disposable replacement machine required; recovery lane |
 | ECHO-21 | Integrated package review | Depends on required tasks and explicit scope decisions; coordinator |
 | ECHO-22 | Personal Hermes instances | Server provisioning and real identity/tool checks open; agent lane |
+| ECHO-23 | Host capacity and Docker recovery | Cache copy verified and space freed; stalled runtime recovery pending; coordinator |
 
 ## Integration contract
 
@@ -180,7 +181,7 @@ An ordinary YouTube embed is a documented permitted route; it does not establish
 paid-video support or actual Pi playback. Netflix and Prime remain unverified on
 this Pi. No provider sign-in, installation or playback occurred.
 
-Implementation must be split before further dispatch:
+The implementation is split into two bounded subtasks:
 
 - **ECHO-09A, native browser audio admission:** define and implement a local
   browser-output stop/attenuation boundary with the coordinator-owned focus
@@ -195,9 +196,52 @@ Implementation must be split before further dispatch:
   from the coordinator. No paid catalogs, arbitrary embedded URLs or claimed
   provider acceptance. Real playback remains a separate ECHO-09 gate.
 
-Neither implementation subtask has been dispatched yet. Paid subscription video
+Both subtasks are dispatched with confirmed interfaces. Paid subscription video
 requires a supported browser/provider test or a decision to use an external
 supported device; ordinary YouTube playback cannot silently replace that scope.
+
+### Dispatch wave 4: connected video feature
+
+The native media worker owns new `browser_video.py` / `browser_video_backend.py`
+and their tests/guide. The provider worker owns new `backend/video_provider.py`
+and focused/app tests. The UI worker owns the new provider/player assets and
+silent browser check. The coordinator owns `video_session.py`, existing
+bridge/focus/screen/app/header registration, recovery, bundle and deployment.
+
+The agreed native interface is `start(lease_id, video_id)`, `heartbeat(lease_id)`,
+`hard_stop(reason) -> confirmed`, `snapshot()` and read-only `check()`. A fresh
+32-hex lease opens only the fixed local player URL; it expires after 15 seconds,
+with the player renewing every two seconds. Separate null-only browser audio is
+attenuated before the existing processed speaker. Account changes, stale host
+permission, focus, Spotify and Stop close the output; old leases cannot restart it.
+The owner API grants one strict YouTube ID to explicitly selected Household
+displays. Personal, Guest and Mini do not inherit it. Only the player page gets
+the required YouTube script/frame and origin-referrer policy; other pages retain
+their existing policies. No real provider playback is part of automatic checks.
+
+### Wave 4 software checkpoint; deployment pending
+
+The native adapter, provider permissions, owner settings, player UI and shared
+routes are implemented. The final combined Windows run passed 111 tests; the
+silent browser flow passed at desktop and phone sizes. Startup freshness,
+cancelled leases, process-stop acknowledgment, account/source changes, encrypted
+recovery and narrow player-only response headers are covered. The Pi inventory
+confirms Chromium, PulseAudio and libpulse are present, but its selected USB
+audio endpoint remains absent.
+
+The isolated Linux null-audio build stalled when the host system drive reached
+zero free space. A download-cache file was copied to a separate drive, verified
+by size and SHA-256, then removed from the cache to recover about 2.8 GB. Installed
+software and application data were preserved. Docker and the live Echo API did
+not recover. Docker Desktop's documented restart timed out waiting for the app
+to quit; its original processes remain. No force-stop or host reboot was run.
+
+**ECHO-23** owns the next recovery step: obtain approval for interrupting the
+Docker WSL VM, restore the existing runtime and Echo services, then arrange
+sustainable Docker storage capacity on the available larger drive. Do not delete
+volumes or private data. The pending Linux check must then run against the final
+source, followed by the combined image check and coordinated host/Pi deployment.
+Wave 4 is not deployed and no real YouTube playback has been performed.
 
 ## Dependent software tasks
 

@@ -38,6 +38,16 @@ class GroupReceiver:
             try:self.config=validate_config(private_json(self.path))
             except (OSError,ValueError,KeyError):self.error='Saved grouped-music settings could not be read; the original file was preserved'
 
+    def playback_active(self):
+        """Conservative focus status, without enumerating audio hardware."""
+        with self.lock:
+            if not self.process or self.process.poll() is not None:return False
+            try:
+                state=private_json(self.status_path)
+                if 0<=time.time()-state.get('at',0)<6:return state.get('phase')=='playing'
+            except (OSError,ValueError,TypeError):pass
+            return True  # A live player with stale state cannot prove silence.
+
     def snapshot(self):
         with self.lock:
             state={'phase':'disabled' if not self.config['enabled'] else 'starting'}

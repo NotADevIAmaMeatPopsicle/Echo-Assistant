@@ -62,6 +62,7 @@ def personal_google_allowed(method,path):
 
 def guest_allowed(method,path,profile):
     """Default deny; direct endpoints and all indirect household tools stay private."""
+    if method=='GET' and path=='/v1/display/video':return True  # Provider returns no selection to Guest/Personal.
     if profile['mode']!='guest':return True
     if method=='GET' and path=='/v1/members/available' or method in {'POST','DELETE'} and path=='/v1/member/session':return True
     if profile.get('personal'):

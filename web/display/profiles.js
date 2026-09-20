@@ -60,7 +60,7 @@
   extensions.push(()=>{
     const session=data.session;if(!session)return;
     const version=(session.receiver_id||'owner')+':'+(session.profile_revision||0);
-    if(accessVersion!==null&&accessVersion!==version){document.body.style.visibility='hidden';if(typeof cancelCalendarInvitations==='function')cancelCalendarInvitations();clearVoiceReply();void closeMic();location.reload();return;}
+    if(accessVersion!==null&&accessVersion!==version){document.body.style.visibility='hidden';window.EchoVideo?.reset();if(typeof cancelCalendarInvitations==='function')cancelCalendarInvitations();clearVoiceReply();void closeMic();location.reload();return;}
     accessVersion=version;const profile=session.profile,guest=session.role==='display'&&profile?.mode==='guest';
     document.body.classList.toggle('guest-display',guest);document.body.classList.toggle('guest-home-voice',guest&&profile.home_voice===true&&profile.conversation);note.hidden=!guest;badge.hidden=!guest;
     if(guest){

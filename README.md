@@ -127,10 +127,19 @@ The Pi has a separately named **Spotify Connect receiver** that plays through it
 selected output. The round speaker is another explicit destination. Spotify
 Premium is required. **Connect with phone** shows a QR link to Spotify so you
 can choose Echo from the phone's device picker; it is not an account-linking code.
-Playlists, search, and queue browsing stay in Spotify. Chromecast, AirPlay, and
+Playlists, search, and queue browsing stay in Spotify. Chromecast and AirPlay
+receivers are not included.
 Deck also has an optional, default-off [Bluetooth A2DP adapter](docs/PI_BLUETOOTH.md)
 for an owner-selected bonded phone. Its software is prepared; actual package,
 profile and playback acceptance remain pending.
+
+An optional [YouTube player](docs/PI_BROWSER_VIDEO.md) lets the owner select an
+ordinary embeddable video and choose which Household displays may load it.
+Deck opens it in a dedicated player with a 2% native audio ceiling and returns
+to Echo when stopped. It starts muted, uses YouTube's own controls, and loads
+only on request. The software remains off by default and awaits deployment and
+actual Pi playback verification. Paid catalogs and Netflix/Prime support are
+separate provider work.
 
 Pi wake words remain active during Spotify. Choose pause mode, or lower music by
 80% through the cue and conversation with a shared audio output. Ducking restores

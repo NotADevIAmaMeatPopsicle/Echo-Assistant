@@ -20,6 +20,7 @@ from listener import Listener
 from screen import Screen
 from grouped import GroupReceiver
 from bluetooth_session import BluetoothSession
+from video_session import VideoSession
 
 
 class Bridge(BaseHTTPRequestHandler):
@@ -31,6 +32,7 @@ class Bridge(BaseHTTPRequestHandler):
     screen=None
     group_music=None
     bluetooth=None
+    video=None
 
     def access_profile(self,base,headers):
         request=urllib.request.Request(base+'/v1/display/session',headers=headers)
@@ -48,7 +50,8 @@ class Bridge(BaseHTTPRequestHandler):
             elif self.command=='POST' and body and len(body)<=128:
                 value=json.loads(body)
                 if value=={'action':'wake'}:self.screen.wake()
-                elif value=={'action':'sleep'}:self.screen.sleep()
+                elif value=={'action':'sleep'}:
+                    if not self.video or not self.video.active():self.screen.sleep()
                 else:raise ValueError('Invalid screen action')
                 result={'ok':True}
             else:return self.error_reply(405,'Unsupported screen method')
@@ -97,9 +100,10 @@ class Bridge(BaseHTTPRequestHandler):
         try:
             if path.endswith('/focus') and self.command=='GET':
                 bluetooth_active=bool(self.bluetooth and self.bluetooth.snapshot().get('output_active'))
+                video_active=bool(self.video and self.video.active())
                 with self.music.lock:
                     result={'held':self.music.held(),'ducked':self.music.ducked(),
-                            'other_music':bluetooth_active or bool(self.music.player and self.music.player.poll() is None)}
+                            'other_music':bluetooth_active or video_active or bool(self.music.player and self.music.player.poll() is None)}
             else:
                 profile,_=self.access_profile(base,headers)
                 if profile['mode']=='guest':return self.error_reply(403,'Grouped music is managed by the owner')
@@ -164,6 +168,29 @@ class Bridge(BaseHTTPRequestHandler):
         except Unavailable as error:return self.error_reply(409,str(error))
         except OSError:return self.error_reply(503,'Pi voice settings could not be saved')
 
+    def local_video(self,path,body):
+        try:
+            if self.command=='GET' and path.endswith('/output'):
+                result=self.video.snapshot()
+            elif self.command=='POST' and body and len(body)<=256:
+                value=json.loads(body)
+                if not isinstance(value,dict):raise ValueError('Invalid video request')
+                if path.endswith('/player') and set(value)=={'lease','action'}:
+                    result=self.video.pulse(value['lease'],value['action'])
+                elif path.endswith('/output') and value=={'action':'stop'}:
+                    result=self.video.end()
+                elif path.endswith('/output') and set(value)=={'action','revision'} and value['action']=='start':
+                    result=self.video.launch(value['revision'])
+                else:raise ValueError('Invalid video request')
+            else:return self.error_reply(405,'Unsupported local video method')
+            raw=json.dumps(result).encode();self.send_response(200)
+            for key,value in {'Content-Type':'application/json','Content-Length':str(len(raw)),
+                              'Cache-Control':'no-store','X-Echo-Display-Bridge':'1'}.items():self.send_header(key,value)
+            self.end_headers();self.wfile.write(raw)
+        except (ValueError,TypeError):return self.error_reply(422,'Choose a valid video action')
+        except Unavailable as error:return self.error_reply(409,str(error))
+        except (OSError,subprocess.SubprocessError):return self.error_reply(503,'The local video player is unavailable')
+
     def log_message(self,*args): pass
 
     def error_reply(self,code,message):
@@ -195,7 +222,7 @@ a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
         host=self.headers.get('Host',''); port=self.server.server_port
         if host not in {f'127.0.0.1:{port}',f'localhost:{port}'}: return self.error_reply(403,'Use the local display address')
         requested=urlsplit(self.path)
-        if requested.scheme or requested.netloc or not requested.path.startswith(('/v1/','/assets/')) and requested.path not in {'/','/display','/health'}:
+        if requested.scheme or requested.netloc or not requested.path.startswith(('/v1/','/assets/')) and requested.path not in {'/','/display','/display/video-player','/health'}:
             return self.error_reply(403,'Administration is available in the owner workspace')
         body=None
         if self.command not in {'GET','HEAD'}:
@@ -208,6 +235,8 @@ a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
         path='/display' if self.path=='/' else self.path
         display_page=requested.path in {'/','/display'} and self.command in {'GET','HEAD'}
         headers={'Authorization':'Display '+self.configuration['credential'],'X-Echo-Request':'1','Origin':base}
+        if self.video is not None and requested.path in {'/v1/display/video/output','/v1/display/video/player'}:
+            return self.local_video(requested.path,body)
         if self.bluetooth is not None and requested.path=='/v1/display/bluetooth':
             if self.command!='GET':return self.error_reply(405,'Bluetooth setup uses the private owner configuration')
             try:
@@ -280,12 +309,13 @@ def main():
             if len(raw)>12_000_000:raise ValueError('Native response exceeds its limit')
             return json.loads(raw)
     Bridge.bluetooth=BluetoothSession(native_request,Bridge.music);Bridge.bluetooth.start()
+    Bridge.video=VideoSession(native_request,Bridge.music,Bridge.group_music,Bridge.screen);Bridge.video.start()
     Bridge.alerts=Alerts(native_request,Bridge.music);Bridge.alerts.start()
     Bridge.voice=Listener(native_request,Bridge.music,wake_screen=Bridge.screen.wake);Bridge.voice.start()
     print(f'Echo display bridge listening on loopback port {args.port}. Credentials stay outside the browser.',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass
-    finally:server.server_close();Bridge.bluetooth.close();Bridge.group_music.close();Bridge.voice.close();Bridge.alerts.close();Bridge.music.close()
+    finally:server.server_close();Bridge.video.close();Bridge.bluetooth.close();Bridge.group_music.close();Bridge.voice.close();Bridge.alerts.close();Bridge.music.close()
 
 
 if __name__=='__main__':

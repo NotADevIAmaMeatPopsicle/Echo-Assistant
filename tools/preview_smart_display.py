@@ -151,9 +151,15 @@ class DisplayPreview(Preview):
         if personal is not None:return self.json_reply(personal)
         if path in {'/', '/display'}:
             return self.reply(200, (WEB/'display/index.html').read_bytes(), 'text/html; charset=utf-8')
+        if path=='/display/video-player':
+            return self.reply(200,(WEB/'display/video-player.html').read_bytes(),'text/html; charset=utf-8')
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
             return self.camera_sample(path.endswith('/stream'))
         assets = {'/assets/display/polish.css':('display/polish.css','text/css'),
+                  '/assets/display/video-provider.js':('display/video-provider.js','text/javascript'),
+                  '/assets/display/video-provider.css':('display/video-provider.css','text/css'),
+                  '/assets/display/video-player.js':('display/video-player.js','text/javascript'),
+                  '/assets/display/video-player.css':('display/video-player.css','text/css'),
                   '/assets/display/google-calendar.js':('display/google-calendar.js','text/javascript'),
                   '/assets/display/google-calendar.css':('display/google-calendar.css','text/css'),
                   '/assets/display/calling.js':('display/calling.js','text/javascript'),

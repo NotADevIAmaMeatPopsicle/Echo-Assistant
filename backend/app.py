@@ -206,6 +206,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     install_intercom(app,Intercom(announcements),authorize)
     calling=Calling(CallStore(runtime_root,store.protector),displays,enabled=deployment_mode=='device')
     install_calling(app,calling,authorize,owner)
+    from .video_provider import VideoStore, VideoProvider, install as install_video
+    install_video(app,VideoProvider(VideoStore(runtime_root,store.protector),displays),authorize,owner)
     google_calendars=GoogleCalendars(runtime_root,store.protector,enabled=deployment_mode=='device')
     install_google_calendar(app,google_calendars,authorize,owner)
     from .member_google import MemberGoogle
@@ -252,6 +254,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
 
     @app.get('/display')
     def smart_display(): return FileResponse(web/'display/index.html')
+
+    @app.get('/display/video-player')
+    def video_player(): return FileResponse(web/'display/video-player.html')
 
     @app.exception_handler(DisplayStorageUnavailable)
     async def display_storage_error(request,error): return JSONResponse({'detail':str(error)},status_code=503)

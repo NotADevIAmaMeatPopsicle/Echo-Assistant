@@ -13,6 +13,17 @@ class BrowserHeadersMiddleware:
                 headers['X-Content-Type-Options'] = 'nosniff'
                 headers['Referrer-Policy'] = 'no-referrer'
                 headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+                if scope.get('path') == '/display/video-player':
+                    # Only this explicit player context contacts YouTube. Its
+                    # lease is in a fragment, which is never part of a Referer.
+                    headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+                    headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+                    headers['Content-Security-Policy'] = (
+                        "default-src 'self'; script-src 'self' https://www.youtube.com https://s.ytimg.com; "
+                        "style-src 'self'; connect-src 'self'; img-src 'self' data:; "
+                        "frame-src https://www.youtube-nocookie.com; frame-ancestors 'none'; "
+                        "base-uri 'none'; form-action 'none'; object-src 'none'"
+                    )
                 if scope.get('path') == '/display':
                     origins=self.call_origins()
                     if origins:
