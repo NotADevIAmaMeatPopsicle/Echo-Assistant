@@ -25,9 +25,24 @@ class MemberGrants(MemberChange):
     profile:DisplayProfile
 
 
+class MemberHermesChange(MemberChange):
+    enabled:bool=False
+    url:str=Field(default='',max_length=500)
+    token:str=Field(default='',max_length=4096)
+    isolation_confirmed:bool=False
+
+
 def install(app,members,personal,authorize,owner,validate,conversations,clear_shared):
     @app.get('/v1/members',dependencies=[Depends(owner)])
     def roster():return {'items':members.roster(),'limit':16}
+
+    @app.get('/v1/members/{identifier}/hermes',dependencies=[Depends(owner)])
+    def hermes_status(identifier:str):return personal.hermes.public(identifier,owner=True)
+
+    @app.put('/v1/members/{identifier}/hermes',dependencies=[Depends(owner)])
+    def hermes_configure(identifier:str,body:MemberHermesChange):
+        try:return personal.hermes.configure(identifier,**body.model_dump())
+        except ValueError as error:raise HTTPException(422,str(error)) from None
 
     @app.post('/v1/members',dependencies=[Depends(owner)])
     def create(body:CreateMember):
@@ -72,7 +87,8 @@ def install(app,members,personal,authorize,owner,validate,conversations,clear_sh
 
     @app.get('/v1/member/preferences')
     def preferences(principal=Depends(authorize)):
-        personal_only(principal);return members.preferences(principal)
+        personal_only(principal)
+        return {**members.preferences(principal),'hermes':personal.hermes.public(principal.member)}
 
     @app.put('/v1/member/preferences')
     def save_preferences(body:MemberPreferences,principal=Depends(authorize)):

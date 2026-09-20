@@ -24,6 +24,24 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+Execution is now tracked as bounded work items in
+[Remaining tasks and integration contracts](REMAINING_TASKS.md). That plan assigns
+file ownership, dependencies and acceptance criteria before parallel dispatch.
+
+**Bounded wave 1 checkpoint:** ECHO-01 adds optional direct Google writes,
+original-master review and COUNT-preserving whole-series editing. ECHO-05 adds
+encrypted, explicitly separate personal Hermes connections and per-person opt-in;
+its server-side tool permissions and instance isolation still require real setup.
+Both are deployed to the private host, with existing settings, grants and pairing
+preserved. Their combined image passed 64 isolated Linux tests after focused
+Windows and silent browser checks. The Pi was offline during verification, so
+its new UI refresh is pending. No audio, real Google writes or home actions ran.
+
+ECHO-10 adds explicit replacement-host preflight/bootstrap and trusted model
+manifest/restore tools, reusing existing encrypted recovery and Compose paths.
+Synthetic provisioning/import/recovery checks pass; a fresh Windows-machine
+rehearsal remains ECHO-20. See [Host provisioning](HOST_PROVISIONING.md).
+
 **Direct Google Calendar checkpoint:** owner OAuth setup and linking now use PKCE,
 one-use state, per-browser finish proof and encrypted host storage. Calendars
 enter the existing explicit sharing controls and read-only agenda/briefing path,
@@ -34,9 +52,9 @@ setup and existing daily-planning browser flows pass. The private host update is
 deployed, and the Pi serves matching assets after its kiosk reload. Pairing and
 private settings were preserved; its listener remains armed at 2%, with Spotify
 discoverable. No sound played and no real Google account was linked.
-Provider master-event editing, counted-series rescheduling,
-invitations and per-person private Google linking remain open; this read path is
-the direct-provider foundation for that work. See [Google Calendar](GOOGLE_CALENDAR.md).
+The later ECHO-01 checkpoint extends this read path with reviewed writes and
+master editing. Following-only counted-series rescheduling, invitations and
+per-person private Google linking remain open. See [Google Calendar](GOOGLE_CALENDAR.md).
 
 **Browser calling checkpoint:** Deck and browser displays now have optional
 LiveKit voice/video calls with owner configuration, encrypted provider credentials,
@@ -355,7 +373,8 @@ parity. Known gaps documented in the smart-display guide remain:
 - [x] Supported single-event editing/deletion and bounded recurring creation, with separate owner permissions and explicit review (software; external calendar writes untested).
 - [x] Explicit occurrence/following edits and occurrence/following/whole-series deletion, preserving repeat patterns (software; live provider writes untested).
 - [x] Mini calendar draft review, explicit creation, cancellation and expiry (host deployed; firmware built, installation and physical acceptance pending).
-- [ ] Calendar master-event editing, counted-series rescheduling and invitations.
+- [x] Direct Google master-event editing and whole-series rescheduling with the existing COUNT preserved (software; real calendar acceptance pending).
+- [ ] Following-only counted-series rescheduling and invitations.
 - [ ] Synchronized grouped music across endpoints.
       Music Assistant connection, library/queue selection, shared-output permissions,
       the native Pi player, private stream transport and local voice coordination
@@ -370,14 +389,16 @@ parity. Known gaps documented in the smart-display guide remain:
       source grants, isolated guest conversation and opt-in local guest home
       voice commands and Mini profile software are implemented. Deck and Mini personal
       identities and separate memory/accounts are implemented. Separate personal
-      Hermes tools and external accounts remain open. Mini installation and
+      Hermes routing is implemented with explicit separate-instance configuration;
+      actual personal instances/tools and external accounts remain open. Mini installation and
       physical acceptance are pending. See [Display access](DISPLAY_ACCESS.md).
 - [ ] Supported casting/commercial-video integrations, subject to provider access
       and licensing; current local media and Spotify do not establish those features.
 - [ ] Full Windows host and Hermes disaster-recovery rehearsal.
       Same-account Windows task recovery and fresh-container/volume API/Hermes
       archive restoration are verified with synthetic data. Fresh Windows/Docker
-      provisioning and model restoration remain open. Portable passphrase archives
+      provisioning and model restoration tools are implemented; their actual
+      fresh-machine rehearsal remains open. Portable passphrase archives
       provide an alternative to Windows-account-bound backups; see [Deployment](DEPLOYMENT.md).
 
 These are separate from the physical and live-service acceptance above. Do not

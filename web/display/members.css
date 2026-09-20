@@ -6,6 +6,7 @@
 .member-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding:14px 0}.member-row strong{flex:1;min-width:90px;overflow-wrap:anywhere}
 .member-fact{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}.member-fact p{flex:1;overflow-wrap:anywhere}
 #member-content form.row{align-items:end}#member-content form.row label{flex:1}#member-content textarea{width:100%;resize:vertical}#member-button{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#member-hermes-form>.row{flex-wrap:wrap}#member-content .check-label input{flex:none}
 @media(max-height:650px){#member-dialog{padding:14px}#member-keypad{gap:5px}#member-keypad button{min-height:38px}}
 @media(max-width:600px){#member-button{max-width:105px}.member-row strong{flex-basis:100%}#member-content form.row{flex-wrap:wrap}}
 @media(max-width:760px){header:has(#member-button:not([hidden])) .header-right{gap:6px;min-width:0}header:has(#member-button:not([hidden])) #connection,header:has(#member-button:not([hidden])) #display-profile-badge{display:none}#member-content>.row{flex-wrap:wrap}}

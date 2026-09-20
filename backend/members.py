@@ -33,6 +33,7 @@ class MemberPreferences(BaseModel):
     model_config=ConfigDict(extra='forbid',strict=True)
     personality:str=Field(default='',max_length=4000)
     memory_enabled:bool=True
+    hermes_enabled:bool=False
 
 
 def hashed(code,salt):
@@ -58,7 +59,11 @@ class Members:
 
     @staticmethod
     def validate(identifier,item):
-        if not re.fullmatch('[a-f0-9]{32}',identifier) or set(item)!={'name','revision','salt','hash','profile','preferences','memory','failures','locked_until'}:raise ValueError()
+        required={'name','revision','salt','hash','profile','preferences','memory','failures','locked_until'}
+        if not re.fullmatch('[a-f0-9]{32}',identifier) or set(item) not in (required,required|{'hermes'}):raise ValueError()
+        if item.get('hermes') is not None:
+            from .member_hermes import validate_connection
+            validate_connection(item['hermes'])
         if not isinstance(item['name'],str) or not 1<=len(item['name'])<=60 or any(ord(c)<32 for c in item['name']):raise ValueError()
         if type(item['revision']) is not int or item['revision']<0:raise ValueError()
         if not re.fullmatch('[a-f0-9]{32}',item['salt']) or not re.fullmatch('[a-f0-9]{64}',item['hash']):raise ValueError()
@@ -185,7 +190,7 @@ class Members:
         if not guest_allowed(request.method,request.url.path,profile):raise HTTPException(403,'This feature is not available in a personal session')
         return principal
 
-    def change(self,identifier,revision,*,profile=None,reset=False,delete=False):
+    def change(self,identifier,revision,*,profile=None,reset=False,delete=False,hermes=...):
         with self.lock:
             item=self.item(identifier)
             if item['revision']!=revision:raise HTTPException(409,'This account changed. Reload before saving.')
@@ -195,6 +200,7 @@ class Members:
                 if checked.mode!='guest' or checked.members:raise ValueError('Personal accounts use selected grants, without other account assignments')
                 checked.name=record['name'];record['profile']=checked.model_dump()
             if reset:code=self.new_code(record)
+            if hermes is not ...:record['hermes']=deepcopy(hermes)
             if delete:del records[identifier]
             self.commit(records)
             for endpoint,session in list(self.sessions.items()):

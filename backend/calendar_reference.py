@@ -5,6 +5,8 @@ import re
 
 
 def event_version(event):
+    if event.get('_google'):
+        return hashlib.sha256(json.dumps(['google',event.get('uid'),event.get('_google_etag')]).encode()).hexdigest()
     return hashlib.sha256(json.dumps({key:event.get(key) for key in
         ('uid','summary','description','location','start','end','recurrence_id','rrule','status')},
         sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -30,6 +32,9 @@ def event_reference(event,calendar,on_date):
 
 def change_scopes(event):
     if not valid_identifier(event.get('uid')):return {'edit':[],'delete':[]}
+    if event.get('_google'):
+        scopes=['occurrence','series'] if event.get('recurrence_id') else ['series'] if event.get('rrule') else ['single']
+        return {'edit':scopes,'delete':scopes}
     if single_event(event):return {'edit':['single'],'delete':['single']}
     if valid_identifier(event.get('recurrence_id')):
         return {'edit':['occurrence','following'],'delete':['occurrence','following','series']}

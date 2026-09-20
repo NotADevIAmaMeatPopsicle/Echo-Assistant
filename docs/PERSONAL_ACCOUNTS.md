@@ -81,6 +81,8 @@ calendar writes from a personal session.
 - Personal conversations use the configured provider/model and public lookup
   with that person's memory and preferences. They do not inherit household
   personality, memory, lists, routines, photos or the shared Hermes tool session.
+  An owner can optionally connect a separate personal Hermes instance, which
+  the person must also enable in their preferences (see below).
 - Timers and media remain functions of the physical endpoint. Signing in does
   not route audio to another speaker or create a private music-provider account.
 
@@ -109,6 +111,66 @@ in ignored `local/echo-members.json`. The existing encrypted recovery archive
 includes this store. Restoring it does not restore unlocked sessions. Keep recovery
 archives and the required protection keys private.
 
+## Optional personal Hermes agent
+
+This software supports the Hermes gateway's native asynchronous runs API:
+`POST /v1/runs`, `GET /v1/runs/{run_id}`, and `POST /v1/runs/{run_id}/stop`.
+The protocol was checked against upstream
+[`api_server_runs.py` at 2ed6387d87b4](https://github.com/NousResearch/hermes-agent/blob/2ed6387d87b4db091af2f05db32faab6e0dbb9a2/gateway/platforms/api_server_runs.py).
+Each turn submits only this login's bounded text history, personal preferences
+and relevant saved facts. Echo does not send a household provider key, shared
+session identifier, device/source grants, action credential or household memory.
+It does not use a remote session continuation or resume history from a previous login.
+
+1. Provision a separate Hermes instance for the person outside Echo. Give it a
+   separate `HERMES_HOME`, storage, API key and provider credentials. Do not copy
+   the household instance's configuration, Echo home connector, mounts or secrets.
+2. Configure only server-enforced read-only personal tools on that instance.
+   Disable messaging, write/control tools, arbitrary terminal execution and
+   household connectors. Configure Hermes memory and user-profile writes off
+   (`memory.memory_enabled: false`, `memory.user_profile_enabled: false` and
+   `memory.nudge_interval: 0`), so Echo's deliberate saved facts remain the memory
+   contract. Remote logs and provider retention still require separate operator
+   management; deleting an Echo account cannot erase them.
+3. In **Settings → Personal accounts → Manage accounts → Personal agent**, enter
+   the instance's HTTPS origin and separate API credential. Loopback HTTP is
+   supported for an owner-managed local instance or authenticated tunnel. No URL
+   credentials, paths, query strings, profile aliases or redirects are supported.
+   Confirm the instance separation and read-only tool configuration, then save.
+   Saving does not contact, provision or verify the remote service; active sessions
+   for that account lock. A blank key preserves it only for the same origin.
+4. Sign in as that person. Open their account preferences, enable **Use my personal
+   Hermes agent**, and save. Both owner availability and this personal opt-in are
+   required. The choice applies to subsequent Deck and Mini logins; configure it on Deck.
+
+The gateway's generic runs API has no supported per-request tool allowlist. Its
+tools and persistent state come from the configured instance. Echo therefore
+requires the trusted owner to enforce that boundary on the server; instruction
+text is not an authorization control. Distinct origin and API-key checks reject
+known household endpoints and reuse across personal accounts, including common
+loopback aliases. Different DNS names or proxies can still point to the same
+instance; the owner must verify that they do not. A unique run ID alone does not
+isolate Hermes tools or files. Personal Echo home and calendar commands continue
+to use the existing account/display/global grant intersection locally.
+
+Public lookup keeps the existing direct-provider citation path. With no personal
+connection, or either opt-in disabled, normal conversations retain the direct
+model path. An enabled personal agent's error does not silently reroute private
+text to another agent. Waiting for a remote approval stops the run and reports
+that the read-only instance needs attention; Echo never approves it automatically.
+
+Lock, expiry, account switch, access revision and configuration changes cancel
+polling and discard obsolete replies. When an admitted run ID is known, Echo
+requests that run's stop without retrying admission. A lost admission response
+may leave an unidentified remote run; an unreachable stop cannot prove it stopped.
+The UI reports that uncertainty. Stopping does not undo any work already performed
+by a misconfigured remote instance. No raw run diagnostics, tool payloads or API
+credentials are returned to the browser. Endpoint settings and keys live inside
+the existing encrypted `local/echo-members.json` and its protected recovery archive;
+owner status reveals the configured origin and whether a key is saved, never the key.
+**Remove connection** erases the active stored endpoint/key and locks sessions.
+Older archives remain separate copies.
+
 ## Verification and remaining work
 
 Synthetic API checks cover assignment, account isolation, wrong-code lockout,
@@ -118,8 +180,16 @@ Native listener checks reject an old account's reply before playback. Silent
 browser checks cover creation, access editing, touch sign-in, memory, lock and
 phone layout. These checks do not establish physical keypad or spoken acceptance.
 
-Voice identification, separate Hermes instances per person
-and per-person external calendar/account sign-in remain future work. Shared Home Assistant
+Fake-provider checks cover native run admission/poll/stop, owner-only setup,
+default-off and per-person opt-in, credential redaction and encrypted restart,
+distinct endpoint/key checks, local memory commands, direct lookup fallback and
+discard after switch, expiry, grant/settings changes or memory edits. These are
+software checks; no live personal Hermes instance has been provisioned or accepted.
+The owner still needs to provision each separate service, verify its tools and
+storage isolation, then explicitly test a read-only conversation.
+
+Voice identification and per-person external calendar/account sign-in remain
+future work. Shared Home Assistant
 and owner-linked [Google Calendar](GOOGLE_CALENDAR.md)
 sources can be granted read-only now. The isolated display preview uses
 temporary demo accounts only; closing the preview process removes them.

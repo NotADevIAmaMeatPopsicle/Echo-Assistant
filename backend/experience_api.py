@@ -44,6 +44,12 @@ class ChangeEvent(BaseModel):
     scope:Literal['single','occurrence','following','series']='single'
 
 
+class MasterEvent(BaseModel):
+    model_config=ConfigDict(extra='forbid',strict=True)
+    revision:int=Field(ge=0)
+    reference:EventReference
+
+
 def install(app, experiences, authorize, owner, writer=None, briefing=None, doorbells=None, drafts=None,displays=None):
     def scoped(session):
         if displays is None:return experiences
@@ -60,6 +66,16 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
         except HomeUnavailable as error: raise HTTPException(503, str(error)) from None
         except PermissionError as error: raise HTTPException(403, str(error)) from None
         except ValueError as error: raise HTTPException(422, str(error)) from None
+
+    def calendar_guard(request,principal):
+        before=displays.profile_for(principal) if displays else None
+        def validate():
+            if authorize(request)!=principal or displays and displays.profile_for(principal)!=before:
+                raise ExperienceConflict('Account access changed. Refresh this screen before continuing.')
+        # Mini and Personal grants hold this lock while reading source grants.
+        # Google writes must acquire it before their source-store lock as well.
+        access_lock=(displays.members.lock if displays.members else displays.lock) if displays else None
+        return validate,access_lock
 
     @app.get('/v1/display/source-settings', dependencies=[Depends(owner)])
     def settings():
@@ -100,19 +116,28 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
         return call(lambda:briefing.get(timezone))
 
     @app.post('/v1/display/calendar/events')
-    def create_event(body:CreateEvent,principal=Depends(authorize)):
+    def create_event(body:CreateEvent,request:Request,principal=Depends(authorize)):
         if writer is None:raise HTTPException(503,'Calendar creation unavailable')
-        result=call(lambda:writer.create(body.event.model_dump(),body.revision,body.request_id,principal))
+        validate,access_lock=calendar_guard(request,principal)
+        result=call(lambda:writer.create(body.event.model_dump(),body.revision,body.request_id,principal,validate=validate,access_lock=access_lock))
         if briefing:briefing.invalidate()
         return result
 
     @app.post('/v1/display/calendar/change')
-    def change_event(body:ChangeEvent,principal=Depends(authorize)):
+    def change_event(body:ChangeEvent,request:Request,principal=Depends(authorize)):
         if writer is None:raise HTTPException(503,'Calendar editing unavailable')
+        validate,access_lock=calendar_guard(request,principal)
         result=call(lambda:writer.change(body.operation,body.reference.model_dump(),
-            body.event.model_dump() if body.event else None,body.revision,body.request_id,principal,scope=body.scope))
+            body.event.model_dump() if body.event else None,body.revision,body.request_id,principal,scope=body.scope,validate=validate,access_lock=access_lock))
         if briefing:briefing.invalidate()
         return result
+
+    @app.post('/v1/display/calendar/master')
+    def master_event(body:MasterEvent,request:Request,principal=Depends(authorize)):
+        if writer is None:raise HTTPException(503,'Calendar editing unavailable')
+        from .google_calendar_write import GoogleCalendarWriter
+        validate,access_lock=calendar_guard(request,principal)
+        return call(lambda:GoogleCalendarWriter(writer,validate,access_lock).master(body.reference.model_dump(),body.revision))
 
     @app.post('/v1/display/calendar/draft')
     async def draft_event(body:DraftRequest,request:Request,principal=Depends(authorize)):

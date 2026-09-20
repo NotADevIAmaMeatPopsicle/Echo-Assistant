@@ -1,6 +1,7 @@
 # Calendars on Echo
 
-Connect a calendar integration in Home Assistant first. In the owner workspace,
+Connect a calendar integration in Home Assistant or [Google Calendar directly](GOOGLE_CALENDAR.md).
+In the owner workspace,
 open **Smart display → Settings → Calendars & cameras → Load sources**. Choose
 which calendars appear on the displays. There are three independent choices:
 
@@ -9,13 +10,13 @@ which calendars appear on the displays. There are three independent choices:
 - **Allow edits and deletion:** enable supported changes to existing events and occurrences.
 
 The last choice starts off, including on existing installations. Home Assistant's
-integration must advertise support for each operation. Guest displays remain
-read-only even when a calendar has these household permissions.
+integration must advertise support for each operation. Direct Google changes
+also require optional editing consent and current provider writer/owner access.
+Guest and Personal sessions remain read-only even when a calendar has these
+household permissions.
 
-Alternatively, [connect Google Calendar directly](GOOGLE_CALENDAR.md) for read-only
-agenda and briefing sources without Home Assistant. Its account setup and sharing
-are implemented; provider-specific writes and master-event review remain open.
-The creation and change operations below describe the Home Assistant path.
+Direct Google connections default to read-only. Editing consent does not select
+calendars or enable either Echo write grant automatically.
 
 ## Create an event or a repeating schedule
 
@@ -26,7 +27,7 @@ before pressing **Create event**. A draft is never submitted automatically.
 **Repeat** offers daily, weekly, monthly and yearly schedules. Choose an interval
 and a total of 2–366 occurrences, including the first event. A monthly schedule on
 the 31st skips months without that date; a yearly leap-day schedule skips non-leap
-years. Timed repeating events must use Home Assistant's configured time zone so
+years. Through Home Assistant, timed repeating events must use its configured time zone so
 its calendar integration can keep the intended local time across clock changes.
 The form reports a different host time zone before dispatch. All-day events use
 an inclusive last day in the form.
@@ -35,7 +36,8 @@ Repeating creation uses Home Assistant's calendar WebSocket API because its
 ordinary create-event service does not accept recurrence rules. Some integrations
 may still reject recurrence; Echo reports that rejection and does not substitute
 multiple individual events. Creation is accepted by Home Assistant before the
-external calendar may finish syncing. Refresh the agenda to check the result.
+external calendar may finish syncing. Direct Google creation uses Google's event
+API with the reviewed time zone and repeat rule. Refresh the agenda to check the result.
 
 ## Review, edit or delete
 
@@ -50,7 +52,8 @@ contents have changed since the displayed version.
 
 ### Repeating events
 
-Opening a repeating event adds an **Apply to** choice before editing or deletion:
+Opening a repeating event adds an **Apply to** choice before editing or deletion.
+For the Home Assistant integration:
 
 | Scope | Edit | Delete |
 | --- | --- | --- |
@@ -70,7 +73,17 @@ its start stays fixed. You can change the title, notes, location and end time.
 This avoids a confirmed issue in Home Assistant's `ical` 14.2.0 dependency, where
 moving a counted series later can discard its final occurrence. Move one occurrence
 instead, or reschedule the series in its calendar app. Replacing repeat rules,
-editing the master event, and invitations/attendees remain unsupported here.
+editing the master event, and invitations/attendees remain unsupported through
+the Home Assistant path.
+
+Direct Google supports **Only this occurrence** and **Every occurrence in the
+series** for edits and deletion. Whole-series editing first loads the original
+master dates and fields, even when you selected a later occurrence. Review those
+dates and the displayed repeat pattern; the change includes past and future events.
+Moving the entire series preserves the existing recurrence rule and COUNT. The
+all-day setting stays fixed, and recurrence rules cannot be replaced here.
+Following-only splitting and invitations remain unsupported. Events with existing
+attendees require Google's editor, so guests are not silently removed.
 
 An integration that supplies no stable event identifier remains read-only.
 Unusually long event fields must be edited in the calendar
@@ -96,6 +109,9 @@ Synthetic checks cover creation, recurrence scopes, edit/delete permissions, eve
 freshness, source filtering, guest denial, clock changes, uncertain responses and
 restart-safe retry behavior. Touch-browser checks cover the forms, separate owner
 grants, series deletion confirmation, fixed-start controls and phone layout.
+Direct Google checks additionally cover optional OAuth writes, provider ETags,
+original-master dates, unchanged recurrence payloads, malformed responses and
+revocation during a request. All provider checks use synthetic responses.
 An in-memory check of the actual `ical` 14.2.0 engine confirms that the supported
 following detail/duration edits preserve the event count, single moves preserve
 sibling events, and following/whole-series deletion handles exceptions. No real
@@ -105,7 +121,8 @@ that a particular external calendar integration supports every operation.
 The implementation follows Home Assistant's
 [calendar entity API](https://developers.home-assistant.io/docs/core/entity/calendar/)
 and [calendar WebSocket handlers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/calendar/__init__.py).
-Invitations, master-event editing and counted-series rescheduling remain planned
-work. [Mini calendar review](ROUND_CALENDAR.md) supports paginated drafts and a
+Invitations and following-only rescheduling of counted Google series remain planned
+work. Real Google OAuth and reviewed event changes remain live-service acceptance
+items. [Mini calendar review](ROUND_CALENDAR.md) supports paginated drafts and a
 separate creation confirmation; its firmware installation and physical acceptance
 remain pending.

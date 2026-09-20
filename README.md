@@ -61,6 +61,8 @@ Home Assistant, Spotify, and Hermes are optional integrations. Features that nee
 an account, a selected source, or an audio device report their availability. The
 [build queue](docs/BUILD_QUEUE.md) separates software coverage from physical and
 live-service acceptance.
+The [remaining task plan](docs/REMAINING_TASKS.md) assigns bounded implementation
+tasks, dependencies and acceptance criteria for completing both builds.
 
 ## The smart display
 
@@ -160,16 +162,18 @@ paired displays, with encrypted host storage.
 </tr>
 </table>
 
-Calendars connect through Home Assistant or the new read-only
+Calendars connect through Home Assistant or the direct
 [Google Calendar connection](docs/GOOGLE_CALENDAR.md). The owner selects which
-calendars to share and separately permits event creation for supported Home
-Assistant calendars. The touch form supports timed and
+calendars to share and separately permits event creation. Google connections
+default to read-only; optional editing requires an additional OAuth grant.
+The touch form supports timed and
 all-day events. Describe an event by voice or text on the smart display, review
 the model's editable draft, and choose **Create event** to save it. Repeat options
 create a bounded series. Edits and confirmed deletion require separate owner
 permission, with explicit choices for one occurrence, following events or full-series
-deletion. The existing repeat pattern is preserved; master-event editing, some
-series rescheduling and invitations remain open.
+deletion. Direct Google series editing loads the original schedule and preserves
+its repeat pattern and event count. Following-only rescheduling of counted series
+and invitations remain open.
 [Calendar guide](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md).
 
 ### Cameras, doorbells, and room audio
@@ -493,7 +497,8 @@ checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 | **Packaging** | Host tests, firmware build, Windows recovery-task execution, fresh-container API/Hermes archive restore, Linux Pi checks, browser flows, and privacy guards exercised. Portable passphrase backups support recovery without the original Windows account. Broader fresh-install/provider coverage remains open. |
 
 Further work includes generic audio-endpoint adapters, synchronized grouped playback,
-master-calendar editing/invitations, per-person Hermes tool sessions, and live acceptance
+following-only counted-series changes/invitations, provisioning the separate personal
+Hermes instances supported by the account connector, and live acceptance
 of the optional external calling provider. Proprietary
 casting and commercial streaming-video services are not implemented. The project
 does not claim complete Nest Hub or Echo Show feature parity.

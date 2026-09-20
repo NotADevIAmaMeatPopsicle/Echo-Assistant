@@ -133,7 +133,10 @@ class CalendarWriter:
             except (OSError,RuntimeError):raise ExperienceUnavailable('Calendar receipt could not be saved. Check the agenda before retrying.') from None
         self.receipts=receipts
 
-    def create(self,event,revision,request_id,principal):
+    def create(self,event,revision,request_id,principal,*,validate=None,access_lock=None):
+        if self.experiences.google and self.experiences.google.owns(event.get('calendar','')):
+            from .google_calendar_write import GoogleCalendarWriter
+            return GoogleCalendarWriter(self,validate,access_lock).create(event,revision,request_id)
         if not self.enabled:raise PermissionError('Calendar creation is disabled on the validation host')
         if not re.fullmatch('[a-f0-9]{32}',request_id):raise ValueError('Invalid request identifier')
         event=CalendarEvent.model_validate(event);payload=event.payload()
@@ -172,7 +175,10 @@ class CalendarWriter:
             self.commit({**self.receipts,key:{**receipt,'status':status}})
             return self.result(status)
 
-    def change(self,operation,reference,event,revision,request_id,principal,*,scope='single'):
+    def change(self,operation,reference,event,revision,request_id,principal,*,scope='single',validate=None,access_lock=None):
+        if self.experiences.google and self.experiences.google.owns(reference.get('calendar','')):
+            from .google_calendar_write import GoogleCalendarWriter
+            return GoogleCalendarWriter(self,validate,access_lock).change(operation,reference,event,revision,request_id,scope)
         if not self.enabled:raise PermissionError('Calendar changes are disabled on the validation host')
         if operation not in {'edit','delete'} or scope not in {'single','occurrence','following','series'} or not re.fullmatch('[a-f0-9]{32}',request_id):raise ValueError('Invalid calendar change')
         reference=EventReference.model_validate(reference)

@@ -124,6 +124,10 @@ Portable inspection and conversion also work on Linux when the source archive is
 portable. The managed host deployment/restore workflow still targets Windows.
 Creating a portable backup does not install Docker, supply speech models, or
 reconfigure SSH/Tailscale on a replacement host.
+Use the [replacement-host walkthrough](HOST_PROVISIONING.md) for explicit
+prerequisite bootstrap, trusted model manifests and fresh-target restoration.
+Its default commands inspect and plan; mutations require `--execute`. The actual
+fresh-machine rehearsal remains unverified.
 
 **Restore replaces the saved snapshot.** It first creates and verifies a recovery
 point for the current installation, then stops the API and Hermes, stages all

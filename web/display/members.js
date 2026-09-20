@@ -3,7 +3,7 @@
   'use strict';
   const button=document.createElement('button');button.className='pill';button.id='member-button';button.hidden=true;button.textContent='Sign in';$('connection').before(button);
   const admin=document.createElement('article');admin.className='card';admin.id='members-card';admin.hidden=true;
-  admin.innerHTML='<span class="eyebrow">A SPACE FOR EACH PERSON</span><h2>Personal accounts</h2><p class="soft">Separate saved memory, personality and conversations. Share an account with a Deck in Display access, then use its passcode to sign in for 15 minutes.</p><button class="pill" id="manage-members">Manage accounts</button><p class="tiny soft">Personal sessions use your configured model and public lookup. Household Hermes tools, lists and routines stay private. Mini sign-in is not available yet.</p>';
+  admin.innerHTML='<span class="eyebrow">A SPACE FOR EACH PERSON</span><h2>Personal accounts</h2><p class="soft">Separate saved memory, personality and conversations. Share an account with a Deck or Mini in its access settings, then use its passcode to sign in for 15 minutes.</p><button class="pill" id="manage-members">Manage accounts</button><p class="tiny soft">Personal sessions use your configured model and public lookup. You can connect a separately provisioned Hermes agent for each person. Household Hermes tools, lists and routines stay private.</p>';
   $('page-settings').append(admin);
   const dialog=document.createElement('dialog');dialog.id='member-dialog';
   dialog.innerHTML='<div class="row spread"><div><span class="eyebrow">YOUR SPACE IN ECHO</span><h2 id="member-title"></h2></div><button class="icon-button" id="member-close" aria-label="Close personal account">×</button></div><div id="member-content"></div><p id="member-status" class="tiny soft" role="status"></p>';
@@ -54,11 +54,28 @@
       $('member-create').onsubmit=async event=>{event.preventDefault();try{const created=await api('/v1/members',{name:$('member-name').value});showCode(created);last=0;}catch(error){failure(error,version);}};
       for(const item of result.items){
         const row=document.createElement('article');row.className='member-row';const name=document.createElement('strong');name.textContent=item.name;row.append(name);
-        for(const [label,action] of [['Access',()=>{dialog.close();document.dispatchEvent(new CustomEvent('echo:edit-display-access',{detail:{id:'member:'+item.id,name:item.name+' access',profile:item.profile,profile_revision:item.revision}}));}],['New passcode',()=>confirmChange(item,false)],['Delete',()=>confirmChange(item,true)]]){
+        for(const [label,action] of [['Access',()=>{dialog.close();document.dispatchEvent(new CustomEvent('echo:edit-display-access',{detail:{id:'member:'+item.id,name:item.name+' access',profile:item.profile,profile_revision:item.revision}}));}],['Personal agent',()=>hermesSetup(item)],['New passcode',()=>confirmChange(item,false)],['Delete',()=>confirmChange(item,true)]]){
           const control=document.createElement('button');control.className='pill';control.textContent=label;control.onclick=action;row.append(control);
         }$('member-roster').append(row);
       }
       if(!result.items.length)$('member-roster').textContent='Create the first account, then assign it to a display in Display access.';
+    }catch(error){failure(error,version);}
+  }
+  async function hermesSetup(item){
+    const version=open(item.name+'’s personal agent');status.textContent='Loading…';
+    try{
+      const config=await api('/v1/members/'+item.id+'/hermes');if(version!==epoch)return;status.textContent='';
+      content.innerHTML='<p class="soft">Connect a Hermes instance provisioned only for this person, with its own home directory, provider credentials and read-only tools. Echo cannot enforce the remote instance’s permissions. Do not connect household tools, shared memory, write tools or messaging. Different URLs alone do not prove isolation.</p><form id="member-hermes-form"><label class="check-label"><input id="member-hermes-enabled" type="checkbox">Make this separate agent available</label><label>Hermes origin<input id="member-hermes-url" type="url" maxlength="500" autocomplete="off" placeholder="https://personal-agent.example"></label><label>API credential<input id="member-hermes-token" type="password" maxlength="4096" autocomplete="new-password" placeholder="Enter the separate instance’s API key"></label><p id="member-hermes-credential" class="tiny soft"></p><label class="check-label"><input id="member-hermes-isolated" type="checkbox">I verified this instance has separate storage and credentials, read-only tools and no household connectors.</label><p class="tiny soft">Saving locks this person’s active sessions. They then sign in and choose Use my personal Hermes agent. Public lookup keeps using Echo’s configured model. Saving does not provision or test a remote agent.</p><div class="row"><button class="pill primary">Save connection</button><button class="pill" id="member-hermes-remove" type="button">Remove connection</button></div></form>';
+      $('member-hermes-enabled').checked=config.enabled;$('member-hermes-url').value=config.url||'';$('member-hermes-isolated').checked=!!config.isolation_confirmed;
+      $('member-hermes-credential').textContent=config.credential_saved?'A credential is saved on the host. Leave blank to keep it for this same origin.':'The credential is encrypted on the host and is never shown again.';
+      const save=async remove=>{
+        const token=$('member-hermes-token').value;$('member-hermes-token').value='';
+        const payload=remove?{revision:config.revision}:{revision:config.revision,enabled:$('member-hermes-enabled').checked,url:$('member-hermes-url').value.trim(),token,isolation_confirmed:$('member-hermes-isolated').checked};
+        const form=$('member-hermes-form');for(const control of form.elements)control.disabled=true;
+        try{await api('/v1/members/'+item.id+'/hermes',payload,'PUT');if(version===epoch)await manage();}
+        catch(error){failure(error,version);if(version===epoch)for(const control of form.elements)control.disabled=false;}
+      };
+      $('member-hermes-form').onsubmit=event=>{event.preventDefault();void save(false);};$('member-hermes-remove').onclick=()=>void save(true);
     }catch(error){failure(error,version);}
   }
   function showCode(item){
@@ -78,8 +95,11 @@
       status.textContent='';content.innerHTML='<div class="row"><button class="pill primary" id="member-lock">Lock personal session</button><button class="pill" id="member-export">Export memory</button></div><p id="member-expiry" class="tiny soft"></p><form id="member-prefs"><label class="check-label"><input id="member-memory-enabled" type="checkbox">Use my saved memory in conversation</label><label>How should Echo talk with you?<textarea id="member-personality" maxlength="4000" rows="3" placeholder="Tone, preferences, things to keep in mind…"></textarea></label><button class="pill">Save preferences</button></form><h3>Saved memory</h3><form id="member-fact-form" class="row"><label>Remember something<input id="member-fact" maxlength="500" required autocomplete="off"></label><button class="pill">Save fact</button></form><div id="member-facts"></div>';
       $('member-expiry').textContent='Locks at '+new Date(data.session.member.expires_at*1000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+'. Anyone at this screen can use your session until you lock it.';
       $('member-memory-enabled').checked=prefs.memory_enabled;$('member-personality').value=prefs.personality;
+      const agentChoice=document.createElement('label');agentChoice.className='check-label';agentChoice.innerHTML='<input id="member-use-hermes" type="checkbox">Use my personal Hermes agent';
+      const agentNote=document.createElement('p');agentNote.className='tiny soft';agentNote.textContent=prefs.hermes?.enabled?'Your owner configured a separate agent with its own read-only tools. Relevant saved facts go to that agent. Public lookup uses Echo’s configured model.':'Your owner has not enabled a separate Hermes agent. Conversation uses Echo’s configured model.';
+      $('member-prefs').prepend(agentChoice,agentNote);$('member-use-hermes').checked=!!prefs.hermes_enabled;$('member-use-hermes').disabled=!prefs.hermes?.enabled;
       $('member-lock').onclick=async()=>{try{await api('/v1/member/session',{},'DELETE');reload();}catch(error){failure(error,version);}};
-      $('member-prefs').onsubmit=async event=>{event.preventDefault();try{await api('/v1/member/preferences',{personality:$('member-personality').value,memory_enabled:$('member-memory-enabled').checked},'PUT');reload();}catch(error){failure(error,version);}};
+      $('member-prefs').onsubmit=async event=>{event.preventDefault();try{await api('/v1/member/preferences',{personality:$('member-personality').value,memory_enabled:$('member-memory-enabled').checked,hermes_enabled:$('member-use-hermes').checked},'PUT');reload();}catch(error){failure(error,version);}};
       $('member-fact-form').onsubmit=async event=>{event.preventDefault();try{await api('/v1/memory',{text:$('member-fact').value});await personal();}catch(error){failure(error,version);}};
       $('member-export').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({items:memory.items},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='echo-personal-memory.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
       for(const fact of memory.items){const row=document.createElement('div');row.className='member-fact';const text=document.createElement('p');text.textContent=fact.text;const remove=document.createElement('button');remove.className='pill';remove.textContent='Forget';remove.onclick=async()=>{try{await api('/v1/memory/'+fact.id,{},'DELETE');await personal();}catch(error){failure(error,version);}};row.append(text,remove);$('member-facts').append(row);}

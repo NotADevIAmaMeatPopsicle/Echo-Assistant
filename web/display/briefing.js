@@ -18,7 +18,7 @@ $('briefing-chat').onclick=()=>{page('assistant');$('chat-text').value='Give me 
 const createButton=document.createElement('button');createButton.id='calendar-create';createButton.className='pill primary';createButton.type='button';createButton.textContent='New event';
 $('agenda-form').after(createButton);
 const eventDialog=document.createElement('dialog');eventDialog.id='calendar-event-dialog';
-eventDialog.innerHTML=`<form id="calendar-event-form"><div class="row spread"><div><span class="eyebrow">MAKE A LITTLE SPACE</span><h2>New calendar event</h2></div><button type="button" class="icon-button" id="calendar-event-close" aria-label="Close event form">×</button></div><fieldset id="calendar-event-fields"><label>Calendar<select id="event-calendar" required></select></label><label>Title<input id="event-title" maxlength="200" required placeholder="What’s happening?"></label><label class="check-label"><input id="event-all-day" type="checkbox">All day</label><div class="two-columns"><label>Starts<input id="event-start" type="datetime-local" required></label><label id="event-end-label">Ends<input id="event-end" type="datetime-local" required></label></div><label>Time zone<input id="event-timezone" required maxlength="80"></label><label>Location<input id="event-location" maxlength="300" placeholder="Optional"></label><label>Notes<textarea id="event-description" maxlength="2000" rows="2" placeholder="Optional"></textarea></label><details class="tiny soft"><summary>Repeated clock-change times</summary><p>For an hour that occurs twice when clocks go back, choose its first or second occurrence.</p><div class="two-columns"><label>Start occurrence<select id="event-start-fold"><option value="0">First</option><option value="1">Second</option></select></label><label>End occurrence<select id="event-end-fold"><option value="0">First</option><option value="1">Second</option></select></label></div></details></fieldset><p id="calendar-event-status" class="tiny soft" role="status">This creates an event in the selected calendar through Home Assistant.</p><div class="row spread"><button class="pill" id="calendar-event-cancel" type="button">Close</button><button class="pill primary" id="calendar-event-submit" type="submit">Create event</button></div></form>`;
+eventDialog.innerHTML=`<form id="calendar-event-form"><div class="row spread"><div><span class="eyebrow">MAKE A LITTLE SPACE</span><h2>New calendar event</h2></div><button type="button" class="icon-button" id="calendar-event-close" aria-label="Close event form">×</button></div><fieldset id="calendar-event-fields"><label>Calendar<select id="event-calendar" required></select></label><label>Title<input id="event-title" maxlength="200" required placeholder="What’s happening?"></label><label class="check-label"><input id="event-all-day" type="checkbox">All day</label><div class="two-columns"><label>Starts<input id="event-start" type="datetime-local" required></label><label id="event-end-label">Ends<input id="event-end" type="datetime-local" required></label></div><label>Time zone<input id="event-timezone" required maxlength="80"></label><label>Location<input id="event-location" maxlength="300" placeholder="Optional"></label><label>Notes<textarea id="event-description" maxlength="2000" rows="2" placeholder="Optional"></textarea></label><details class="tiny soft"><summary>Repeated clock-change times</summary><p>For an hour that occurs twice when clocks go back, choose its first or second occurrence.</p><div class="two-columns"><label>Start occurrence<select id="event-start-fold"><option value="0">First</option><option value="1">Second</option></select></label><label>End occurrence<select id="event-end-fold"><option value="0">First</option><option value="1">Second</option></select></label></div></details></fieldset><p id="calendar-event-status" class="tiny soft" role="status">This creates an event in the selected calendar through its connected provider.</p><div class="row spread"><button class="pill" id="calendar-event-cancel" type="button">Close</button><button class="pill primary" id="calendar-event-submit" type="submit">Create event</button></div></form>`;
 document.body.append(eventDialog);
 const eventScroll=document.createElement('div');eventScroll.id='calendar-event-scroll';
 $('calendar-event-fields').before(eventScroll);eventScroll.append($('calendar-event-fields'));
@@ -46,7 +46,7 @@ function openCalendarEvent(draft=null){
   const when=new Date();when.setMinutes(0,0,0);when.setHours(when.getHours()+1);const end=new Date(when.getTime()+3600000);
   const local=value=>`${localDate(value)}T${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`;
   $('event-start').value=local(when);$('event-end').value=local(end);$('event-timezone').value=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
-  $('calendar-event-status').textContent=writable.length?'This creates an event in the selected calendar through Home Assistant.':'You can draft an event now. Enable a writable calendar under Settings → Calendars & cameras before creating it.';
+  $('calendar-event-status').textContent=writable.length?'This creates an event in the selected calendar through its connected provider.':'You can draft an event now. Enable a writable calendar under Settings → Calendars & cameras before creating it.';
   if(draft)applyCalendarDraft(draft);
   eventDialog.showModal();$('event-title').focus();
 }
@@ -87,7 +87,7 @@ $('calendar-event-close').onclick=$('calendar-event-cancel').onclick=closeEvent;
 eventDialog.addEventListener('cancel',e=>{if($('calendar-event-submit').dataset.sending==='true')e.preventDefault();});
 $('event-all-day').onchange=()=>{
   for(const id of ['event-start','event-end']){const value=$(id).value;$(id).type=$('event-all-day').checked?'date':'datetime-local';$(id).value=$('event-all-day').checked?value.slice(0,10):value.slice(0,10)+(id==='event-start'?'T10:00':'T11:00');}
-  $('calendar-event-status').textContent=$('event-all-day').checked?'For all-day events, Ends is the last included day.':'This creates an event in the selected calendar through Home Assistant.';
+  $('calendar-event-status').textContent=$('event-all-day').checked?'For all-day events, Ends is the last included day.':'This creates an event in the selected calendar through its connected provider.';
 };
 $('calendar-event-form').onsubmit=async event=>{
   event.preventDefault();const button=$('calendar-event-submit');if(button.dataset.sending==='true')return;
@@ -111,13 +111,15 @@ $('calendar-event-form').onsubmit=async event=>{
 const calendarDetails=document.createElement('dialog');calendarDetails.id='calendar-details-dialog';
 calendarDetails.innerHTML='<div class="row spread"><h2 id="calendar-details-title"></h2><button class="icon-button" id="calendar-details-close" aria-label="Close event details" type="button">×</button></div><div id="calendar-details-content"></div><p id="calendar-details-status" class="tiny soft" role="status"></p><div class="row"><button class="pill" id="calendar-details-edit" type="button">Edit event</button><button class="pill" id="calendar-details-delete" type="button">Delete…</button><button class="pill" id="calendar-details-cancel" type="button" hidden>Keep event</button><button class="pill danger" id="calendar-details-confirm" type="button" hidden>Delete event</button></div>';
 document.body.append(calendarDetails);
-let detailedEvent=null,deleteDraft=null,deletingEvent=false,detailsAction=null;
+let detailedEvent=null,deleteDraft=null,deletingEvent=false,detailsAction=null,masterRequest=0;
+calendarDetails.addEventListener('close',()=>{masterRequest++;});
 const scopePanel=document.createElement('div');scopePanel.className='calendar-scope';scopePanel.hidden=true;
 scopePanel.innerHTML='<label>Apply to<select id="calendar-change-scope"></select></label><p id="calendar-scope-note" class="tiny soft"></p>';
 $('calendar-details-status').before(scopePanel);
 const scopeNames={single:'This event',occurrence:'Only this occurrence',following:'This and following occurrences',series:'Every occurrence in the series'};
 function scopesFor(item,operation){return item.change_scopes?.[operation]||(!item.recurring&&item.reference?['single']:[]);}
 function showCalendarDetails(item){
+  masterRequest++;
   detailedEvent=item;deleteDraft=null;detailsAction=null;scopePanel.hidden=true;
   $('calendar-details-title').textContent=item.title;
   const firstDay=new Date(item.start.slice(0,10)+'T12:00:00'),lastDay=new Date(item.end.slice(0,10)+'T12:00:00');lastDay.setDate(lastDay.getDate()-1);
@@ -136,20 +138,36 @@ function showCalendarDetails(item){
 function closeCalendarDetails(){if(!deletingEvent)calendarDetails.close();}
 $('calendar-details-close').onclick=closeCalendarDetails;
 calendarDetails.addEventListener('cancel',event=>{if(deletingEvent)event.preventDefault();});
-function editCalendarDetails(scope='single'){
-  const item=detailedEvent;calendarDetails.close();openCalendarEvent();editingEvent=item;editingScope=scope;
+async function editCalendarDetails(scope='single'){
+  let item=detailedEvent;
+  if(scope==='series'&&item.provider==='google'){
+    const original=item,request=++masterRequest;$('calendar-details-confirm').disabled=true;
+    $('calendar-details-status').textContent='Loading the original series and its repeat pattern…';
+    try{
+      const master=await api('/v1/display/calendar/master',{reference:item.reference,revision:data.sources.revision});
+      if(request!==masterRequest||!calendarDetails.open||detailedEvent!==original)return;
+      item={...item,...master};
+    }catch(error){if(request===masterRequest)$('calendar-details-status').textContent=error.message;return;}
+    finally{if(request===masterRequest)$('calendar-details-confirm').disabled=false;}
+  }
+  calendarDetails.close();openCalendarEvent();editingEvent=item;editingScope=scope;
   draftComposer.hidden=true;recurrenceFields.hidden=true;eventDialog.querySelector('h2').textContent='Edit calendar event';
   $('event-calendar').innerHTML=`<option value="${esc(item.calendar)}">${esc(item.calendar_name)}</option>`;$('event-calendar').disabled=true;
   const zone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   const local=iso=>{const d=new Date(iso);return `${localDate(d)}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
-  applyCalendarDraft({event:{...item,timezone:zone,start:item.all_day?item.start:local(item.start),end:item.all_day?item.end:local(item.end)}});
-  if(!item.all_day)for(const field of ['start','end'])$('event-'+field+'-fold').value=String(Math.abs(new Date($( 'event-'+field).value).getTime()-new Date(item[field]).getTime())>=3599000?1:0);
+  applyCalendarDraft({event:item.editor_event||{...item,timezone:zone,start:item.all_day?item.start:local(item.start),end:item.all_day?item.end:local(item.end)}});
+  if(item.editor_event)for(const field of ['start','end'])$('event-'+field+'-fold').value=String(item.editor_event[field+'_fold']||0);
+  else if(!item.all_day)for(const field of ['start','end'])$('event-'+field+'-fold').value=String(Math.abs(new Date($( 'event-'+field).value).getTime()-new Date(item[field]).getTime())>=3599000?1:0);
   $('calendar-event-status').textContent=scope==='single'?'Review your changes, then save. The event will stay in this calendar.':scopeNames[scope]+'. The existing repeat pattern stays unchanged. Review the dates and time zone before saving.';
-  $('event-all-day').disabled=scope==='following';
+  $('event-all-day').disabled=scope==='following'||scope==='series';
   $('event-start').disabled=$('event-start-fold').disabled=scope==='following'&&item.following_start_locked!==false;
   if($('event-start').disabled)$('calendar-event-status').textContent='Following occurrences. Start is fixed here to preserve the remaining event count. You can change the title, notes, location and end time. Move one occurrence or use the calendar app to reschedule the series.';
   eventDialog.querySelector('h2').textContent=scope==='following'?'Edit following occurrences':scope==='occurrence'?'Edit this occurrence':'Edit calendar event';
   $('calendar-event-submit').textContent=scope==='following'?'Save following events':scope==='occurrence'?'Save this occurrence':'Save changes';resetDraftControls();
+  if(scope==='series'){
+    eventDialog.querySelector('h2').textContent='Edit entire series';$('calendar-event-submit').textContent='Save entire series';
+    $('calendar-event-status').textContent='These are the original series dates, not the selected occurrence. Changes affect past and future events. Existing exceptions are handled by Google. Repeat pattern stays unchanged: '+item.repeat_summary;
+  }
 }
 function chooseCalendarScope(operation){
   detailsAction=operation;deleteDraft=null;

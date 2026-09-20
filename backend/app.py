@@ -158,7 +158,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         status=voice_status(runtime_root) if runtime_root else {}
         return status.get('status') not in {None,'connecting','disconnected'} and status.get('access_profile',{}).get('members',False)
     members.round_ready=round_member_ready
-    personal_echo=MemberAgents(members,store,echo.provider,profiled_echo.home,assistant);profiled_echo.personal=personal_echo
+    personal_echo=MemberAgents(members,store,echo.provider,profiled_echo.home,assistant,household_runtime=echo.runtime);profiled_echo.personal=personal_echo
     def lock_personal(principal):
         conversations.clear(str(principal));personal_echo.clear(principal)
     members.on_lock=lock_personal

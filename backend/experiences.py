@@ -247,6 +247,7 @@ class Experiences:
                                        'reference':event_reference(event,identifier,began[:10]),
                                        'change_scopes':change_scopes(event),
                                        'following_start_locked':following_start_locked(event),
+                                       'provider':'google' if event.get('_google') else 'home_assistant',
                                        '_sort': sort})
                     except (KeyError, ValueError, TypeError, AttributeError): continue
             except HomeUnavailable: failures.append(identifier)

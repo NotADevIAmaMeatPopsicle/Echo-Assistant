@@ -5,10 +5,11 @@ Home Assistant. Connected calendars appear in **Settings → Calendars & cameras
 selecting one adds it to **My day** and the existing local agenda/briefing replies.
 Nothing is shared just because an account was connected.
 
-This connection currently requests **read-only** access. Google event creation,
-whole-series edits, counted-series rescheduling and invitations are the next
-provider work. The existing Home Assistant calendar writer remains independent.
-This page does not describe those writes as complete.
+Connections default to **read-only** access. An explicit optional Google editing
+grant enables reviewed creation, single-event/occurrence changes and original
+master-series editing, after the owner separately enables the relevant calendar
+permissions in Echo. Following-only series splits and invitations remain open.
+The existing Home Assistant calendar writer remains independent.
 
 ## Configure the installation
 
@@ -40,9 +41,10 @@ recording callback query strings, which contain short-lived authorization codes.
 
 ## Connect, then choose what to share
 
-1. Give the connection a label and tap **Connect an account**.
-2. Tap **Open Google sign-in**, choose the Google account and approve Calendar
-   read access. Echo never handles the Google password. The callback tab tells
+1. Give the connection a label. Leave optional editing unchecked for read-only
+   access, or check it to request creation, editing and deletion. Tap **Connect an account**.
+2. Tap **Open Google sign-in**, choose the Google account and approve the requested
+   Calendar access. Echo never handles the Google password. The callback tab tells
    you to return to the Echo tab where you started.
 3. In that original tab, tap **Finish connecting**. Echo saves the encrypted
    offline grant and loads the calendar inventory. If that read fails, the
@@ -69,6 +71,40 @@ recheck connection and sharing before returning events. Existing sharing selecti
 become unavailable rather than being reassigned to a different account. You may
 also revoke the application in [Google Account permissions](https://myaccount.google.com/permissions).
 Disconnecting in Echo does not revoke grants held elsewhere or delete Google events.
+
+## Enable and review changes
+
+For an existing read-only connection, connect again with optional editing selected.
+The new connection has its own source IDs; select its calendars and permissions
+explicitly before removing the old connection. Existing grants never upgrade
+themselves. Google must grant the requested editing scope, and the calendar must
+still have writer or owner access at dispatch.
+
+Under **Calendars & cameras**, **Allow event creation** and **Allow edits and
+deletion** are separate owner choices. Both default off. Guest and Personal
+sessions remain read-only; a household connection does not grant them writing.
+The form and confirmation controls are described in [Calendars on Echo](CALENDARS.md).
+
+For a repeating event, choose **Only this occurrence** or **Every occurrence in
+the series**. Entire-series editing loads the original master dates, time zone,
+fields and repeat rule before opening the editor. Moving those dates affects the
+whole series, including past events. The PATCH leaves the recurrence rule and
+its COUNT unchanged. All-day status stays fixed for a series. Additional recurrence
+dates, sub-minute master times and oversized fields require Google's editor.
+Existing exceptions remain subject to Google's series behavior; live acceptance
+of that behavior is still pending.
+
+Echo sends the reviewed event ETag as `If-Match` when editing or deleting. A
+change elsewhere requires a refresh and new review. Events with attendees,
+omitted attendee data, special event types or provider locks cannot be changed
+here. Echo does not send invitations, edit attendees or split following occurrences.
+Google writes request `sendUpdates=none`.
+
+An encrypted receipt is saved before dispatch. The same request ID is not sent
+again after a timeout or restart, even if the first result is unknown. Inserts
+also use a deterministic Google event ID. If completion is unconfirmed, inspect
+Google Calendar before starting a new request. Receipts hold digests and status,
+not event content, in `local/echo-calendar-receipts.json` and protected backups.
 
 ## Storage and limits
 
@@ -98,9 +134,11 @@ and [events.list](https://developers.google.com/workspace/calendar/api/v3/refere
 
 Synthetic Python checks cover PKCE, one-use state, per-tab/session completion,
 cancel/expiry/declined scopes, encrypted restart, token redaction, revocation during
-reads, read-only capabilities, Google-only operation and Guest grant intersection.
-The silent browser flow covers setup, approval/finish, refresh, disconnect, phone
-layout and hiding owner configuration from paired displays. The preview refuses
-real sign-in. No Google account was connected and no event or invitation was sent
-in these checks. Actual Google OAuth and real calendar reads remain live-service
-acceptance items, alongside the write features above.
+reads, optional write consent, separate grants, conditional CRUD, original-master
+dates, unchanged COUNT, uncertain responses and duplicate protection after restart.
+API checks deny Guest/Personal writes and discard revoked-session master reads.
+The silent browser checks cover setup, approval/finish, optional write consent,
+original-series review, same-ID retry, cancelled reads, phone layout and owner-only
+configuration. The preview refuses real sign-in. No Google account was connected
+and no real event or invitation was sent. Actual OAuth, reads and reviewed writes
+on an approved test calendar remain live-service acceptance items.
