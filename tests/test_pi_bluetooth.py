@@ -346,25 +346,29 @@ class BackendTests(unittest.TestCase):
 
     def pulse(self):
         self.modules = [
-            {'name': 'module-bluez5-discover', 'index': 1, 'argument': 'headset=native enable_native_hsp_hs=false enable_native_hfp_hf=false avrcp_absolute_volume=false'},
-            {'name': 'module-echo-cancel', 'index': 2, 'argument': ''},
+            {'name': 'module-bluez5-discover', 'index': 7, 'argument': 'headset=native enable_native_hsp_hs=false enable_native_hfp_hf=false avrcp_absolute_volume=false'},
+            {'name': 'module-echo-cancel', 'index': 31, 'argument': ''},
         ]
         self.cards = [{'index': 4, 'active_profile': 'a2dp_source',
                        'properties': {'bluez.path': PEER, 'device.api': 'bluez'}}]
         self.sources = [{'index': 20, 'card': 4, 'owner_module': 30, 'name': SOURCE[0],
-                         'monitor_of_sink': None,
+                         'monitor_source': '',
                          'properties': {'bluetooth.protocol': 'a2dp_source', 'bluetooth.codec': 'sbc'}}]
+        self.sinks = [{'name': 'echo_processed', 'owner_module': 31}]
         self.sink_inputs = []
         def text(argv, **kwargs):
             if argv[0] == 'systemctl':
                 return 'inactive\n' * 5
             if argv[0] == 'dpkg-query':
                 return 'pulseaudio=17.0+dfsg1-2+b1\npulseaudio-module-bluetooth=17.0+dfsg1-2+b1\n'
+            if argv[-3:] == ['list', 'short', 'modules']:
+                # Actual pactl short rows: ID, name, arguments, usage column.
+                return ''.join(f"{m['index']}\t{m['name']}\t{m['argument']}\t\n" for m in self.modules)
             return 'Server Name: pulseaudio\nServer Version: 17.0\n'
         self.commands.text.side_effect = text
         self.commands.json.side_effect = lambda argv: {
-            'modules': self.modules, 'cards': self.cards, 'sources': self.sources,
-            'sinks': [{'name': 'echo_processed', 'owner_module': 2}], 'sink-inputs': self.sink_inputs,
+            'cards': self.cards, 'sources': self.sources,
+            'sinks': self.sinks, 'sink-inputs': self.sink_inputs,
         }[argv[-1]]
         return PulseBackend(self.commands, uid=1000, system=lambda: 'Linux',
                             which=lambda _: '/synthetic/program', socket_check=False)
@@ -373,7 +377,8 @@ class BackendTests(unittest.TestCase):
         pulse = self.pulse()
         self.assertEqual(pulse.check()['server_version'], '17.0')
         self.assertEqual(pulse.selected_source(CONFIG), SOURCE)
-        for change in ({'name': 'echo_cancelled'}, {'monitor_of_sink': 3}, {'card': 9},
+        for change in ({'name': 'echo_cancelled'}, {'monitor_source': 'echo_processed'},
+                       {'monitor_source': None}, {'monitor_source': 4294967295}, {'card': 9},
                        {'properties': {'bluetooth.protocol': 'headset_head_unit', 'bluetooth.codec': 'sbc'}},
                        {'properties': {'bluetooth.protocol': 'a2dp_source', 'bluetooth.codec': 'aac'}}):
             original = copy.deepcopy(self.sources[0])
@@ -381,6 +386,10 @@ class BackendTests(unittest.TestCase):
             with self.assertRaises(BackendUnavailable):
                 pulse.selected_source(CONFIG)
             self.sources[0] = original
+        self.sources[0].pop('monitor_source')
+        with self.assertRaisesRegex(BackendUnavailable, 'non_media_source_rejected'):
+            pulse.selected_source(CONFIG)
+        self.sources[0]['monitor_source'] = ''
         self.cards[0]['properties']['bluez.path'] = PEER + '_WRONG'
         with self.assertRaises(BackendUnavailable):
             pulse.selected_source(CONFIG)
@@ -388,7 +397,7 @@ class BackendTests(unittest.TestCase):
     def test_unsafe_modules_and_server_defaults_are_never_repaired(self):
         pulse = self.pulse()
         for module in ('module-bluetooth-policy', 'module-loopback', 'module-native-protocol-tcp'):
-            self.modules.append({'name': module})
+            self.modules.append({'name': module, 'index': 50, 'argument': ''})
             with self.assertRaises(BackendUnavailable):
                 pulse.check()
             self.modules.pop()
@@ -397,6 +406,38 @@ class BackendTests(unittest.TestCase):
             pulse.check()
         all_calls = [call.args[0] for call in self.commands.mock_calls if call.args]
         self.assertFalse(any('load-module' in argv or 'set-default-source' in argv for argv in all_calls))
+
+    def test_pulse_module_ids_are_explicit_and_not_list_positions(self):
+        pulse = self.pulse()
+        self.assertEqual(pulse._list('modules'), self.modules)
+        self.assertTrue(pulse.check()['processed_output'])
+        self.commands.text.assert_any_call(
+            ['pactl', '--server=unix:/run/user/1000/echo-audio/native', 'list', 'short', 'modules'])
+        self.assertFalse(any(call.args[0][-1] == 'modules' for call in self.commands.json.call_args_list))
+
+    def test_pulse_module_ids_reject_malformed_and_ambiguous_rows(self):
+        pulse = self.pulse()
+        for listing in ('module-echo-cancel\t\t\n', '31 module-echo-cancel\n',
+                        '-1\tmodule-echo-cancel\t\t\n', '4294967295\tmodule-echo-cancel\t\t\n',
+                        '99999999999\tmodule-echo-cancel\t\t\n', '31\tnot-a-module\t\t\n',
+                        '31\tmodule-echo-cancel\t\t\n31\tmodule-null-sink\t\t\n'):
+            with self.subTest(listing=listing):
+                self.commands.text.side_effect = None
+                self.commands.text.return_value = listing
+                with self.assertRaisesRegex(BackendUnavailable, 'invalid_pulse_response'):
+                    pulse._list('modules')
+
+    def test_processed_sink_requires_matching_integer_aec_owner(self):
+        pulse = self.pulse()
+        for owner in (None, '31', False, 0, 1, 7):
+            with self.subTest(owner=owner):
+                self.sinks[0]['owner_module'] = owner
+                with self.assertRaisesRegex(BackendUnavailable, 'processed_output_missing'):
+                    pulse.check()
+        self.sinks[0]['owner_module'] = 31
+        self.modules[1]['name'] = 'module-null-sink'
+        with self.assertRaisesRegex(BackendUnavailable, 'processed_output_missing'):
+            pulse.check()
 
     def test_mismatched_distribution_packages_or_other_audio_manager_are_unsupported(self):
         pulse = self.pulse()

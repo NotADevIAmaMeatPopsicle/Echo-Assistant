@@ -21,11 +21,11 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-05 | Separate personal Hermes routing | Software deployed; agent lane |
 | ECHO-06 | Grouped music | Provider and physical acceptance; coordinator |
 | ECHO-07 | Voice/video calls | Provider setup and two-device acceptance; coordinator |
-| ECHO-08 | Phone music receiver | ECHO-08A adapter installed disabled; setup/playback open; media lane |
+| ECHO-08 | Phone music receiver | Adapter and distribution packages installed; disabled; module/phone/audio setup and playback open; media lane |
 | ECHO-09 | Commercial video | Ordinary YouTube software deployed; real playback and paid-provider acceptance open; media lane |
 | ECHO-10 | Replacement-host provisioning | Tooling implemented; recovery lane |
 | ECHO-11 | Real Google account and calendar acceptance | Owner account configuration required; coordinator |
-| ECHO-12 | Install prepared Mini firmware | Board identity and backup verification required; coordinator |
+| ECHO-12 | Install prepared Mini firmware | Original backup and 0.19.0 bundle verified; connected board identity and installation pending; coordinator |
 | ECHO-13 | Pi audio acceptance | Diagnostic fix deployed; selected USB audio hardware absent; coordinator |
 | ECHO-14 | Mini audio acceptance | Depends on ECHO-12 and physical testing; coordinator |
 | ECHO-15 | Panel and touch acceptance | Physical panel identification/calibration open; coordinator |
@@ -35,7 +35,7 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-19 | Final enclosures and build guide | Final hardware/fit/thermal results required; coordinator |
 | ECHO-20 | Fresh-machine recovery | Disposable replacement machine required; recovery lane |
 | ECHO-21 | Integrated package review | Depends on required tasks and explicit scope decisions; coordinator |
-| ECHO-22 | Personal Hermes instances | Server provisioning and real identity/tool checks open; agent lane |
+| ECHO-22 | Personal Hermes instances | No personal accounts configured; per-person provider/tool choices and separate provisioning open; agent lane |
 | ECHO-23 | Host capacity and Docker recovery | Runtime recovered; permanent storage relocation remains open; coordinator |
 
 ## Integration contract
@@ -253,6 +253,19 @@ supported settings workflow and verified cold-backup procedure are documented in
 The temporary cache relocation does not close the long-term capacity task.
 
 ## Dependent software tasks
+
+The latest hardware preparation verified the retained 16 MiB Mini backup against
+its saved SHA-256 and validated the four-image 0.19.0 firmware bundle. The Mini
+is not connected over USB, so its current identity and state remain unverified
+and no flash was attempted. The Pi's matching Bluetooth module and SBC library
+are installed; radio, module loading, phone selection and reception remain off.
+The Bluetooth module-ID compatibility correction passed 30 synthetic checks on
+both Windows and the Pi, plus a read-only check of actual Pi module IDs. The
+original hardware inventory does not identify the attached HDMI panel model.
+
+Personal Hermes readiness was checked separately: no personal accounts or agent
+connections are configured. A roster and per-person provider/tool choices are
+needed before creating separate instances; the household agent remains active.
 
 | ID | Bounded deliverable | Depends on | Acceptance gate |
 | --- | --- | --- | --- |

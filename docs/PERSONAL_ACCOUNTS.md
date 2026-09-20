@@ -64,9 +64,11 @@ tasks, reminders or shopping lists, and sends no calendar content to the model
 or web search. Turn off the lookup toggle for a private agenda request. Locking
 the session or changing its grants during a request discards the result.
 
-Calendar accounts are still connected through Home Assistant and assigned by
-the owner. This feature does not add personal Google sign-in, invitations, or
-calendar writes from a personal session.
+The owner can share calendars connected through Home Assistant or the owner's
+Google account. A person can also link and select their own read-only Google
+calendars through [My Google calendars](PERSONAL_GOOGLE.md). Private selections
+stay with that account. Personal sessions cannot send invitations or write
+calendar events; actual Google sign-in still requires provider setup and approval.
 
 ## What is separate
 

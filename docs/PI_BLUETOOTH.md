@@ -5,9 +5,11 @@ the Pi touchscreen. It reads media from one owner-selected, already bonded phone
 and sends attenuated PCM through the existing `echo_processed` speaker. It is
 independent of Mini and preserves the existing Spotify Connect route.
 
-This is software preparation. No packages, PulseAudio modules, pairing, radio
-settings or playback were changed during development. Actual Pi package/profile
-compatibility and Pixel playback remain unverified; ECHO-08 stays open.
+The receiver is installed disabled. Its matching distribution Bluetooth module
+and SBC library are now installed on the reference Deck. The module is not
+loaded, the radio remains blocked, and no phone is selected or paired by Echo.
+Actual A2DP profile compatibility and phone playback remain unverified;
+ECHO-08 stays open.
 [The provider decision](CASTING_OPTIONS.md) explains Chromecast/AirPlay limits.
 
 ## Read-only preflight
@@ -204,8 +206,17 @@ acknowledgement. Python compilation passed. The inspect-only command correctly
 reported `linux_pulseaudio_required` on Windows and opened no audio. These are
 not Linux backend, real Bluetooth or Pi playback acceptance results.
 
-The later read-only Pi preflight confirmed an available matching distribution
-module, but that module is not installed and the Bluetooth radio is blocked.
-The package-cache timeout was adjusted for Pi performance and the focused suite
-still passes. No package or radio setting was changed; this does not establish
-actual A2DP reception.
+The reference Deck now has `pulseaudio` and `pulseaudio-module-bluetooth` at
+`17.0+dfsg1-2+rpt1`, with `libsbc1` at `2.1-1`. Installation added only the two
+missing packages, with no upgrades or removals. The Bluetooth radio remains
+blocked, the private server has no Bluetooth discovery module loaded, and the
+configured USB audio hardware is absent. Loading the documented module,
+selecting a phone bond and physical acceptance are still required. Package
+installation does not establish actual A2DP reception.
+
+PulseAudio 16.1 and 17.0 omit module IDs from their JSON module list. The receiver
+uses the explicit IDs in `pactl list short modules` to verify ownership of the
+processed output, and the JSON `monitor_source` field to reject monitor input.
+Thirty focused checks pass on Windows and on the Pi using synthetic audio
+boundaries; the corrected parser also reads the Pi's real PulseAudio 17 module
+list successfully. These checks do not replace the phone/profile/playback tests.

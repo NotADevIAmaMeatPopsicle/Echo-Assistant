@@ -153,7 +153,23 @@ class PulseBackend:
         return private_server(self.uid)
 
     def _list(self, kind):
-        value = self.commands.json(['pactl', '--server=' + self.server, '--format=json', 'list', kind])
+        command = ['pactl', '--server=' + self.server]
+        if kind == 'modules':
+            # Supported pactl JSON omits module IDs. The short listing supplies
+            # the explicit IDs needed for sink ownership; list order is not an ID.
+            value, indexes = [], set()
+            for line in self.commands.text(command + ['list', 'short', 'modules']).splitlines():
+                fields = line.split('\t')
+                if (len(fields) != 4 or not re.fullmatch(r'[0-9]{1,10}', fields[0])
+                        or not re.fullmatch(r'module-[A-Za-z0-9_-]+', fields[1])):
+                    raise BackendUnavailable('invalid_pulse_response')
+                index = int(fields[0])
+                if index >= 0xffffffff or index in indexes:
+                    raise BackendUnavailable('invalid_pulse_response')
+                indexes.add(index)
+                value.append({'index': index, 'name': fields[1], 'argument': fields[2]})
+            return value
+        value = self.commands.json(command + ['--format=json', 'list', kind])
         if not isinstance(value, list) or not all(isinstance(x, dict) for x in value):
             raise BackendUnavailable('invalid_pulse_response')
         return value
@@ -210,8 +226,9 @@ class PulseBackend:
                 ('enable_native_hsp_hs', 'enable_native_hfp_hf', 'avrcp_absolute_volume')):
             raise BackendUnavailable('safe_bluez_module_required')
         sinks = [s for s in self._list('sinks') if s.get('name') == 'echo_processed']
-        aec = {m.get('index') for m in modules if m.get('name') == 'module-echo-cancel'}
-        if len(sinks) != 1 or sinks[0].get('owner_module') not in aec:
+        aec = {m['index'] for m in modules if m['name'] == 'module-echo-cancel'}
+        if (len(sinks) != 1 or type(sinks[0].get('owner_module')) is not int
+                or sinks[0]['owner_module'] not in aec):
             raise BackendUnavailable('processed_output_missing')
         return {'server_version': version, 'processed_output': True}
 
@@ -231,7 +248,9 @@ class PulseBackend:
             props, name = source.get('properties', {}), source.get('name', '')
             if (props.get('bluetooth.protocol') != 'a2dp_source'
                     or props.get('bluetooth.codec') != 'sbc'
-                    or source.get('monitor_of_sink') not in {None, 4294967295}
+                    # pactl 16.1/17.0 reports the monitored sink's name here,
+                    # or an explicit empty string for a non-monitor source.
+                    or source.get('monitor_source') != ''
                     or not re.fullmatch(r'bluez_source\.[A-Fa-f0-9_:]+\.a2dp_source(?:\.\d+)?', name)):
                 raise BackendUnavailable('non_media_source_rejected')
             if type(source.get('index')) is not int or type(source.get('owner_module')) is not int:
