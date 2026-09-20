@@ -53,6 +53,9 @@ class MasterEvent(BaseModel):
 def install(app, experiences, authorize, owner, writer=None, briefing=None, doorbells=None, drafts=None,displays=None):
     def scoped(session):
         if displays is None:return experiences
+        from .members import PersonalPrincipal
+        if isinstance(session,PersonalPrincipal) and getattr(app.state,'member_google',None):
+            return app.state.member_google.scoped(session,experiences)
         return Experiences(experiences.home,ScopedSources(experiences.store,lambda:displays.profile_for(session)['profile']),google=experiences.google) if displays.profile_for(session)['profile']['mode']=='guest' else experiences
     @app.exception_handler(ExperienceUnavailable)
     async def unavailable(request, error): return JSONResponse({'detail': str(error)}, status_code=503)

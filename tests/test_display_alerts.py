@@ -108,6 +108,9 @@ class AlertTests(unittest.TestCase):
             def __init__(self): self.focused = False
             def held(self): return self.focused
             def focus(self, client, busy): self.focused = busy
+            def claim_idle(self, client):
+                if self.focused:return False
+                self.focused=True;return True
         starts = []; attempts = []; fail = [True]
         class Player:
             returncode = 0

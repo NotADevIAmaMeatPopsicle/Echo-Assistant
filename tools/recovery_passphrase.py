@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 MAGIC=b'ECHOPBK1'
 AAD=b'Echo portable recovery envelope, version 1'
-LIMIT=24_000_000
+LIMIT=40_000_000
 
 
 class PassphraseError(ValueError):

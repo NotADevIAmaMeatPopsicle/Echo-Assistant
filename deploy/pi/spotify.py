@@ -69,6 +69,7 @@ class Spotify:
         self.lock=threading.RLock();self.stop=threading.Event();self.thread=None;self.process=None;self.player=None
         self.status='not_configured';self.error=None;self.commands=deque(maxlen=16);self.holds={};self.silenced=True
         self.ducks={};self.playback_gain=1.
+        self.auxiliary_outputs=[]
         self.generation=0;self.key='';self.track={};self.position_at=0.;self.capabilities=[];self.available_outputs=[];self.outputs_at=-100.
         self.art_key=None;self.art_content=None;self.art_lock=threading.Lock()
         self.config_error=False
@@ -116,7 +117,32 @@ class Spotify:
                 if len(self.holds)>=32 and client not in self.holds:raise Unavailable('Too many audio sessions')
                 self.holds[client]=self.clock();self.pause()
             else:self.holds.pop(client,None)
-            return {'paused_for_voice':self.held()}
+            held=self.held()
+        if busy:self.stop_auxiliary('focus')
+        return {'paused_for_voice':held}
+
+    def register_auxiliary(self,receiver):
+        with self.lock:
+            if receiver not in self.auxiliary_outputs:self.auxiliary_outputs.append(receiver)
+
+    def claim_idle(self,client):
+        if not isinstance(client,str) or not re.fullmatch(r'[a-f0-9]{32}',client):raise ValueError('Invalid audio focus request')
+        with self.lock:
+            if self.held():return False
+            self.holds[client]=self.clock();self.pause()
+        try:self.stop_auxiliary('focus')
+        except Exception:
+            with self.lock:self.holds.pop(client,None)
+            raise
+        return True
+
+    def stop_auxiliary(self,reason):
+        # A receiver's worker reads the music snapshot. Never hold this lock
+        # while waiting for its synchronous output-stop acknowledgement.
+        with self.lock:receivers=tuple(self.auxiliary_outputs)
+        for receiver in receivers:
+            if receiver.hard_stop(reason) is not True:
+                raise Unavailable('Another local audio output could not be stopped')
 
     def duck(self,client,active):
         """A renewable voice lease lowers PCM without changing Spotify's volume or transport."""
@@ -256,6 +282,10 @@ class Spotify:
                         block=os.read(process.stdout.fileno(),4096)
                         if not block:break
                         carry+=block;end=len(carry)//4*4;pcm,carry=carry[:end],carry[end:]
+                        with self.lock:
+                            blocked=self.silenced or self.held() or generation!=self.generation
+                            opening=not blocked and pcm and not self.player
+                        if opening:self.stop_auxiliary('spotify')
                         with self.lock:
                             blocked=self.silenced or self.held() or generation!=self.generation
                             if not blocked and pcm and not self.player:

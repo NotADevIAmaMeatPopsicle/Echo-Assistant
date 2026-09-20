@@ -24,8 +24,9 @@ def agenda_request(text):
 
 
 class MemberAgenda:
-    def __init__(self, experiences, displays, schedules, clock=time.time):
+    def __init__(self, experiences, displays, schedules, clock=time.time, *, personal_google=None):
         self.experiences, self.displays, self.schedules = experiences, displays, schedules
+        self.personal_google=personal_google
         self.clock = clock
 
     def respond(self, period, principal, before, *, lookup=False, cancel=None):
@@ -43,11 +44,12 @@ class MemberAgenda:
         check()
         if lookup:
             return unavailable('Turn off web lookup to read your approved calendars privately.')
-        if not before['profile']['calendars']:
+        if not before['profile']['calendars'] and not self.personal_google:
             return unavailable('No calendars are shared with your account. The owner can select them under Personal accounts → Access.')
-        scoped = Experiences(self.experiences.home, ScopedSources(self.experiences.store, check),google=self.experiences.google)
+        scoped = (self.personal_google.scoped(principal,self.experiences) if self.personal_google else
+                  Experiences(self.experiences.home, ScopedSources(self.experiences.store, check),google=self.experiences.google))
         try:
-            source_revision = self.experiences.store.snapshot()['revision']
+            source_revision = scoped.store.snapshot()['revision']
             # The host time zone is configuration, not household agenda data.
             try:
                 zone_name = self.experiences.home._request('GET', '/api/config').get('time_zone')
@@ -64,7 +66,7 @@ class MemberAgenda:
             check()
             agenda = scoped.agenda(first.isoformat(), days)
             check()
-            if self.experiences.store.snapshot()['revision'] != source_revision:
+            if scoped.store.snapshot()['revision'] != source_revision:
                 return unavailable('Calendar sharing changed while I was checking. Please try again.')
             events = []
             for event in agenda['events']:
@@ -78,11 +80,11 @@ class MemberAgenda:
             return unavailable('I couldn’t read your approved calendars. Check the calendar connection and host time zone.')
         check()
         if agenda['status'] in {'not_configured','not_selected'} or not scoped.store.snapshot()['sources']['calendars']:
-            return unavailable('No approved calendar is currently connected for your account.')
+            return unavailable('No calendars are currently selected for your account. Connect My Google calendars, or ask the owner to share a calendar.')
         partial = agenda['status'] != 'available'
         label = 'over the next seven days' if days == 7 else period
         if events:
-            parts = [f'{len(events)} event' + ('s' if len(events) != 1 else '') + f' on your shared calendars {label}.']
+            parts = [f'{len(events)} event' + ('s' if len(events) != 1 else '') + f' on your selected calendars {label}.']
             for event in events[:5]:
                 when = 'All day' if event['all_day'] else datetime.fromisoformat(event['start']).astimezone(zone).strftime('%I:%M %p').lstrip('0')
                 if days == 7:
@@ -91,7 +93,7 @@ class MemberAgenda:
                 parts.append(f'{when}: {title}.')
             if len(events) > 5: parts.append('Open My day for the rest.')
         else:
-            parts = [f'No remaining events {label} on your shared calendars.'] if not partial else []
+            parts = [f'No remaining events {label} on your selected calendars.'] if not partial else []
         if partial: parts.append('Some calendars could not be refreshed, so this may be incomplete.')
         return {'status':'complete' if events or not partial else 'unavailable', 'capability':'calendar_agenda',
                 'text':' '.join(parts), 'partial':partial, 'date':first.isoformat(), 'days':days,

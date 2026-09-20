@@ -194,6 +194,8 @@ class DisplayPreview(Preview):
                   '/assets/display/briefing.js':('display/briefing.js','text/javascript'),
                   '/assets/display/calendar-invitations.js':('display/calendar-invitations.js','text/javascript'),
                   '/assets/display/calendar-invitations.css':('display/calendar-invitations.css','text/css'),
+                  '/assets/display/member-google.js':('display/member-google.js','text/javascript'),
+                  '/assets/display/member-google.css':('display/member-google.css','text/css'),
                   '/assets/display/briefing.css':('display/briefing.css','text/css'),
                   '/assets/display/photos.js':('display/photos.js','text/javascript'),
                   '/assets/display/media.js':('display/media.js','text/javascript'),

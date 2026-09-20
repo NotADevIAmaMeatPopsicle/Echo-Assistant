@@ -11,13 +11,14 @@ from threading import RLock
 import time
 
 from fastapi import HTTPException
-from .display_profiles import DisplayProfile,guest_allowed
+from .display_profiles import DisplayProfile,guest_allowed,personal_google_allowed
 
 
 class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if personal_google_allowed(method,path):return True
     if method=='POST' and path in {'/v1/display/calendar/master','/v1/display/calendar/following',
         '/v1/display/calendar/invitations/read','/v1/display/calendar/invitations/review','/v1/display/calendar/invitations/confirm'}:return True
     if method=='GET' and path=='/v1/calling':return True

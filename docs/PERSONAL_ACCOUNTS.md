@@ -188,8 +188,10 @@ software checks; no live personal Hermes instance has been provisioned or accept
 The owner still needs to provision each separate service, verify its tools and
 storage isolation, then explicitly test a read-only conversation.
 
-Voice identification and per-person external calendar/account sign-in remain
-future work. Shared Home Assistant
+Voice identification remains future work. Personal accounts can now link and
+select private read-only Google calendars using [My Google calendars](PERSONAL_GOOGLE.md).
+Private selections do not become household sources or inherit write grants.
+Actual Google sign-in remains an external-service acceptance item. Shared Home Assistant
 and owner-linked [Google Calendar](GOOGLE_CALENDAR.md)
 sources can be granted read-only now. The isolated display preview uses
 temporary demo accounts only; closing the preview process removes them.

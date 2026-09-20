@@ -51,11 +51,21 @@ class DisplayProfile(BaseModel):
         return value
 
 
+def personal_google_allowed(method,path):
+    base='/v1/member/calendar/google'
+    if (method,path) in {('GET',base),('POST',base+'/flows'),('PUT',base+'/selection')}:return True
+    if method in {'GET','DELETE'} and re.fullmatch(base+r'/flows/[a-f0-9]{32}',path):return True
+    if method=='POST' and re.fullmatch(base+r'/flows/[a-f0-9]{32}/finish',path):return True
+    if method=='POST' and re.fullmatch(base+r'/accounts/[a-f0-9]{32}/sync',path):return True
+    return method=='DELETE' and bool(re.fullmatch(base+r'/accounts/[a-f0-9]{32}',path))
+
+
 def guest_allowed(method,path,profile):
     """Default deny; direct endpoints and all indirect household tools stay private."""
     if profile['mode']!='guest':return True
     if method=='GET' and path=='/v1/members/available' or method in {'POST','DELETE'} and path=='/v1/member/session':return True
     if profile.get('personal'):
+        if personal_google_allowed(method,path):return True
         if method in {'GET','PUT'} and path=='/v1/member/preferences':return True
         if method in {'GET','POST','DELETE'} and path=='/v1/memory' or method in {'PUT','DELETE'} and re.fullmatch('/v1/memory/[a-f0-9]{32}',path):return True
         if method in {'GET','DELETE'} and path=='/v1/chat':return True

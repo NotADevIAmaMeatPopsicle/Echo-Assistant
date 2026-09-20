@@ -128,7 +128,9 @@ selected output. The round speaker is another explicit destination. Spotify
 Premium is required. **Connect with phone** shows a QR link to Spotify so you
 can choose Echo from the phone's device picker; it is not an account-linking code.
 Playlists, search, and queue browsing stay in Spotify. Chromecast, AirPlay, and
-Bluetooth audio receivers are not included.
+Deck also has an optional, default-off [Bluetooth A2DP adapter](docs/PI_BLUETOOTH.md)
+for an owner-selected bonded phone. Its software is prepared; actual package,
+profile and playback acceptance remain pending.
 
 Pi wake words remain active during Spotify. Choose pause mode, or lower music by
 80% through the cue and conversation with a shared audio output. Ducking restores
@@ -177,6 +179,11 @@ reviewed [following-only rescheduling](docs/GOOGLE_CALENDAR_SERIES.md). A separa
 [guest review](docs/CALENDAR_INVITATIONS.md) shows attendees and the notification
 choice before confirmation. Real Google account acceptance remains pending.
 [Calendar guide](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md).
+
+Signed-in Personal accounts can [connect their own Google calendars](docs/PERSONAL_GOOGLE.md)
+and choose which appear in My day and personal agenda replies. Those read-only
+selections stay separate from household calendars and other people's accounts.
+The installation owner still configures the Google OAuth client first.
 
 ### Cameras, doorbells, and room audio
 
@@ -499,7 +506,7 @@ checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 | **Packaging** | Host tests, firmware build, Windows recovery-task execution, fresh-container API/Hermes archive restore, Linux Pi checks, browser flows, and privacy guards exercised. Portable passphrase backups support recovery without the original Windows account. Broader fresh-install/provider coverage remains open. |
 
 Further work includes generic audio-endpoint adapters, synchronized grouped playback,
-private per-person Google linking, provisioning the separate personal
+real Google account acceptance, provisioning the separate personal
 Hermes instances supported by the account connector, and live acceptance
 of the optional external calling provider. Proprietary
 casting and commercial streaming-video services are not implemented. The project

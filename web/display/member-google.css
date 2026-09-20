@@ -1,0 +1,14 @@
+#member-google-dialog{width:min(680px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;box-sizing:border-box}
+#member-google-dialog form{display:grid;gap:12px;margin-block:18px}
+#member-google-dialog input:not([type=checkbox]){width:100%;min-width:0;box-sizing:border-box}
+.member-google-account{padding-block:12px;border-bottom:1px solid var(--line,#d7dfeb)}
+.member-google-account h3{margin-block:0 6px;overflow-wrap:anywhere}
+.member-google-calendar{display:flex;flex-direction:row;align-items:flex-start;gap:12px;padding:10px 0;cursor:pointer}
+.member-google-calendar input{flex:none;width:20px;min-width:20px;min-height:20px;height:20px;padding:0;margin-top:4px}
+.member-google-calendar span{min-width:0;overflow-wrap:anywhere}
+.member-google-calendar small{display:block;opacity:.7;font-size:.8em;margin-top:3px}
+#member-google-dialog .row{flex-wrap:wrap}
+#member-google-dialog [hidden]{display:none!important}
+#member-google-dialog p{overflow-wrap:anywhere}
+@media(max-width:500px){#member-google-dialog{padding:18px}#member-google-dialog h2{font-size:1.4rem}#member-google-button{font-size:.8rem}}
+@media(max-width:760px){header:has(#member-google-button:not([hidden])){height:auto;min-height:88px;flex-wrap:wrap;gap:10px;padding-block:14px}header:has(#member-google-button:not([hidden]))>div:first-child{flex:1 0 100%}header:has(#member-google-button:not([hidden])) .header-right{width:100%;min-width:0;justify-content:flex-end;flex-wrap:wrap}#member-google-button{max-width:180px;white-space:normal}}

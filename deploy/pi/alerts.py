@@ -102,9 +102,7 @@ class Alerts:
     def deliver(self, item, claim, config):
         body = {'occurrence': item['occurrence'], 'token': claim['token'], 'outcome': 'interrupted'}
         path = '/v1/display/alerts/'+item['id']
-        with self.music.lock:
-            if self.music.held(): return body
-            self.music.focus(self.client, True)
+        if not self.music.claim_idle(self.client):return body
         try:
             with self.lock:
                 if self.cancel.is_set() or self.config != config: return body

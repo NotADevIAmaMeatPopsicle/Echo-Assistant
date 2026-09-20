@@ -104,6 +104,18 @@ name change requires reconfiguration; restarting the service alone cannot choose
 a different device. The helper's `--check` reports installed programs and whether
 configuration exists, not whether audio is working.
 
+The voice status also checks that selected private `echo_cancelled` and
+`echo_processed` endpoints exist on the dedicated audio server. ALSA names can stay
+listed after hardware disappears, even when PulseAudio has no usable source or
+sink. This read-only check is cached for five seconds and never opens a recorder,
+plays audio, starts a service or selects another device. A missing processed route
+reports that specific condition. Reconnect the intended hardware, verify its card
+names, and then explicitly restart `echo-audio.service` if its static modules need
+to be recreated; the listener retries without a bridge restart. Other ALSA and
+independently managed processed paths retain their existing selections. Missing
+selected devices, wake-model loading failures and a disconnected speech host have
+separate status messages; these diagnostics do not establish acoustic performance.
+
 ## Privacy and volume
 
 The server uses a private, user-owned Unix socket. It loads no network listener

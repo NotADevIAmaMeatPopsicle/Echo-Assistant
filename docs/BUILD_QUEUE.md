@@ -28,6 +28,18 @@ Execution is now tracked as bounded work items in
 [Remaining tasks and integration contracts](REMAINING_TASKS.md). That plan assigns
 file ownership, dependencies and acceptance criteria before parallel dispatch.
 
+**Bounded wave 3 checkpoint:** ECHO-04 adds private per-person Google linking and
+explicit calendar selection, with isolated sessions and encrypted recovery.
+ECHO-08A installs the optional Bluetooth adapter and audio-focus integration,
+disabled pending supported packages and owner-selected phone setup. ECHO-13 now
+reports missing real audio routes precisely. These updates are deployed to the
+private host and Pi; the kiosk refreshed, settings and pairing were preserved,
+and Spotify remains discoverable at the unchanged 2% volume. The selected USB
+audio card is absent, so actual voice acceptance remains open. The combined image
+passed 147 isolated Linux tests plus focused Windows and silent browser checks.
+No real calendar action, Bluetooth pairing, recording or audio ran. ECHO-09's
+commercial-video compatibility investigation is the next bounded software task.
+
 **Bounded wave 2 checkpoint:** ECHO-02 adds reviewed following-only changes for
 simple finite Google COUNT series; ECHO-03 adds separate guest/notification review
 and explicit confirmation. Both are deployed to the private host and the Pi now
@@ -38,7 +50,8 @@ Google acceptance remains open. The Pi is online, but native voice reports
 unavailable and remains part of ECHO-13. Volume is still 2%.
 
 ECHO-08's [casting investigation](CASTING_OPTIONS.md) recommends a default-off
-Bluetooth A2DP adapter; implementation and physical acceptance remain queued.
+Bluetooth A2DP adapter. Wave 3 above installs its software; configuration and
+physical acceptance remain open.
 
 **Bounded wave 1 checkpoint:** ECHO-01 adds optional direct Google writes,
 original-master review and COUNT-preserving whole-series editing. ECHO-05 adds
@@ -66,8 +79,8 @@ private settings were preserved; its listener remains armed at 2%, with Spotify
 discoverable. No sound played and no real Google account was linked.
 The later ECHO-01 checkpoint extends this read path with reviewed writes and
 master editing. Wave 2 above adds bounded following-only rescheduling and guest
-review. Per-person private Google linking and live provider acceptance remain
-open. See [Google Calendar](GOOGLE_CALENDAR.md).
+review. Wave 3 adds per-person private Google linking; live provider acceptance
+remains open. See [Google Calendar](GOOGLE_CALENDAR.md).
 
 **Browser calling checkpoint:** Deck and browser displays now have optional
 LiveKit voice/video calls with owner configuration, encrypted provider credentials,

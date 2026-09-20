@@ -102,6 +102,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
                 calling.tick()
                 google_calendars.prune()
                 calendar_invitations.prune()
+                try:member_google.prune()
+                except (HomeUnavailable,HTTPException):pass
                 scheduler_stop.wait(2)
         call_thread=Thread(target=watch_calls,name='echo-calls',daemon=True)
         call_thread.start()
@@ -163,6 +165,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     personal_echo=MemberAgents(members,store,echo.provider,profiled_echo.home,assistant,household_runtime=echo.runtime);profiled_echo.personal=personal_echo
     def lock_personal(principal):
         conversations.clear(str(principal));personal_echo.clear(principal)
+        member_google.cancel_session(principal)
     members.on_lock=lock_personal
     app.state.members=members
     speech_restart = SpeechRestart(runtime_root)
@@ -205,9 +208,13 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     install_calling(app,calling,authorize,owner)
     google_calendars=GoogleCalendars(runtime_root,store.protector,enabled=deployment_mode=='device')
     install_google_calendar(app,google_calendars,authorize,owner)
+    from .member_google import MemberGoogle
+    from .member_google_api import install as install_member_google
+    member_google=MemberGoogle(members,google_calendars,runtime_root,store.protector)
+    install_member_google(app,member_google,authorize)
     experiences = Experiences(home, SourceStore(runtime_root, store.protector),google=google_calendars)
     from .member_agenda import MemberAgenda
-    personal_echo.agenda=MemberAgenda(experiences,displays,schedules)
+    personal_echo.agenda=MemberAgenda(experiences,displays,schedules,personal_google=member_google)
     doorbells=Doorbells(experiences,runtime_root,store.protector)
     briefing=DailyBriefing(experiences,home,schedules,household)
     echo.briefing=briefing

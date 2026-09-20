@@ -97,6 +97,56 @@ Bluetooth adapter. Their owners must first confirm account/source isolation and
 Pi audio-focus interfaces respectively. ECHO-09 follows the supported media
 capability decision. Hardware and real-account acceptance remain separate tasks.
 
+## Dispatch wave 3
+
+The coordinator owns existing Google storage hooks, account/app/authorization
+wiring, agenda composition, recovery registration, Pi focus/bridge/bundle integration
+and deployment. Worker code cannot change another lane's interface without a handoff.
+
+| Task | Worker-owned scope | Shared contract / acceptance |
+| --- | --- | --- |
+| ECHO-04 | New member Google provider/API/UI, focused tests and `PERSONAL_GOOGLE.md`. | One encrypted member registry; read-only personal OAuth reuses the owner-configured client and public callback. Bind flows to member, endpoint and session nonce. Private selected calendars join only that person's explicitly shared sources; no household export or inherited writes. Root registers routes and recovery. |
+| ECHO-08A | New Pi Bluetooth receiver/backend/preflight, focused tests and `PI_BLUETOOTH.md`. | Default off, selected existing bond only, private Pulse A2DP input to processed output. Root supplies fresh focus/access snapshots and synchronous hard-stop acknowledgment before capture; no lock inversion or automatic replay. No installation, radio changes or playback during checks. |
+| ECHO-13 diagnostic fix | `deploy/pi/listener.py`, focused availability tests and the audio guide. | Report absent processed audio endpoints despite ALSA name hints, with bounded read-only probes and automatic status recovery. Preserve configured device selection and 2% volume; no fallback or live recording. |
+
+The Pi diagnosis found that the configured physical USB audio card is absent.
+Only built-in playback cards are present; capture inventory and private Pulse
+sources/sinks are empty. The host speech service and wake model are available.
+Hardware reconnection remains separate from this diagnostic software fix.
+
+### Wave 3 result
+
+- **ECHO-04: software implemented and deployed.** Personal sessions can link and
+  explicitly select their own read-only Google calendars. Account changes,
+  expiration and revocation discard stale flows/results. Private credentials and
+  selections are included in encrypted recovery. Actual Google approval remains
+  ECHO-11; no real account was connected during development.
+- **ECHO-08A: receiver and integration installed, disabled.** The Pi bundle now
+  includes selected-bond A2DP handling, Spotify priority, ducking and synchronous
+  focus-stop acknowledgment. No Bluetooth packages, radio settings or pairing
+  changed. Supported prerequisites, phone setup and audible playback remain
+  ECHO-08; installation of adapter code does not establish receiver readiness.
+- **ECHO-13: diagnostic fix installed; physical acceptance open.** Voice status
+  now identifies missing actual processed audio routes even when their ALSA names
+  still exist. The selected USB card is absent, so reconnecting the intended audio
+  hardware and restoring its audio service are still necessary. No microphone
+  capture or sound was used during these checks; volume remains 2%.
+
+The integrated candidate passed 147 tests on isolated Linux, focused Windows
+checks including passphrase recovery, and the silent private-calendar browser
+flow. Actual application checks cover separate people, Household/Guest isolation,
+callback completion, account removal, revision races and restoration into a fresh
+application. The private host and Pi serve the verified update; the kiosk was
+refreshed, Spotify remains discoverable, and pairing/configuration were preserved.
+
+### Next bounded dispatch
+
+ECHO-09 is assigned to the media worker for official-provider compatibility
+research in `docs/VIDEO_PROVIDER_OPTIONS.md` only. Deliver a supported Pi/browser
+route and exact integration contract, or evidence requiring a product decision.
+No installs, provider sign-ins, playback or changes to shared media code belong
+to this investigation. The coordinator owns any subsequent implementation.
+
 ## Dependent software tasks
 
 | ID | Bounded deliverable | Depends on | Acceptance gate |

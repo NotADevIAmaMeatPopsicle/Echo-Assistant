@@ -105,16 +105,21 @@ class GoogleTransport:
 
 
 class GoogleCalendars:
-    def __init__(self,root,protector,transport=None,clock=time.time,enabled=True):
-        self.path=Path(root)/'local/echo-google-calendar.json' if root else None
+    def __init__(self,root,protector,transport=None,clock=time.time,enabled=True,*,state_store=None):
+        self.path=Path(root)/'local/echo-google-calendar.json' if root and state_store is None else None
+        self.state_store=state_store
         self.protector,self.transport,self.clock,self.enabled=protector,transport or GoogleTransport(),clock,enabled
         self.lock=RLock();self.config=GoogleConfig(revision=0);self.accounts=[];self.flows={};self.access={};self.error=False
-        if self.path and self.path.exists():
+        if state_store is not None or self.path and self.path.exists():
             try:
-                if self.path.stat().st_size>500_000:raise ValueError()
-                envelope=json.loads(self.path.read_text())
-                if envelope['version']!=1:raise ValueError()
-                data=json.loads(protector.decrypt(base64.b64decode(envelope['protected'],validate=True)))
+                if state_store is not None:
+                    data=state_store.load()
+                    if data is None:return
+                else:
+                    if self.path.stat().st_size>500_000:raise ValueError()
+                    envelope=json.loads(self.path.read_text())
+                    if envelope['version']!=1:raise ValueError()
+                    data=json.loads(protector.decrypt(base64.b64decode(envelope['protected'],validate=True)))
                 self.config=GoogleConfig.model_validate(data['config']);self.accounts=data['accounts']
                 if not isinstance(self.accounts,list) or len(self.accounts)>8:raise ValueError()
                 ids=set()
@@ -143,7 +148,10 @@ class GoogleCalendars:
         values=config.model_dump();values['client_secret']=config.client_secret.get_secret_value()
         payload=json.dumps({'config':values,'accounts':accounts}).encode()
         if len(payload)>250_000:raise HomeUnavailable('Google account inventory storage is full. Disconnect an unused account before adding more.')
-        if self.path:
+        if self.state_store is not None:
+            try:self.state_store.save({'config':values,'accounts':deepcopy(accounts)})
+            except (OSError,RuntimeError,ValueError):raise HomeUnavailable('Google account settings could not be saved.') from None
+        elif self.path:
             try:
                 encrypted=self.protector.encrypt(payload)
                 self.path.parent.mkdir(parents=True,exist_ok=True)
@@ -394,7 +402,10 @@ def install(app,google,authorize,owner):
 
     @app.get(CALLBACK)
     def callback(state:str=Query(min_length=32,max_length=128),code:str=Query(default='',max_length=4096),error:str=Query(default='',max_length=120)):
-        call(lambda:google.callback(state,code,error))
+        def receive():
+            personal=getattr(app.state,'member_google',None)
+            if personal is None or not personal.callback(state,code,error):google.callback(state,code,error)
+        call(receive)
         return HTMLResponse('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Echo · Google sign-in</title><h1>Return to Echo Settings.</h1><p>Your sign-in response was received. Return to the Echo tab where you started and choose Finish connecting. You may close this tab.</p></html>')
 
     @app.post('/v1/calendar/google/accounts/{identifier}/sync',dependencies=[Depends(owner)])

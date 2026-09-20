@@ -63,6 +63,7 @@ def install(app,members,personal,authorize,owner,validate,conversations,clear_sh
     @app.delete('/v1/members/{identifier}',dependencies=[Depends(owner)])
     def remove(identifier:str,body:MemberChange):
         result=members.change(identifier,body.revision,delete=True)
+        if getattr(app.state,'member_google',None):app.state.member_google.remove_member(identifier)
         return result
 
     @app.get('/v1/members/available')

@@ -8,6 +8,11 @@ Pi 4B touchscreen is Deck; the ESP32-S3 Mini remains an independent endpoint.
 
 ## Decision
 
+**Implementation update:** ECHO-08A's default-off adapter and shared audio-focus
+integration are now in the Pi bundle. See [Bluetooth setup](PI_BLUETOOTH.md) for
+the actual supported prerequisites and limitations. The research below records
+the decision; phone configuration and physical playback remain unverified.
+
 Keep the working Pi Spotify Connect receiver for Spotify's device picker.
 Implement one additional, **default-off Bluetooth Classic A2DP receive adapter**
 for audio playing on the owner's Pixel. Use the Pi's BlueZ and existing private

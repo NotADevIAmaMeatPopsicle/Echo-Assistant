@@ -24,6 +24,30 @@ from alerts import chime
 from spotify import Unavailable, outputs
 
 PHRASES = ('hey echo', 'okay echo')
+DEVICE_CACHE_SECONDS = 15
+PROCESSED_CACHE_SECONDS = 5
+
+
+class VoiceUnavailable(Unavailable):
+    """Only fixed, locally generated diagnostic messages may reach the display."""
+
+
+def private_audio_endpoints(*, run=subprocess.run, uid=None):
+    """Query the dedicated server without opening audio or autospawning a server."""
+    socket=Path('/run/user')/str(os.getuid() if uid is None else uid)/'echo-audio/native'
+    if not socket.is_socket():return {'available':False,'reason':'private_server_unavailable'}
+    result={'available':True}
+    for kind in ('sources','sinks'):
+        try:
+            response=run(['pactl','--server=unix:'+str(socket),'list','short',kind],
+                         stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,timeout=1)
+            if response.returncode or len(response.stdout)>16384:
+                return {'available':False,'reason':'private_server_unavailable'}
+            rows=[line.split('\t') for line in response.stdout.splitlines()]
+            result[kind]=[row[1] for row in rows if len(row)>=2 and re.fullmatch(r'[A-Za-z0-9_.:-]{1,160}',row[1])][:128]
+        except (OSError,subprocess.SubprocessError):
+            return {'available':False,'reason':'private_server_unavailable'}
+    return result
 
 
 def inputs():
@@ -96,7 +120,7 @@ class Segment:
 
 
 class Listener:
-    def __init__(self, request, music, home=None, *, captures=inputs, speakers=outputs, detector_factory=Detector, popen=subprocess.Popen, wake_screen=None):
+    def __init__(self, request, music, home=None, *, captures=inputs, speakers=outputs, detector_factory=Detector, popen=subprocess.Popen, wake_screen=None, endpoint_probe=private_audio_endpoints):
         self.wake_screen=wake_screen
         self.request,self.music,self.captures,self.speakers,self.detector_factory,self.popen=request,music,captures,speakers,detector_factory,popen
         self.home=Path(home or Path.home());self.path=self.home/'.config/echo-display/voice.json'
@@ -107,6 +131,8 @@ class Listener:
         self.phase='disabled';self.error=None;self.config_error=False;self.request_id=None;self.cancel_sent=None;self.pending_http=None;self.talk_options=None
         self.result=None;self.result_at=0.;self.access_revision=None;self.client=secrets.token_hex(16);self.last_focus=0.;self.last_host=0.;self.host_ready=False;self.health_thread=None
         self.devices_at=0.;self.devices_in=[];self.devices_out=[]
+        self.devices_loaded=False;self.device_lock=threading.RLock()
+        self.endpoint_probe=endpoint_probe;self.endpoints=None;self.endpoints_at=0.;self.endpoint_lock=threading.RLock()
         self.events=deque(maxlen=32);self.levels=deque(maxlen=125);self.level_at=0.;self.frame_count=0
         if self.path.exists():
             try:
@@ -117,6 +143,38 @@ class Listener:
 
     def ready(self):
         return importlib.util.find_spec('vosk') is not None and (self.model/'am/final.mdl').is_file()
+
+    def refresh_devices(self,force=False):
+        with self.device_lock:
+            if force or not self.devices_loaded or time.monotonic()-self.devices_at>=DEVICE_CACHE_SECONDS:
+                self.devices_in,self.devices_out=self.captures(),self.speakers()
+                self.devices_at=time.monotonic();self.devices_loaded=True
+
+    def processed_audio_error(self,config):
+        selected=[]
+        if config['input']=='echo_cancelled':selected.append(('sources','echo_cancelled','microphone'))
+        if config['output']=='echo_processed':selected.append(('sinks','echo_processed','speaker'))
+        if not selected:return None  # Preserve direct ALSA and independently managed audio paths.
+        with self.endpoint_lock:
+            if self.endpoints is None or time.monotonic()-self.endpoints_at>=PROCESSED_CACHE_SECONDS:
+                self.endpoints=self.endpoint_probe();self.endpoints_at=time.monotonic()
+            state=self.endpoints
+        if not state.get('available'):
+            return 'The private Echo audio service is unavailable. Check echo-audio.service and its selected hardware; no other audio device will be selected automatically.'
+        missing=[label for kind,name,label in selected if name not in state.get(kind,[])]
+        if missing:
+            return 'The private Echo processed '+('microphone and speaker' if len(missing)==2 else missing[0])+' route is missing. Reconnect the intended hardware and check echo-audio.service; saved ALSA names alone do not mean the route is available.'
+        return None
+
+    def audio_availability_error(self,config):
+        processed=self.processed_audio_error(config)
+        if processed:return processed
+        self.refresh_devices()
+        if config['input'] not in {d['id'] for d in self.devices_in}:
+            return 'The selected microphone is unavailable. Reconnect it or explicitly select the intended attached input in Pi voice settings.'
+        if config['output'] not in {d['id'] for d in self.devices_out}:
+            return 'The selected speaker is unavailable. Reconnect it or explicitly select the intended attached output in Pi voice settings.'
+        return None
 
     def note(self,stage,**numbers):
         # Only fixed stage names and numeric measurements. Never ambient words,
@@ -148,12 +206,13 @@ class Listener:
                     'retention_seconds':900,'audio_saved':False}
 
     def settings(self):
+        self.refresh_devices()
+        config=dict(self.config)
+        processed=self.processed_audio_error(config) if config['enabled'] else None
         with self.lock:
-            if time.monotonic()-self.devices_at>15:
-                self.devices_in,self.devices_out=self.captures(),self.speakers();self.devices_at=time.monotonic()
             if self.result and time.monotonic()-self.result_at>120:self.result=None
             return {'supported':True,'settings':dict(self.config),'inputs':self.devices_in,'outputs':self.devices_out,
-                    'runtime_installed':self.ready(),'phase':self.phase,'error':self.error,'result':self.result,
+                    'runtime_installed':self.ready(),'phase':self.phase,'error':processed if self.phase=='unavailable' and self.host_ready and processed else self.error,'result':self.result,
                     'phrases':list(PHRASES),'software_mute':True,'diagnostics':self.diagnostics()}
 
     def configure(self,value):
@@ -222,6 +281,7 @@ class Listener:
             if self.result and time.monotonic()-self.result_at>120:self.result=None
             if not self.config['enabled'] or self.config['muted']:
                 self.host_ready=False;continue
+            self.processed_audio_error(dict(self.config))
             try:
                 state=self.request('/v1/display/voice');revision=state.get('access_revision',0)
                 if self.access_revision is not None and revision!=self.access_revision:
@@ -240,7 +300,7 @@ class Listener:
     def check(self,config):
         if self.stop.is_set() or self.cancel.is_set() or config!=self.config:raise InterruptedError()
         if self.externally_busy():raise InterruptedError()
-        if not self.host_ready or time.monotonic()-self.last_host>10:raise Unavailable('Host speech runtime is unavailable')
+        if not self.host_ready or time.monotonic()-self.last_host>10:raise VoiceUnavailable('The private speech host is unavailable. Check its connection, pairing and speech runtime.')
         if self.phase not in {'armed','playback_guard'} and time.monotonic()-self.last_focus>5:
             self.audio_focus(config,True);self.last_focus=time.monotonic()
 
@@ -254,8 +314,11 @@ class Listener:
 
     def microphone(self,config):
         with self.lock:
-            self.capture=self.popen(['arecord','-q','-D',config['input'],'-t','raw','-f','S16_LE','-r','16000','-c','1',
-                                     '--buffer-time=100000','--period-time=20000'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,bufsize=0)
+            try:
+                self.capture=self.popen(['arecord','-q','-D',config['input'],'-t','raw','-f','S16_LE','-r','16000','-c','1',
+                                         '--buffer-time=100000','--period-time=20000'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,bufsize=0)
+            except OSError:
+                raise VoiceUnavailable('The selected microphone could not be opened. Check the attached input and its audio service.') from None
         pending=bytearray()
         with selectors.DefaultSelector() as selector:
             selector.register(self.capture.stdout,selectors.EVENT_READ)
@@ -263,10 +326,10 @@ class Listener:
             while True:
                 self.check(config)
                 if not selector.select(.1):
-                    if self.capture.poll() is not None or time.monotonic()-last>3:raise Unavailable('Microphone input stopped')
+                    if self.capture.poll() is not None or time.monotonic()-last>3:raise VoiceUnavailable('The selected microphone stopped delivering audio. Check the attached input and its audio service.')
                     continue
                 block=os.read(self.capture.stdout.fileno(),2560)
-                if not block:raise Unavailable('Microphone disconnected')
+                if not block:raise VoiceUnavailable('The selected microphone disconnected or its audio route closed. Check the attached input and its audio service.')
                 last=time.monotonic();pending.extend(block)
                 while len(pending)>=2560:
                     frame=bytes(pending[:2560]);del pending[:2560];self.measure(frame);yield frame
@@ -343,8 +406,12 @@ class Listener:
                 self.phase='unavailable';self.error='Waiting for the private speech host.';continue
             try:
                 self.cancel.clear();self.phase='armed';self.check(config)
-                if config['input'] not in {d['id'] for d in self.captures()} or config['output'] not in {d['id'] for d in self.speakers()}:raise Unavailable('Attached microphone or speaker is unavailable')
-                if self.detector is None:self.detector=self.detector_factory(self.model)
+                unavailable=self.audio_availability_error(config)
+                if unavailable:raise VoiceUnavailable(unavailable)
+                if self.detector is None:
+                    try:self.detector=self.detector_factory(self.model)
+                    except Exception:
+                        raise VoiceUnavailable('The Pi wake runtime or model could not load. Check the installed Vosk runtime and voice model; audio settings were preserved.') from None
                 self.detector.reset();self.frames=self.microphone(config);self.phase='armed';self.error=None
                 while True:
                     self.phase='armed'
@@ -366,7 +433,7 @@ class Listener:
                 else:
                     self.note('request_failed' if self.phase=='thinking' else 'playback_failed' if self.phase in {'cue','speaking'} else 'microphone_or_host_unavailable',
                               http_status=error.code if isinstance(error,urllib.error.HTTPError) else 0)
-                    self.phase='unavailable';self.error='Pi voice is waiting for its microphone, speaker, wake runtime or private host connection.'
+                    self.phase='unavailable';self.error=str(error) if isinstance(error,VoiceUnavailable) else 'Pi voice is waiting for its microphone, speaker, wake runtime or private host connection.'
                     self.interrupt();self.stop.wait(2)
             finally:
                 self.terminate(self.capture)
