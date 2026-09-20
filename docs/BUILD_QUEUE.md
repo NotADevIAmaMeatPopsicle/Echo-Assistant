@@ -30,12 +30,14 @@ Prioritize the Pi audio path before extending round intercom. See
 - [x] Per-room announcement routing, opt-in display/round receivers and delivery receipts (software; physical listening pending).
 - [x] Answered two-way intercom for paired displays and the round speaker (software; round firmware installation and physical audio acceptance pending).
 - [x] Pi push-to-talk/ALSA adapter and request-specific reply routing (software; simulated audio only).
-- [x] Pi local wake, cue/capture/replies, software mute and request interruption (software; installed disabled).
+- [x] Pi local wake, cue/capture/replies, software mute and request interruption (software; USB headset listener configured).
 - [ ] Physical Pi wake and echo-control acceptance, including playback and spoken interruption with the chosen microphone.
-- [x] Pi Spotify receiver, direct ALSA playback, output attenuation and endpoint-specific naming (software; real Spotify/audio acceptance pending).
+- [x] Pi Spotify receiver, ALSA playback, output attenuation and endpoint-specific naming (initial headset playback owner-confirmed; shared-output listening and session recovery remain acceptance).
 - [x] Pi alarm/reminder chimes, saved destination routing and visible snooze/dismiss controls (software; physical audio pending).
 - [x] Pi pairing/install/rollback client bundle; installed and OS restart verified.
 - [x] Pi display visual polish: bundled typography, smooth status ring, contrast and touch spacing; deployed with dedicated kiosk sizing. Owner visual acceptance of this pass remains open.
+- [x] Home tile selection and saved positions, Music tile with artwork/control, and horizontal page swipes that leave keyboard/control gestures intact (software).
+- [x] Native Pi wake recognition during Spotify, optional 80% music ducking and shared-output setup (software; live wake/cue/restore acceptance pending).
 - [x] Integrated software verification, fresh Docker build, repeatable browser suite, and refreshed screenshots/documentation. Physical and external-service acceptance below remains open.
 
 ## Hardware acceptance when the owner returns
@@ -162,10 +164,10 @@ passes the verified board identity into its container. Music controls disable
 immediately when switching to an unavailable receiver. The README presents both
 builds, their independent audio paths and their setup guides.
 
-A fresh Pi hardware inventory still reports no capture device. It exposes only
-the built-in headphone and HDMI outputs; a connected, suitable microphone and
-speaker remain required for acoustic acceptance. No microphone, speaker or home
-device was exercised during this software checkpoint.
+The Pi now has a USB headset selected for microphone and playback. Spotify output
+through the headset has owner confirmation. Wake accuracy, microphone gain,
+cue/reply audibility and music ducking still need acoustic acceptance. This does
+not establish far-field performance for the final speaker/microphone assembly.
 
 A temporary bridge using the installed Pi client completed live enrollment,
 revocation and fresh enrollment against the running host. Revocation denied both

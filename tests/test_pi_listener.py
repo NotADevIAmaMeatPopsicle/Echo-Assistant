@@ -9,19 +9,51 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'deploy/pi'))
-from listener import Detector, Listener, Segment
+from listener import Detector, Listener, Segment, validate
 from backend.conversation_activity import Conversations, ConversationBusy
 
 
 class Music:
-    def __init__(self):self.lock=RLock();self.holds={}
+    def __init__(self):self.lock=RLock();self.holds={};self.ducks={}
     def held(self):return bool(self.holds)
     def focus(self,client,busy):
         if busy:self.holds[client]=True
         else:self.holds.pop(client,None)
+    def duck(self,client,busy):
+        if busy:self.ducks[client]=True
+        else:self.ducks.pop(client,None)
 
 
 class PiListenerTests(unittest.TestCase):
+    def test_music_duck_and_legacy_pause_do_not_claim_echo_cancellation(self):
+        with TemporaryDirectory() as directory:
+            music=Music();listener=Listener(lambda *args:None,music,directory)
+            legacy={k:v for k,v in listener.config.items() if k!='music_mode'}
+            self.assertEqual(validate(legacy)['music_mode'],'pause')
+            config={**listener.config,'music_mode':'duck'}
+            self.assertFalse(validate(config)['echo_cancelled_input'])
+            listener.audio_focus(config,True)
+            self.assertTrue(music.ducks);self.assertFalse(music.holds)
+            listener.audio_focus(config,False)
+            self.assertFalse(music.ducks);self.assertFalse(music.holds)
+            with self.assertRaises(ValueError):validate({**config,'music_mode':'loud'})
+
+    def test_music_no_longer_blocks_wake_without_aec(self):
+        with TemporaryDirectory() as directory:
+            music=Music();music.snapshot=lambda:{'status':'playing'}
+            class Wake:
+                def reset(self):pass
+                def feed(self,pcm):return True
+            listener=Listener(lambda *args:None,music,directory,captures=lambda:[{'id':'mic'}],speakers=lambda:[{'id':'out'}],detector_factory=lambda path:Wake())
+            listener.config.update(enabled=True,muted=False,input='mic',output='out')
+            listener.host_ready=True;listener.last_host=time.monotonic()
+            listener.microphone=lambda config:(frame for frame in [b'\0'*2560])
+            activated=[]
+            def command(config):activated.append(True);listener.stop.set()
+            listener.command=command
+            listener.run()
+            self.assertEqual(activated,[True])
+
     def test_exact_wake_and_confidence(self):
         detector=Detector.__new__(Detector)
         class Recognizer:
@@ -45,6 +77,17 @@ class PiListenerTests(unittest.TestCase):
         long=Segment()
         for _ in range(100):done=long.feed(voice)
         self.assertTrue(done);self.assertLessEqual(len(long.result()),256000)
+
+    def test_stable_partial_wake_does_not_wait_for_music_to_fall_silent(self):
+        class Recognizer:
+            value={'partial':'hey echo','partial_result':[{'word':'hey','conf':.95},{'word':'echo','conf':.95}]}
+            def AcceptWaveform(self,pcm):return False
+            def PartialResult(self):return json.dumps(self.value)
+            def Reset(self):pass
+        detector=Detector.__new__(Detector);detector.recognizer=Recognizer();detector.reset()
+        self.assertFalse(detector.feed(b''));self.assertTrue(detector.feed(b''))
+        detector.reset();detector.recognizer.value={'partial':'hey','partial_result':[{'word':'hey','conf':1.}]}
+        self.assertFalse(detector.feed(b''));self.assertFalse(detector.feed(b''))
 
     def test_stop_before_upload_and_old_stop_do_not_affect_new_conversation(self):
         jobs=Conversations();jobs.stop_capture('display-a','1'*32)

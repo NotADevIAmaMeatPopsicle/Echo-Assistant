@@ -56,6 +56,21 @@ smooth status ring, touch sizing and native-resolution kiosk configuration.
 
 ## One assistant, independent devices
 
+Use **Edit Home** to choose the four tiles and their positions. Clock & Echo,
+Weather, Rooms and Music are the default layout, with Music at bottom right.
+Timers, Lists and Thermostat are also available; choose Empty to leave a position
+clear. Selecting an existing tile swaps its position. Save applies the layout;
+Cancel leaves it unchanged, and Reset layout restores the defaults before saving.
+These preferences belong to this display's browser and survive reloads when
+browser storage is available. They do not change another display's layout.
+
+![Choosing a Home tile and its position; synthetic preview](images/display-home-picker.png)
+
+Swipe left for the next page or right for the previous page, following the sidebar
+order from Home through Settings. Swipes stop at either end. Vertical scrolling,
+sliders, forms, media controls and the swipe keyboard keep their own gestures.
+The sidebar remains available for jumping directly to a page.
+
 ```mermaid
 flowchart LR
   R[Round ESP32-S3 speaker] <-->|existing audio and control transport| H[Echo host]
@@ -105,7 +120,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 
 | Page | What works | Boundaries |
 | --- | --- | --- |
-| Home | Clock, date, weather, named rooms, next timer, live voice status | Voice status reflects this display; the round speaker is optional |
+| Home | Four configurable tile positions: clock/voice status, weather, rooms, music artwork/playback, next timer, lists or thermostat | Layout saves in this browser; music uses the explicitly selected receiver |
 | Rooms | Room lights, individual brightness/colour/white temperature, thermostat mode and temperature range, speaker selection and supported playback actions | Existing Home Assistant permission grants and fresh state are required; choosing a device does not act on it |
 | Music | Spotify cover art, title/artist/album, seek bar, previous/play/pause/next, shuffle, repeat and input level; home-speaker selection; saved HTTPS radio presets and local files | Spotify can use the separately configured Pi receiver or the explicitly selected round speaker; physical Pi playback acceptance remains open. Library, playlists and queue browsing open Spotify. Chromecast/AirPlay receivers are not installed. Radio and local files play through the display's output |
 | My day | Local daily briefing; selected calendars; timed/all-day event creation with separate write grants; selected camera streams/snapshots; silent doorbell cards | Creation requires a compatible calendar and owner permission. Live MJPEG depends on the camera integration. No recording or camera audio |

@@ -68,6 +68,7 @@ class Spotify:
         self.config={'enabled':False,'name':'Echo Display','output':'','volume':2}
         self.lock=threading.RLock();self.stop=threading.Event();self.thread=None;self.process=None;self.player=None
         self.status='not_configured';self.error=None;self.commands=deque(maxlen=16);self.holds={};self.silenced=True
+        self.ducks={};self.playback_gain=1.
         self.generation=0;self.key='';self.track={};self.position_at=0.;self.capabilities=[];self.available_outputs=[];self.outputs_at=-100.
         self.art_key=None;self.art_content=None;self.art_lock=threading.Lock()
         self.config_error=False
@@ -116,6 +117,27 @@ class Spotify:
                 self.holds[client]=self.clock();self.pause()
             else:self.holds.pop(client,None)
             return {'paused_for_voice':self.held()}
+
+    def duck(self,client,active):
+        """A renewable voice lease lowers PCM without changing Spotify's volume or transport."""
+        if not isinstance(client,str) or not re.fullmatch(r'[a-f0-9]{32}',client) or type(active) is not bool:raise ValueError('Invalid music duck request')
+        with self.lock:
+            self.ducked()
+            if active:
+                if len(self.ducks)>=32 and client not in self.ducks:raise Unavailable('Too many audio sessions')
+                self.ducks[client]=self.clock()
+            else:self.ducks.pop(client,None)
+
+    def ducked(self):
+        now=self.clock();self.ducks={k:v for k,v in self.ducks.items() if now-v<15}
+        return bool(self.ducks)
+
+    def output_level(self,frames):
+        # Roughly 120 ms fades avoid hard gain steps on activation and release.
+        target=.2 if self.ducked() else 1.
+        step=max(0,frames)/(44100*.12)
+        self.playback_gain+=max(-step,min(step,target-self.playback_gain))
+        return self.config['volume']*self.playback_gain
 
     def close_output(self):
         player,self.player=self.player,None
@@ -175,7 +197,7 @@ class Spotify:
             match=re.fullmatch(r'spotify:(track|episode):([A-Za-z0-9]{22})',self.track.get('uri',''))
             position=state.get('position_ms',0)+(int((self.clock()-self.position_at)*1000) if self.status=='playing' else 0)
             return {**state,'supported':True,'available':running,'status':self.status,'receiver_name':self.config['name'],
-                    'output_volume':self.config['volume'],'output_configured':bool(self.config['output']),'error':self.error,
+                    'output_volume':self.config['volume'],'ducked':self.ducked(),'output_configured':bool(self.config['output']),'error':self.error,
                     'position_ms':min(position,state.get('duration_ms',0)),'capabilities':self.capabilities,
                     'artwork':f'/v1/display/music/artwork/{key}' if key else None,
                     'open_url':f'https://open.spotify.com/{match[1]}/{match[2]}' if match else ''}
@@ -238,7 +260,7 @@ class Spotify:
                             blocked=self.silenced or self.held() or generation!=self.generation
                             if not blocked and pcm and not self.player:
                                 self.player=self.popen(['aplay','--quiet','-D',config['output'],'-t','raw','-f','S16_LE','-c','2','-r','44100','--buffer-time=100000','--period-time=20000'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,bufsize=0)
-                            player=self.player;volume=self.config['volume']
+                            player=self.player;volume=self.output_level(len(pcm)//4)
                         if blocked:self.stop.wait(len(pcm)/176400);continue
                         if player:
                             try:player.stdin.write(scaled_pcm(pcm,volume))

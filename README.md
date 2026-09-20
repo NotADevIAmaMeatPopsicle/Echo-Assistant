@@ -63,6 +63,11 @@ live-service acceptance.
 
 ## The smart display
 
+Make the home screen your own: choose four tiles for time and Echo, weather,
+rooms, music, timers, lists or the thermostat. Music sits at bottom right by
+default, with live artwork and playback control. Swipe left or right between
+pages, or jump straight to a page from the sidebar.
+
 ### A conversation with room to breathe
 
 Echo's status panel and settings sit beside the conversation. Type a message,

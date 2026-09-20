@@ -63,6 +63,18 @@ def dedicated_x11_flags():
     return ['--ozone-platform=x11', '--force-device-scale-factor=1', *bounds] if bounds else []
 
 
+def selected_audio_flags(home):
+    """Give Chromium the explicitly selected Pi devices, not another ALSA card."""
+    path=Path(home)/'.config/echo-display/voice.json'
+    try:
+        if path.is_symlink():return []
+        value=json.loads(path.read_text(encoding='utf-8'))
+    except (OSError,ValueError):return []
+    if not isinstance(value,dict):return []
+    return [f'--alsa-{key}-device={value[key]}' for key in ('input','output')
+            if isinstance(value.get(key),str) and re.fullmatch(r'[A-Za-z0-9_.,:=+-]{1,120}',value[key])]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',type=Path,default=Path.home()/'.config/echo-display/config.json')
@@ -79,7 +91,7 @@ def main():
     profile.mkdir(parents=True,exist_ok=True,mode=0o700)
     profile.chmod(0o700)
     browser = report['chromium']
-    os.execv(browser,[browser,'--kiosk','--no-first-run','--noerrdialogs',*dedicated_x11_flags(),f'--user-data-dir={profile}',url])
+    os.execv(browser,[browser,'--kiosk','--no-first-run','--noerrdialogs',*dedicated_x11_flags(),*selected_audio_flags(Path.home()),f'--user-data-dir={profile}',url])
 
 
 if __name__ == '__main__':

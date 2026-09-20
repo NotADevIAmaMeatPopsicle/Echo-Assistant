@@ -10,7 +10,7 @@ AMOLED build remains a separate compact smart speaker.
 
 | Build | Audio path | Current implementation and limits |
 | --- | --- | --- |
-| Pi smart display | Microphone and speaker attached to the Pi | Paired kiosk, push-to-talk with replies returned to that Pi, radio/files, announcements and answered display calls are implemented in software. The Pi Spotify adapter adds a separately named ALSA receiver. Local wake detection, native replies, software mute, request interruption and alarm chimes are implemented. Playback wake needs an explicitly configured echo-cancelled input. Physical audio verification remains open. |
+| Pi smart display | Microphone and speaker attached to the Pi | Paired kiosk, push-to-talk with replies returned to that Pi, radio/files, announcements and answered display calls are implemented in software. The Pi Spotify adapter adds a separately named ALSA receiver. Local wake detection, native replies, software mute, request interruption and alarm chimes are implemented. Music wake supports pausing or 80% ducking with a shared output. Hands-free interruption of spoken replies needs an echo-cancelled input. Physical audio verification remains open. |
 | Round AMOLED speaker | Onboard microphone and attached speaker | Firmware, host voice transport, wake words, replies and Spotify receiver. Answered intercom controls and a duplex host adapter are implemented; the new firmware still needs installation and physical call verification. |
 | Spare phone, tablet or computer | Its browser, microphone and speakers | Responsive paired display, push-to-talk and answered calls reuse the browser path. Requires a secure connection and explicit microphone permission. Mobile background operation, continuous wake and device-specific audio performance are not verified. |
 | Another Pi or ESP32 audio endpoint | Its configured input/output, with an optional separate screen | Planned adapter path. The current ESP32 firmware targets the documented Waveshare board; other boards are not plug-and-play. |
@@ -43,4 +43,4 @@ Pi timer and reminder chimes use the attached speaker independently of the round
 board. See [Pi alerts](PI_ALERTS.md) for output setup and delivery behavior.
 
 [Pi voice setup](PI_VOICE.md) explains the local listener, software mute, attached
-audio selection and the playback echo-control requirement.
+audio selection and the distinction between music ducking and echo-cancelled reply interruption.

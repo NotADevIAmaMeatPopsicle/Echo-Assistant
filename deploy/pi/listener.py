@@ -31,7 +31,10 @@ def inputs():
 
 
 def validate(value):
-    if not isinstance(value, dict) or set(value) != {'enabled','muted','input','output','volume','echo_cancelled_input','allow_home'}: raise ValueError('Invalid Pi voice settings')
+    # Existing installations keep pause-on-wake until a shared output is selected.
+    if isinstance(value,dict):value={'music_mode':'pause',**value}
+    if not isinstance(value, dict) or set(value) != {'enabled','muted','input','output','volume','echo_cancelled_input','allow_home','music_mode'}: raise ValueError('Invalid Pi voice settings')
+    if not isinstance(value['music_mode'],str) or value['music_mode'] not in {'pause','duck'}:raise ValueError('Choose pause or lower music during voice')
     for key in ('enabled','muted','echo_cancelled_input','allow_home'):
         if type(value[key]) is not bool: raise ValueError('Invalid Pi voice option')
     if type(value['volume']) is not int or not 0 <= value['volume'] <= 30: raise ValueError('Choose 0–30% output volume')
@@ -48,15 +51,23 @@ class Detector:
         self.model = Model(str(path))
         self.recognizer = KaldiRecognizer(self.model,16000,json.dumps([*PHRASES,'[unk]']))
         self.recognizer.SetWords(True)
+        self.recognizer.SetPartialWords(True)
+        self.partial_hits=0
 
-    def reset(self): self.recognizer.Reset()
+    def reset(self): self.recognizer.Reset();self.partial_hits=0
 
     def feed(self, pcm):
-        if not self.recognizer.AcceptWaveform(pcm): return False
-        result = json.loads(self.recognizer.Result()); words = result.get('result', [])
-        phrase = result.get('text','').strip().lower()
-        return (phrase in PHRASES and len(words)==2 and ' '.join(w.get('word','') for w in words)==phrase
+        final=self.recognizer.AcceptWaveform(pcm)
+        result=json.loads(self.recognizer.Result() if final else self.recognizer.PartialResult())
+        words=result.get('result' if final else 'partial_result',[])
+        phrase=result.get('text' if final else 'partial','').strip().lower()
+        recognized=(phrase in PHRASES and len(words)==2 and ' '.join(w.get('word','') for w in words)==phrase
                 and all(type(w.get('conf')) in (float,int) and .8 <= w['conf'] <= 1 for w in words))
+        if final:self.partial_hits=0;return recognized
+        # Continuous music may never yield an utterance-ending silence. Require
+        # two consecutive confident, complete partial phrases before waking.
+        self.partial_hits=self.partial_hits+1 if recognized else 0
+        return self.partial_hits>=2
 
 
 class Segment:
@@ -86,7 +97,7 @@ class Listener:
         self.request,self.music,self.captures,self.speakers,self.detector_factory,self.popen=request,music,captures,speakers,detector_factory,popen
         self.home=Path(home or Path.home());self.path=self.home/'.config/echo-display/voice.json'
         self.model=self.home/'.local/share/echo-display/runtime/voice-model'
-        self.config={'enabled':False,'muted':True,'input':'','output':'','volume':2,'echo_cancelled_input':False,'allow_home':False}
+        self.config={'enabled':False,'muted':True,'input':'','output':'','volume':2,'echo_cancelled_input':False,'allow_home':False,'music_mode':'pause'}
         self.lock=threading.RLock();self.stop=threading.Event();self.cancel=threading.Event();self.talk=threading.Event();self.end_capture=threading.Event()
         self.thread=None;self.capture=None;self.player=None;self.detector=None;self.frames=None
         self.phase='disabled';self.error=None;self.config_error=False;self.request_id=None;self.cancel_sent=None;self.pending_http=None;self.talk_options=None
@@ -189,7 +200,14 @@ class Listener:
         if self.externally_busy():raise InterruptedError()
         if not self.host_ready or time.monotonic()-self.last_host>10:raise Unavailable('Host speech runtime is unavailable')
         if self.phase not in {'armed','playback_guard'} and time.monotonic()-self.last_focus>5:
-            self.music.focus(self.client,True);self.last_focus=time.monotonic()
+            self.audio_focus(config,True);self.last_focus=time.monotonic()
+
+    def audio_focus(self,config,active):
+        if not active:
+            self.music.focus(self.client,False)
+            self.music.duck(self.client,False)
+        elif config['music_mode']=='duck':self.music.duck(self.client,True)
+        else:self.music.focus(self.client,True)
 
     def microphone(self,config):
         with self.lock:
@@ -230,7 +248,7 @@ class Listener:
     def command(self,config):
         if self.pending_http is not None and not self.pending_http.done():raise Unavailable('The previous voice request is still stopping')
         options=self.talk_options or {'allow_home':config['allow_home'],'reply_audio':True};self.talk_options=None
-        self.talk.clear();self.phase='cue';self.music.focus(self.client,True);self.last_focus=time.monotonic()
+        self.talk.clear();self.phase='cue';self.audio_focus(config,True);self.last_focus=time.monotonic()
         # The first warm note from the same locally generated alert sound.
         with wave.open(io.BytesIO(chime(config['volume'])),'rb') as cue:pcm=cue.readframes(48000)
         self.play(pcm,config)
@@ -268,14 +286,12 @@ class Listener:
                 while True:
                     self.phase='armed'
                     frame=next(self.frames)
-                    # Hardware/OS AEC must be explicitly selected before recognizing speaker playback.
-                    playing=self.music.snapshot().get('status')=='playing'
-                    if playing and not config['echo_cancelled_input'] and not self.talk.is_set():
-                        self.phase='playback_guard';self.detector.reset();continue
+                    # Music can be interrupted without claiming that this input has AEC.
+                    # Echo's own spoken replies still require AEC for hands-free interruption.
                     self.phase='armed'
                     if self.talk.is_set() or self.detector.feed(frame):
                         try:self.command(config)
-                        finally:self.music.focus(self.client,False)
+                        finally:self.audio_focus(config,False)
                         self.detector.reset()
             except InterruptedError:
                 self.phase='muted' if self.config['muted'] else 'stopping';self.interrupt()

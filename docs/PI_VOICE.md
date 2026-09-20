@@ -43,16 +43,21 @@ recording** ends it early, and **Cancel** stops capture, the current request or
 reply playback. The display follows listening, thinking and speaking and shows
 the resulting transcript and answer in the conversation.
 
-Wake detection can interrupt a reply or Spotify playback **only with a selected
-microphone input that already cancels speaker echo**, such as a correctly
-configured hardware DSP microphone or an OS echo-cancelled source. Enable the
-playback option only after verifying that input. This adapter does not implement
-software acoustic echo cancellation itself. With that option off, wake detection
-pauses during Spotify and replies; use Talk or Cancel. This avoids treating the
-speaker's own words as a new request. Acoustic performance still needs testing
-with the actual microphone, speaker, room and volume.
+Wake words remain active during Spotify. The default pauses music before the
+warm cue. With a shared audio output, choose **Lower music by 80%** in the Pi voice
+settings to keep music playing quietly through the cue, request and reply. Its
+previous output level returns afterward; Spotify's volume setting is unchanged.
+A cancelled request releases the reduction too. This never resumes a track that
+someone paused.
 
-Spotify pauses before the cue and stays paused after the conversation. Browser
+Interrupting Echo's **own spoken reply** by voice still requires a selected
+microphone input that already cancels speaker echo, such as a hardware DSP or OS
+echo-cancelled source. Otherwise use Talk or Cancel during replies. This adapter
+does not implement acoustic echo cancellation. Music or nearby speech can still
+cause false wakes, especially when the microphone is close to a loud speaker;
+actual room performance remains a hardware check.
+
+In pause mode Spotify stays paused after the conversation. Browser
 recording, calls and announcements take audio priority and suspend native wake
 capture while they use the devices. Native capture resumes when they release
 audio. The listener keeps checking its pairing and speech-host connection;
@@ -82,5 +87,5 @@ cover wake phrase/confidence rules, capture bounds, cancellation races and muted
 settings; silent browser checks cover the native state and controls.
 
 Actual wake accuracy, microphone gain, reply audibility and echo control remain
-physical acceptance. The current installation has listening disabled until the
-attached microphone and speaker are identified and selected.
+physical acceptance. New installations keep listening disabled until their
+microphone and speaker are selected and the listener is enabled.

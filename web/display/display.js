@@ -59,7 +59,7 @@ async function refreshVoice() {
   try {
     await Promise.allSettled([
       (async()=>{try {data.voice=await api('/v1/voice',undefined,'GET',AbortSignal.timeout(3000));received.voice=Date.now();}catch{delete data.voice;delete received.voice;}})(),
-      (async()=>{if($('page-music').hidden)return;const path=typeof musicSnapshotPath==='function'?musicSnapshotPath():'/v1/display/music/now-playing';try {const value=await api(path,undefined,'GET',AbortSignal.timeout(5000));if(path!==musicSnapshotPath())return;data.nowPlaying=value;received.nowPlaying=Date.now();}catch{if(path===musicSnapshotPath()){delete data.nowPlaying;delete received.nowPlaying;}}})()
+      (async()=>{if($('page-music').hidden && !(typeof homeShowsMusic==='function' && homeShowsMusic()))return;const path=typeof musicSnapshotPath==='function'?musicSnapshotPath():'/v1/display/music/now-playing';try {const value=await api(path,undefined,'GET',AbortSignal.timeout(5000));if(path!==musicSnapshotPath())return;data.nowPlaying=value;received.nowPlaying=Date.now();}catch{if(path===musicSnapshotPath()){delete data.nowPlaying;delete received.nowPlaying;}}})()
     ]);
   }
   catch { delete data.voice; delete received.voice; }
@@ -116,7 +116,7 @@ function renderHome() {
     $('speaker').innerHTML = `<span class="eyebrow">HOME SPEAKER</span><label>Play through<select id="speaker-choice" data-requires="home" data-unavailable="${!speakers.choices?.length}">${(speakers.choices || []).map((choice,index) => `<option value="${index}" ${speakers.selected === index ? 'selected' : ''}>${esc(choice.name || choice.label || `Speaker ${index + 1}`)}</option>`).join('') || '<option>No speakers assigned</option>'}</select></label><div class="row spread"><span class="soft">${Number.isFinite(attrs.volume_level) ? Math.round(attrs.volume_level * 100) + '%' : 'Volume unavailable'}</span><div class="stepper">${[['down','−'],['up','+'],[attrs.is_volume_muted ? 'unmute' : 'mute',attrs.is_volume_muted ? 'Unmute' : 'Mute']].map(([command,label]) => `<button data-speaker="${command}" data-requires="home" data-unavailable="${!available}" aria-label="${command === 'up' ? 'Raise speaker volume' : command === 'down' ? 'Lower speaker volume' : label}">${label}</button>`).join('')}</div></div><p class="device-note">${esc(human(speakers.device?.state))} · Home Assistant speaker controls</p>`;
   }
 }
-function renderMusic() { if (typeof renderMusicPanel==='function') renderMusicPanel(); }
+function renderMusic() { if (typeof renderMusicPanel==='function') renderMusicPanel(); if (typeof renderHomeMusic==='function') renderHomeMusic(); }
 
 function remaining(timer) { return Math.max(0, Math.ceil(timer.remaining_seconds - (Date.now() - received.timers) / 1000)); }
 function duration(seconds) { return `${Math.floor(seconds / 3600) ? `${Math.floor(seconds / 3600)}:` : ''}${String(Math.floor(seconds / 60) % 60).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`; }

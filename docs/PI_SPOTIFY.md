@@ -51,8 +51,10 @@ The output selector lists ALSA names without opening a device. A missing output
 stops playback rather than selecting HDMI, headphones or another endpoint.
 PulseAudio/PipeWire users may choose their system's shared output; direct hardware
 outputs can be exclusive. Verify that voice replies and music can share the
-selected physical device. Browser replies use Chromium's output, which must
-point to that same speaker; choosing a Spotify output does not change Chromium.
+selected physical device. The dedicated kiosk passes the Pi voice settings'
+explicit input and output to Chromium when it starts, including browser media
+and calls. Restart the kiosk after changing those selections. Choosing a Spotify
+output alone does not change Chromium; other browsers use their own audio settings.
 
 The Spotify slider controls the incoming stream. **Output volume** is a separate
 Pi attenuation control, limited to 30%. These controls do not change an external
@@ -60,7 +62,28 @@ amplifier's physical volume.
 
 ## Voice, calls and privacy
 
-Opening the display's microphone first pauses Pi Spotify playback and closes its
+For music that continues quietly while Echo listens, create a shared ALSA output:
+
+```bash
+aplay -l
+python3 deploy/pi/setup_shared_audio.py --card YOUR_ALSA_CARD_NAME
+```
+
+The helper adds the named `echo_shared` mixer to your user's ALSA configuration,
+preserves unrelated configuration, and backs up an existing file. It does not
+change the system default or play sound. Select **Echo shared speaker** for both
+Spotify and Pi voice, then choose **Lower music by 80%** in Pi voice settings.
+This allows the cue and reply to play over quieter music. The mixer expects a
+stereo output capable of 48 kHz; verify that your selected interface supports it.
+Use pause mode with direct, exclusive hardware outputs.
+
+Native wake words work during music. Duck mode reduces the Pi's PCM output to
+20% of its configured level, then restores it when the interaction ends. A short
+fade avoids abrupt level changes; expired voice leases also release the reduction.
+The headset/speaker still needs an appropriate microphone placement or echo
+cancellation to avoid false wakes from playback.
+
+Browser microphone sessions, calls and announcements pause Pi Spotify and close its
 output stream. Calls and announcement delivery use the same coordination.
 Playback remains paused afterward; press Play or use Spotify to resume. If the
 host cannot confirm the pause request, capture does not start. Tab focus leases

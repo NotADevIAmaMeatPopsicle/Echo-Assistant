@@ -61,6 +61,20 @@ class ReceiverTests(unittest.TestCase):
         with self.assertRaises(ValueError):r.artwork('b'*64)
         self.event('session_disconnected');self.assertNotIn('title',r.snapshot());self.assertFalse(r.path.exists())
 
+    def test_duck_fades_eighty_percent_then_restores_without_transport_changes(self):
+        r=self.receiver;r.config['volume']=2;r.status='playing';r.silenced=False
+        r.duck('a'*32,True)
+        self.assertGreater(r.output_level(1024),.4)
+        self.assertAlmostEqual(r.output_level(5292),.4)
+        raw=array('h',[16000,-16000]).tobytes()
+        self.assertEqual(list(array('h',scaled_pcm(raw,r.output_level(1024)))),[64,-64])
+        self.assertFalse(r.held());self.assertFalse(r.silenced);self.assertEqual(list(r.commands),[])
+        r.duck('a'*32,False);self.assertEqual(r.output_level(5292),2)
+        r.duck('a'*32,True);self.now+=16
+        self.assertEqual(r.output_level(5292),2,'Expired voice lease must release ducking')
+        r.duck('a'*32,True);r.pause();r.duck('a'*32,False)
+        self.assertTrue(r.silenced);self.assertNotIn('play',r.commands)
+
     def test_commands_are_bounded_and_cannot_be_shell_commands(self):
         r=self.receiver;r.process=Mock();r.process.poll.return_value=None
         for action,value in [('volume',101),('seek',-1),('shuffle','true'),('play\nshutdown',None)]:

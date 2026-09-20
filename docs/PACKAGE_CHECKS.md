@@ -48,6 +48,7 @@ Results and screenshots stay under ignored `output/`.
 
 The suite covers planning, lists, photos, connection loss, conversation,
 touch typing and English swipe entry (`--check display_keyboard`),
+Home tile choices and touch page navigation (`--check display_home`),
 microphone permission cancellation, daily briefing, calendars, music, cameras,
 announcements, intercom and the Pi's native voice/music/alert controls. It checks
 the 1024 × 600 layout and phone widths. To investigate one failure without
