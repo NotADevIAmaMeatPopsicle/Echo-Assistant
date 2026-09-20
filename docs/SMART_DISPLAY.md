@@ -261,13 +261,17 @@ After=network-online.target tailscaled.service
 
 [Service]
 ExecStart=
-ExecStart=/usr/bin/startx /home/YOUR_USER/.local/share/echo-display/session.sh --
+ExecStart=/usr/bin/startx /home/YOUR_USER/.local/share/echo-display/session.sh -- -nocursor
 ```
 
 Store this in a distinct `echo-display.conf` drop-in for the existing kiosk
 service, then reload systemd and restart that service. Stop an old audio
 satellite separately if it would compete for capture or playback. Record each
 service's previous enabled state privately before changing it.
+
+The X11 `-nocursor` option keeps the pointer hidden, including the hand that
+would otherwise appear after tapping a button. Touch input still works. Omit
+this option if the kiosk needs a visible mouse pointer.
 
 For rollback, remove only the Echo-marked drop-in, reload systemd, and restart
 the original kiosk service. Restore previous audio-service states from that

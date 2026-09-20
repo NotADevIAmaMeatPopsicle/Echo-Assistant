@@ -41,6 +41,11 @@ removes the default ten-pixel inset seen without a window manager. It does not
 change HDMI modes, overscan, desktop settings or touch calibration. A normal
 desktop or Wayland session keeps its own scaling and monitor management.
 
+For a dedicated touchscreen, start X with `-nocursor` as shown in the
+[kiosk service example](SMART_DISPLAY.md#reusing-a-dedicated-x11-kiosk).
+This hides the pointer throughout the session without disabling touch input.
+An idle cursor-hiding utility alone lets the hand reappear on each tap.
+
 For the current development panel, 1024 × 600 is both the preferred HDMI timing
 and the active mode, with no X11 scaling transform. Chromium's dedicated X11
 window now starts at the screen origin; this Chromium build retains a one-pixel
