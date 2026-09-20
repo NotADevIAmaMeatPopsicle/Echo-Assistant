@@ -12,6 +12,7 @@ const fs=require('node:fs');
     await page.route('**/v1/chat',async route=>{messages.push(route.request().postDataJSON());await route.fulfill({json:{status:'complete',text:'A synthetic reply.',sources:[]}});});
     await page.goto(base+'/display#assistant');await page.locator('#send-chat:not([disabled])').waitFor();
     const input=page.locator('#chat-text'),keyboard=page.locator('#chat-keyboard');
+    const nativeMode=await input.getAttribute('inputmode');
     const dictionary=page.waitForResponse(r=>r.url().endsWith('keyboard-words.json'));
     await input.tap();
     await keyboard.waitFor({state:'visible',timeout:5000});await dictionary;
@@ -65,7 +66,7 @@ const fs=require('node:fs');
     await fallback.getByText('Tap to type · swipe dictionary unavailable').waitFor();
     await fallback.locator('[data-key=h]').tap();assert.equal(await fallback.locator('#chat-text').inputValue(),'H');await fallback.close();
     await page.setViewportSize({width:390,height:844});await page.locator('[data-key-action=hide]').click();
-    await input.tap();assert.equal(await keyboard.isHidden(),true);assert.equal(await input.getAttribute('inputmode'),'text');
+    await input.tap();assert.equal(await keyboard.isHidden(),true);assert.equal(await input.getAttribute('inputmode'),nativeMode);
     assert.deepEqual(errors,[]);
     console.log('PASS: touch typing, local glide, correction/deletion, selection, symbols, cancellation, send, physical/native keyboards, fallback and 1024x600 layout.');
   } finally { await browser.close(); }

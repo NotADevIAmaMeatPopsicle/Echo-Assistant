@@ -6,6 +6,14 @@ card backup is separate from Git; reuse of that card is authorized.
 
 ## Build direction
 
+**Touch entry checkpoint:** the shared text keyboard is deployed to the host and
+served by the Pi bridge. Lists, notes, calendar drafts and display text settings
+now support tap entry without an external keyboard. Three focused synthetic
+browser flows passed, including existing chat swipe typing and calendar creation.
+The Pi kiosk restarted successfully with matching asset hashes; pairing and
+private settings were preserved, the listener stayed armed, and no sound played.
+Physical touch acceptance of these added forms remains separate.
+
 The Pi smart display uses its **own attached microphone and speaker**. It must not
 require the round Echo speaker for voice, replies, music or alarms. The shared
 host can still run the assistant and speech models. Other endpoints are optional
@@ -83,6 +91,7 @@ or human-speech pickup. The next test needs someone speaking near the microphone
 - [x] Complete saved-data recovery archive, legacy archive reading, photo integrity, room policy and calendar receipts; isolated API restart/restore verified with synthetic data.
 - [x] Pi display visual polish: bundled typography, smooth status ring, contrast and touch spacing; deployed with dedicated kiosk sizing. Owner visual acceptance of this pass remains open.
 - [x] Home tile selection and saved positions, Music tile with artwork/control, and horizontal page swipes that leave keyboard/control gestures intact (software).
+- [x] Shared touchscreen keyboard for lists, notes, calendar drafts and display text settings, with modal focus, field navigation, local suggestions and explicit save actions (software; phone keyboards and browser date/number controls preserved).
 - [x] Native Pi wake recognition during Spotify, optional 80% music ducking and shared-output setup (software; live wake/cue/restore acceptance pending).
 - [x] Deck configurable idle dim/sleep and wake-only first touch; native HDMI Off/On reported by X11. Physical backlight/touch acceptance pending.
 - [x] Opt-in Deck presence wake, owner source permissions, per-display sensor selection, stale/offline fallback and manual-sleep behavior (software; no physical sensor configured).

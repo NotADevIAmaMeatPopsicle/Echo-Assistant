@@ -28,6 +28,28 @@ loading the interface does not contact a font service.
 
 ![Ambient clock with separate day-period marker, using synthetic data](images/display-ambient.png)
 
+## Touchscreen text entry
+
+On landscape displays wider than 760 pixels, text fields open Echo's local
+keyboard. In chat it sits below the composer; elsewhere it docks along the
+bottom and scrolls the active field into view. Modal forms keep their keyboard
+inside the dialog so the browser's modal focus boundary remains intact.
+
+Word suggestions and English swipe typing run locally. Passwords, URLs,
+telephone fields and fields marked `data-keyboard="literal"` use tap entry
+without word suggestions. Text fields retain their original input mode when
+the keyboard closes. Date/time pickers, number controls, selects and phone
+keyboards keep their browser behavior.
+
+Previous/next arrows move between editable text fields in the current form.
+The newline key inserts a line in a note; Done hides the keyboard. Neither
+submits a form. Add, Save, Send and Create event remain separate actions.
+Physical typing dismisses the local keyboard, and closing a dialog or changing
+pages clears its active field. The keyboard saves no drafts or keystroke history.
+
+Focused synthetic browser checks cover list entry, note editing, calendar
+drafts, explicit saving, field visibility at 1024 × 600 and phone fallback.
+
 ## Avoiding unnecessary scaling
 
 Use the panel's preferred mode rather than a larger accepted HDMI input mode.

@@ -30,6 +30,22 @@
 .chat-keyboard-open .chat-welcome { min-height:0;padding:4px; }
 .chat-keyboard-open .chat-welcome img,.chat-keyboard-open .chat-welcome p,.chat-keyboard-open .chat-welcome .suggestions { display:none; }
 .chat-keyboard-open .chat-welcome h3 { font-size:16px;margin:0; }
+.keyboard-field-bar { display:flex;align-items:center;gap:6px;min-height:36px;border-bottom:1px solid var(--line);padding-bottom:5px; }
+#keyboard-field-name { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mint);font-size:12px; }
+.keyboard-field-bar button { width:42px;height:36px;border-radius:9px;background:#9edbc50b;font-size:22px; }
+#display-keyboard-dock { position:fixed;bottom:0;left:86px;right:0;z-index:12;padding:8px 20px 12px;background:linear-gradient(140deg,#172e43,#102034);border-top:1px solid #99c7de35;box-shadow:0 -14px 40px #020b1640; }
+#display-keyboard-dock #chat-keyboard { max-width:880px;margin:0 auto; }
+.form-keyboard-open .workspace { padding-bottom:var(--echo-keyboard-height,280px); }
+.form-keyboard-open .workspace>footer { display:none; }
+#display-keyboard-dock.inside-dialog { position:static;flex:none;padding:7px 0 0;box-shadow:none;width:100%;background:none; }
+dialog.with-echo-keyboard[open] { display:flex;flex-direction:column;width:min(760px,calc(100vw - 28px));max-width:760px;max-height:calc(100dvh - 20px);padding:16px;overflow:hidden; }
+dialog.with-echo-keyboard>form { min-height:0;overflow:auto;flex:1 1 auto;max-height:calc(100dvh - var(--echo-keyboard-height,270px) - 56px);scrollbar-width:thin; }
+#calendar-event-dialog.with-echo-keyboard { padding:16px;max-height:calc(100dvh - 20px); }
+#calendar-event-dialog.with-echo-keyboard #calendar-event-form { overflow:hidden;max-height:calc(100dvh - var(--echo-keyboard-height,270px) - 56px); }
+dialog.with-echo-keyboard h2 { font-size:19px;margin:0 0 10px; }
+dialog.with-echo-keyboard textarea { scroll-margin:8px; }
+dialog.with-echo-keyboard label { margin:8px 0; }
+.keyboard-row:last-child .keyboard-key[data-key-action=finish] { flex:1.25;color:var(--mint);font-size:13px; }
 @media(max-width:760px) {
   .chat-keyboard-open .echo-conversation { height:min(600px,calc(100dvh - 80px));min-height:380px;padding:12px; }
   .keyboard-row { gap:3px; }
