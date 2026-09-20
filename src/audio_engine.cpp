@@ -8,6 +8,8 @@
 #include "es8311.h"
 #include "activation_dong.h"
 #include "mic_filter.h"
+#include "timed_audio.h"
+#include <esp_timer.h>
 
 namespace {
 constexpr size_t framesPerBlock=256, captureCapacity=Board::voiceRate*8;
@@ -16,6 +18,8 @@ int16_t* remotePcm=nullptr;
 RemoteStatus remote;
 uint32_t remoteGeneration=0;
 uint32_t remotePrebuffer=32;
+TimedAudio::Queue timedPcm;
+uint8_t timedCeiling=2,timedGain=2;
 portMUX_TYPE remoteLock=portMUX_INITIALIZER_UNLOCKED;
 QueueHandle_t commands=nullptr;
 QueueHandle_t micBlocks=nullptr;
@@ -46,6 +50,7 @@ void worker(void*) {
     uint32_t micIndex=0,micPhase=0;
     MicBlock micPending{};
     uint32_t micGeneration=0;
+    TimedAudio::DmaClock dmaClock;
     while (true) {
         // Capture control cannot be dropped behind a full playback/control
         // queue. Discard frames from the preceding mute/connection epoch.
@@ -115,8 +120,20 @@ void worker(void*) {
         }
         if (state.mode==AudioMode::Recording && state.recordedSamples==captureCapacity) state.mode=AudioMode::Idle;
         int16_t remoteBlock[framesPerBlock]{};
+        int outputVolume=state.volume;
         if (state.mode==AudioMode::Remote) {
             portENTER_CRITICAL(&remoteLock);
+            if(remote.timed){
+                const uint64_t at=dmaClock.presentation(esp_timer_get_time());
+                if(at)timedPcm.render(remoteBlock,at);
+                remote.received=timedPcm.received;remote.consumed=timedPcm.consumed;
+                remote.missing=timedPcm.missing;remote.late=timedPcm.late;
+                outputVolume=min(state.volume,int(timedGain));
+                if(remote.ended&&remote.consumed==remote.received){
+                    tailFrames+=framesPerBlock;
+                    if(tailFrames>=drainFrames){remote.active=false;state.mode=AudioMode::Idle;}
+                }else tailFrames=0;
+            }else{
             uint32_t queued=remote.received-remote.consumed;
             if (!remoteStarted && (queued>=remotePrebuffer || remote.ended)) remoteStarted=true;
             if (buffering && (queued>=remotePrebuffer || remote.ended)) buffering=false;
@@ -129,12 +146,13 @@ void worker(void*) {
             } else if (remoteStarted && !queued && !buffering) {
                 ++remote.underruns; buffering=true;
             }
+            }
             portEXIT_CRITICAL(&remoteLock);
         }
         for (size_t i=0;i<framesPerBlock;++i) {
             int sample=0;
-            referenceTx[i]=(state.mode==AudioMode::Remote && state.volume)?remoteBlock[i]:0;
-            if (state.mode==AudioMode::Remote) sample=remoteBlock[i]*state.volume/100;
+            referenceTx[i]=(state.mode==AudioMode::Remote && outputVolume)?remoteBlock[i]:0;
+            if (state.mode==AudioMode::Remote) sample=remoteBlock[i]*outputVolume/100;
             else if (state.mode==AudioMode::Playback) {
                 if (position<state.recordedSamples*3) sample=capture[position++/3]*state.volume/100;
                 else if (++tailFrames>=drainFrames) state.mode=AudioMode::Idle;
@@ -148,6 +166,7 @@ void worker(void*) {
         }
         bytes=0;
         if (i2s_write(I2S_NUM_0,tx,sizeof(tx),&bytes,pdMS_TO_TICKS(100))!=ESP_OK || bytes!=sizeof(tx)) ++state.errors;
+        dmaClock.wrote(esp_timer_get_time());
         publish(state);
     }
 }
@@ -167,9 +186,25 @@ bool audioRemoteBegin(bool intercom) {
 }
 bool audioRemoteWrite(const int16_t* samples,uint16_t count,uint32_t sequence) {
     portENTER_CRITICAL(&remoteLock);
-    bool ok=remote.active && !remote.ended && count==framesPerBlock && sequence==remote.received && remote.received-remote.consumed<remoteCapacity;
+    bool ok=remote.active && !remote.timed && !remote.ended && count==framesPerBlock && sequence==remote.received && remote.received-remote.consumed<remoteCapacity;
     if (ok) { memcpy(remotePcm+(remote.received%remoteCapacity)*framesPerBlock,samples,framesPerBlock*2); ++remote.received; }
     portEXIT_CRITICAL(&remoteLock); return ok;
+}
+bool audioGroupBegin(uint8_t ceiling){
+    if(!remotePcm||!audioStatus().speakerReady||ceiling>20)return false;
+    portENTER_CRITICAL(&remoteLock);
+    remote=RemoteStatus{};remote.active=remote.timed=true;
+    timedCeiling=timedGain=ceiling;timedPcm.reset();++remoteGeneration;
+    portEXIT_CRITICAL(&remoteLock);return true;
+}
+bool audioGroupWrite(const int16_t* samples,uint32_t sequence,uint64_t presentation){
+    portENTER_CRITICAL(&remoteLock);
+    bool ok=remote.active&&remote.timed&&!remote.ended&&timedPcm.push(samples,sequence,presentation,esp_timer_get_time());
+    if(ok)remote.received=timedPcm.received;
+    portEXIT_CRITICAL(&remoteLock);return ok;
+}
+void audioGroupGain(uint8_t volume){
+    portENTER_CRITICAL(&remoteLock);timedGain=min(volume,timedCeiling);portEXIT_CRITICAL(&remoteLock);
 }
 void audioRemoteEnd() { portENTER_CRITICAL(&remoteLock); remote.ended=true; portEXIT_CRITICAL(&remoteLock); }
 void audioRemoteStop() { portENTER_CRITICAL(&remoteLock); remote.active=false; ++remoteGeneration; portEXIT_CRITICAL(&remoteLock); }
@@ -204,6 +239,7 @@ bool audioBegin() {
     pinMode(Board::ampEnable,OUTPUT); digitalWrite(Board::ampEnable,LOW);
     capture=static_cast<int16_t*>(heap_caps_malloc(captureCapacity*sizeof(int16_t),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
     remotePcm=static_cast<int16_t*>(heap_caps_malloc(remoteCapacity*framesPerBlock*2,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
+    timedPcm.storage(remotePcm);
     commands=xQueueCreate(8,sizeof(AudioCommand));
     micBlocks=xQueueCreate(12,sizeof(MicBlock));
     if (!capture || !remotePcm || !commands || !micBlocks) return false;

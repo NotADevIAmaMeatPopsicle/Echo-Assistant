@@ -9,6 +9,7 @@
 #include "board.h"
 #include "host_transport.h"
 #include "audio_engine.h"
+#include <esp_timer.h>
 #include "fonts/FreeSans18pt7b.h"
 #include "fonts/FreeSans9pt7b.h"
 #include "voice_scene.h"
@@ -107,7 +108,7 @@ static uint32_t lightsAt=0;
 static char lightsBinding[65]="";
 static String timerLabel,timerResult;
 static uint32_t audioSession=0,lastAudioReport=0;
-static uint8_t incoming[527];
+static uint8_t incoming[539];
 static size_t incomingSize=0;
 static uint32_t incomingAt=0;
 static constexpr uint16_t INK=0x0000,TEXT=0xEFBE,DIM=0x8CF1,MINT=0x8FF8,LILAC=0xBCDF,AMBER=0xFDD0,CARD=0x10E3;
@@ -252,7 +253,7 @@ static void report(unsigned query=0) {
     auto s=audioStatus();
     auto net=networkStats();
     auto usb=usbStats();
-    Host.printf("STATUS product=round-voice version=0.15.0 protocol=1 duplex=1 intercom=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
+    Host.printf("STATUS product=round-voice version=0.16.0 protocol=1 duplex=1 intercom=1 timed_audio=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
         displayReady,touchReady,ESP.getPsramSize(),sdReady,(unsigned long)sdMegabytes,pmuReady,
         batteryPresent,batteryPercent,charging,s.micReady,s.speakerReady,unsigned(s.mode),
         (unsigned long)s.recordedSamples,s.peak,s.volume,(unsigned long)s.errors,ESP.getFreeHeap(),
@@ -455,6 +456,26 @@ static void handleCommand(const String& command) {
     }
     else if (command=="VOICE_DONE") { listenUntil=0; thinking=false; voiceResult="Command received"; voiceResultAt=millis(); voiceNotice=false; }
     else if (command=="VOICE_THINKING") { listenUntil=0; voiceResult=""; thinking=true; }
+    else if(command.startsWith("GROUP_CLOCK ")&&wakeArmed){
+        unsigned long nonce;char extra;
+        if(sscanf(command.c_str()+12,"%lu %c",&nonce,&extra)==1&&nonce)
+            Host.printf("EVENT group_clock=%lu device_us=%llu\n",nonce,(unsigned long long)esp_timer_get_time());
+    }
+    else if(command.startsWith("GROUP_BEGIN ")&&wakeArmed&&!intercom.busy()&&!cuePending&&!listenUntil&&!thinking){
+        unsigned long session;unsigned ceiling;char extra;
+        if(sscanf(command.c_str()+12,"%lu %u %c",&session,&ceiling,&extra)==2&&session&&ceiling<=20&&audioGroupBegin(ceiling)){
+            audioSession=session;remoteIsMusic=true;remoteIsAlarm=remoteIsIntercom=false;page=Page::Music;
+            Host.printf("EVENT group_ready=%lu capacity=%lu\n",session,(unsigned long)remoteCapacity);
+        }else Host.println("ERROR group_begin");
+    }
+    else if(command.startsWith("GROUP_STOP ")){
+        unsigned long session;char extra;
+        if(sscanf(command.c_str()+11,"%lu %c",&session,&extra)==1&&session==audioSession&&audioRemoteStatus().timed)audioRemoteStop();
+    }
+    else if(command.startsWith("GROUP_GAIN ")){
+        unsigned long session;unsigned gain;char extra;
+        if(sscanf(command.c_str()+11,"%lu %u %c",&session,&gain,&extra)==2&&session==audioSession&&gain<=20&&audioRemoteStatus().timed)audioGroupGain(gain);
+    }
     else if (command.startsWith("AUDIO_BEGIN ") && wakeArmed) {
         audioSession=strtoul(command.c_str()+12,nullptr,10);
         remoteIsMusic=command.endsWith(" M");
@@ -514,15 +535,18 @@ static void receiveHost() {
             incoming[incomingSize++]=c;
             if (incomingSize<11) continue;
             uint16_t length; memcpy(&length,incoming+5,2);
-            if (incoming[4]!=2 || length!=512) {
+            const bool timed=incoming[4]==4&&length==524;
+            if (!timed&&(incoming[4]!=2 || length!=512)) {
                 incomingSize=0; audioRemoteStop(); Host.println("ERROR audio_header"); continue;
             }
             if (incomingSize<15+length) continue;
             uint32_t expected,sequence;
             memcpy(&expected,incoming+11+length,4); memcpy(&sequence,incoming+7,4);
-            int16_t samples[256]; memcpy(samples,incoming+11,512);
+            uint32_t session=0;uint64_t presentation=0;
+            if(timed){memcpy(&session,incoming+11,4);memcpy(&presentation,incoming+15,8);}
+            int16_t samples[256]; memcpy(samples,incoming+(timed?23:11),512);
             uint32_t actual=crc32(incoming,11+length);
-            if (actual!=expected || !audioRemoteWrite(samples,256,sequence)) {
+            if (actual!=expected || (timed?(session!=audioSession||!audioGroupWrite(samples,sequence,presentation)):!audioRemoteWrite(samples,256,sequence))) {
                 auto status=audioRemoteStatus();
                 audioRemoteStop(); Host.printf("ERROR audio_frame seq=%lu received=%lu active=%d ended=%d crc=%d\n",
                     (unsigned long)sequence,(unsigned long)status.received,status.active,status.ended,actual==expected);
@@ -538,7 +562,9 @@ static void receiveHost() {
     if (incomingSize && millis()-incomingAt>500) { incomingSize=0; audioRemoteStop(); Host.println("ERROR audio_fragment_timeout"); }
     if (audioSession && millis()-lastAudioReport>=25) {
         lastAudioReport=millis(); auto r=audioRemoteStatus();
-        Host.printf("EVENT audio_session=%lu received=%lu consumed=%lu active=%d underruns=%lu\n",
+        if(r.timed)Host.printf("EVENT group_session=%lu received=%lu consumed=%lu active=%d late=%lu missing=%lu\n",
+            (unsigned long)audioSession,(unsigned long)r.received,(unsigned long)r.consumed,r.active,(unsigned long)r.late,(unsigned long)r.missing);
+        else Host.printf("EVENT audio_session=%lu received=%lu consumed=%lu active=%d underruns=%lu\n",
             (unsigned long)audioSession,(unsigned long)r.received,(unsigned long)r.consumed,r.active,(unsigned long)r.underruns);
         if (!r.active) audioSession=0;
     }

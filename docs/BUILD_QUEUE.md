@@ -24,6 +24,15 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Mini music timing checkpoint:** firmware 0.16.0 and a host sender now support
+timestamped 48 kHz PCM over the existing board transport. The firmware timing
+core passed its silent native C++ check; eleven Python timing/legacy-sender tests
+passed, and the ESP32 build plus four-image bundle verification passed. The
+bundle is local only; no board was flashed and no audio played. Sendspin session
+management, owner settings and voice-priority hooks are still being connected,
+so the Mini is not registered as a grouped player. Physical timing and latency
+calibration remain unverified. See [Mini grouped music](ROUND_GROUP_MUSIC.md).
+
 **Grouped-music player checkpoint:** Music Assistant 2.10.4 runs privately without
 published ports. The native Pi client is installed, registered as Echo Deck and
 clock-synchronized through the existing authenticated Echo gateway. No Music

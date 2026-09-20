@@ -21,6 +21,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install platformio==6.1.18
+      - run: python tools/check_timed_audio.py
       - run: pio run -e round_voice
   pi-client:
     runs-on: ubuntu-latest

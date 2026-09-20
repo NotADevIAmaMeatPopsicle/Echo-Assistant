@@ -11,6 +11,7 @@ From the checkout with the pinned host requirements installed:
 ```text
 python -m unittest discover -s tests -v
 python tools/release_guard.py --worktree
+python tools/check_timed_audio.py
 python -m platformio run -e round_voice
 python tools/firmware_bundle.py
 ```
@@ -20,6 +21,11 @@ a device. The board identity and original backup are still required for a later
 flash. Platform-dependent tests report skips; they are not passing evidence for
 an untested platform. CI includes separate Windows host, Linux Pi-client and
 firmware jobs.
+
+The timing check compiles the same C++ timestamped-PCM queue used by the Mini,
+using an existing C++ compiler (or MSVC on Windows). It checks scheduled silence,
+fractional sample positions, late-frame discard, buffer bounds and DMA-clock
+recovery in memory. It opens no audio device and does not verify physical sync.
 
 For a fresh Docker context, use `python tools/build_remote_host.py --stage-only`.
 It selects tracked source, checks common private-artifact patterns, verifies the

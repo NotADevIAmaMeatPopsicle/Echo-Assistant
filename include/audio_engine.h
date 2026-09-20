@@ -14,12 +14,16 @@ struct AudioStatus {
 };
 struct MicBlock { int16_t samples[256], reference[256]; uint32_t generation; uint16_t count; bool duplex; };
 struct RemoteStatus {
-    bool active=false, ended=false;
+    bool active=false, ended=false, timed=false;
     uint32_t received=0, consumed=0, underruns=0;
+    uint32_t late=0, missing=0;
 };
 constexpr uint32_t remoteCapacity=256;
 bool audioRemoteBegin(bool intercom=false);
 bool audioRemoteWrite(const int16_t* samples, uint16_t count, uint32_t sequence);
+bool audioGroupBegin(uint8_t ceiling);
+bool audioGroupWrite(const int16_t* samples,uint32_t sequence,uint64_t presentation);
+void audioGroupGain(uint8_t volume);
 void audioRemoteEnd();
 void audioRemoteStop();
 RemoteStatus audioRemoteStatus();
