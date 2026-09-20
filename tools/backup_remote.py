@@ -1,10 +1,11 @@
 """Create, inspect, or explicitly restore a private Echo recovery archive.
 
-The archive is encrypted to the current laptop's Windows user using DPAPI.
+Archives use Windows DPAPI by default, or a portable recovery passphrase.
 No recordings, transcripts, browser sessions, task results or model weights enter it.
 """
 import argparse
 import base64
+import getpass
 import json
 from pathlib import Path
 import secrets
@@ -17,7 +18,8 @@ sys.path.insert(0,str(ROOT))
 from backend import deployment
 from backend.settings import WindowsProtector
 from backend.remote_host import _powershell, manage, install
-from tools.recovery_archive import FILES,LIMITS,read_archive as load_archive,read_photo,write_archive,restored_bootstrap
+from tools.recovery_archive import FILES,LIMITS,read_archive as load_archive,read_photo,write_archive,restored_bootstrap,protection_kind
+from tools.recovery_passphrase import PassphraseProtector,PassphraseError
 
 # Kept as self-contained scripts so a recovery client can work with older images.
 COLLECT="""import base64,hashlib,json,re,sys; from pathlib import Path
@@ -57,15 +59,15 @@ def docker(*args, data=None):
                           capture_output=True,check=True,timeout=90)
     return result.stdout
 
-def read_archive(path):
-    return load_archive(path,WindowsProtector())
+def read_archive(path,protector=None):
+    return load_archive(path,protector or WindowsProtector())
 
 
 def collect():
     return json.loads(docker('exec','-i','echo-api','python','-c',COLLECT,
                             data=json.dumps({'files':FILES,'limits':LIMITS}).encode()))
 
-def create():
+def create(protector=None):
     # Individual app files are atomically replaced. A second read detects edits
     # during collection, without stopping the current speaker or persisting plaintext.
     saved=collect()
@@ -95,17 +97,18 @@ Write-Output ($result|ConvertTo-Json -Depth 40 -Compress)
     payload['bootstrap']=restored_bootstrap(payload)
     destination=ROOT/'backups'/(time.strftime('echo-host-%Y%m%d-%H%M%S-')+secrets.token_hex(4)+'.echo-backup')
     destination.parent.mkdir(exist_ok=True)
-    write_archive(destination,payload,WindowsProtector(),
+    protector=protector or WindowsProtector()
+    write_archive(destination,payload,protector,
                   lambda name:docker('exec','-i','echo-api','python','-c',PHOTO,data=json.dumps(name).encode()))
     try:
         if saved!=collect():raise ValueError('Saved data changed during backup; try again')
-        read_archive(destination)
+        read_archive(destination,protector)
     except Exception:
         destination.unlink();raise
     return destination
 
-def restore(path):
-    payload=read_archive(path)
+def restore(path,protector=None):
+    payload=read_archive(path,protector)
     payload['bootstrap']=restored_bootstrap(payload)
     install(ROOT) # The restored policy uses the same serialized recovery helper.
     # Preserve current data before the explicit replacement; never import the old
@@ -132,20 +135,55 @@ def restore(path):
     docker('start','echo-agent','echo-api');manage('Recover')
     return previous
 
+
+def portable_copy(path,source,target):
+    """Rewrap a verified backup locally; preserve the original and photo ciphertext."""
+    payload=read_archive(path,source)
+    payload['version']=2;payload.setdefault('photos',{})
+    destination=ROOT/'backups'/(time.strftime('echo-portable-%Y%m%d-%H%M%S-')+secrets.token_hex(4)+'.echo-backup')
+    destination.parent.mkdir(exist_ok=True)
+    write_archive(destination,payload,target,lambda name:read_photo(path,name,payload['photos'][name]))
+    try:read_archive(destination,target)
+    except Exception:destination.unlink();raise
+    return destination
+
+
+def passphrase_protector(*,confirm=False):
+    if not sys.stdin.isatty():raise PassphraseError('Open an interactive terminal to enter the recovery passphrase privately.')
+    # getpass can otherwise fall back to echoed input when no terminal is usable.
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter('error',getpass.GetPassWarning)
+        try:
+            value=getpass.getpass('New recovery passphrase: ' if confirm else 'Recovery passphrase: ')
+            protector=PassphraseProtector(value)
+            if confirm and getpass.getpass('Confirm recovery passphrase: ')!=value:
+                raise PassphraseError('The recovery passphrases did not match.')
+            return protector
+        except getpass.GetPassWarning:
+            raise PassphraseError('No private terminal input is available. Open an interactive terminal.') from None
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['create','inspect','restore'])
+    parser.add_argument('action',choices=['create','inspect','restore','make-portable'])
     parser.add_argument('archive',nargs='?',type=Path)
+    parser.add_argument('--portable',action='store_true',help='Create with a recovery passphrase instead of Windows DPAPI')
     args=parser.parse_args()
     try:
-        if args.action=='create':print(create());return
+        if args.portable and args.action!='create':raise ValueError('--portable applies only to create')
+        if args.action=='create':
+            print(create(passphrase_protector(confirm=True) if args.portable else None));return
         if not args.archive:raise ValueError('Choose an archive file')
-        payload=read_archive(args.archive)
-        if args.action=='inspect':print(json.dumps({'version':payload['version'],'created_at':payload['created_at'],'files':list(payload['files']),'photos':len(payload.get('photos',{})),'verified':True}));return
-        previous=restore(args.archive)
+        kind=protection_kind(args.archive)
+        protector=passphrase_protector() if kind=='passphrase' else WindowsProtector()
+        payload=read_archive(args.archive,protector)
+        if args.action=='make-portable':print(portable_copy(args.archive,protector,passphrase_protector(confirm=True)));return
+        if args.action=='inspect':print(json.dumps({'version':payload['version'],'protection':kind,'created_at':payload['created_at'],'files':list(payload['files']),'photos':len(payload.get('photos',{})),'verified':True}));return
+        previous=restore(args.archive,protector)
         print('Echo recovery applied. Previous data preserved at '+str(previous))
+    except PassphraseError as error:raise SystemExit(str(error)) from None
     except Exception:
         # Native exception output may contain private bootstrap material.
-        raise SystemExit('Echo recovery could not complete. Existing archives were preserved. Check Echo host availability and the Windows account used to create the archive.') from None
+        raise SystemExit('Echo recovery could not complete. Existing archives were preserved. Check the archive, host availability, and the recovery passphrase or Windows account used to protect it.') from None
 
 if __name__=='__main__':main()

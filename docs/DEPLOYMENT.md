@@ -64,9 +64,9 @@ Use the repository Python for these scripts. Startup thereafter uses
 Recovery archives use `tools/backup_remote.py`. Synthetic recovery checks cover
 fresh API and Hermes startup, their authenticated endpoints, an actual Windows
 Scheduled Task after container restart, and encrypted-archive restoration into a
-fresh data volume and fresh containers. These checks use the same Windows account;
-they do not establish recovery after losing that account's DPAPI keys or reinstalling
-Windows, Docker, speech models and network access from scratch.
+fresh data volume and fresh containers. Portable archives can also be opened without
+the original Windows account's keys. Reinstalling Windows, Docker, speech models
+and network access from scratch remains separate from these data-recovery checks.
 
 ### Back up and restore saved data
 
@@ -85,12 +85,45 @@ the shared photo album. It excludes microphone recordings, conversations, browse
 sessions, research results and model weights. Pi-local audio/screen settings and
 browser Home tiles are on the Pi and require its own backup.
 
-Version 2 archives contain a Windows-DPAPI-protected manifest and the album's
-already encrypted photo blobs. The manifest protects their hashes and the storage
-key. Photo ciphertext is copied one image at a time; plaintext images never enter
-the archive. Inspect checks every member's size and hash before reporting success.
-These archives require the Windows account that created them; retain access to
-that profile when planning recovery onto another computer.
+Version 2 archives contain a protected manifest and the album's already encrypted
+photo blobs. The manifest protects their hashes and the storage key. Photo
+ciphertext is copied one image at a time; plaintext images never enter the archive.
+Inspect checks every member's size and hash before reporting success.
+The default protection is Windows DPAPI, which requires the Windows account that
+created the archive. Use a portable archive for recovery without that account.
+
+### Portable backups
+
+Run in an interactive terminal to create a backup protected by a recovery passphrase:
+
+```text
+python tools/backup_remote.py create --portable
+```
+
+Or convert an existing backup without contacting the host or replacing the original:
+
+```text
+python tools/backup_remote.py make-portable PATH_TO_ARCHIVE.echo-backup
+```
+
+The command privately prompts for a new passphrase and confirmation. Choose a
+long, unique passphrase, such as six randomly selected words; at least 16 characters
+are required. Store it separately from the archive, for example in a password
+manager you can access after losing the host. Echo does not store the passphrase
+or provide a reset. Both the archive and passphrase are needed for recovery.
+Do not put the passphrase in command arguments, environment variables or scripts.
+
+The usual `inspect` and `restore` commands recognize portable archives and prompt
+for their passphrase. Existing Windows-protected archives remain readable.
+Portable protection uses AES-256-GCM with fresh salt/nonce and fixed scrypt
+parameters (`N=131072`, `r=8`, `p=1`, approximately 128 MiB of derivation memory).
+Wrong passphrases and modified envelopes are rejected before restore operations.
+Passphrases are used exactly as entered, including case, spaces and accents.
+
+Portable inspection and conversion also work on Linux when the source archive is
+portable. The managed host deployment/restore workflow still targets Windows.
+Creating a portable backup does not install Docker, supply speech models, or
+reconfigure SSH/Tailscale on a replacement host.
 
 **Restore replaces the saved snapshot.** It first creates and verifies a recovery
 point for the current installation, then stops the API and Hermes, stages all
@@ -129,8 +162,9 @@ and damaged-archive rejection also have focused automated coverage.
 The rehearsal uses ignored `output/EchoRecoveryChecks` directories so packaged
 desktop-app AppData virtualization cannot hide its script from Task Scheduler.
 Both the installed task and rehearsal use an absolute PowerShell executable.
-Recovery still requires the original Windows account's DPAPI material. Keep that
-limitation in the recovery plan; an archive alone is not a portable new-host backup.
+Add `--portable` to rehearse with a generated synthetic passphrase. That mode
+also opens the Windows-created archive inside Linux, without Windows keys,
+before restoring the same data and service credentials into fresh containers.
 
 ## Browser access and storage
 

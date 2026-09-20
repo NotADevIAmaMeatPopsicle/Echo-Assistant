@@ -22,6 +22,7 @@ from tools.check_host_recovery import PROBE, LABEL
 from tools.backup_remote import COLLECT, PHOTO
 from tools.recovery_archive import FILES,LIMITS,write_archive,read_archive,read_photo,restored_bootstrap
 from tools.recovery_restore import SCRIPT
+from tools.recovery_passphrase import PassphraseProtector
 
 AGENT_PROBE=r'''
 import json,sys,urllib.request,urllib.error
@@ -48,6 +49,7 @@ def main():
     parser.add_argument('--context',required=True)
     parser.add_argument('--api-image',required=True)
     parser.add_argument('--agent-image',required=True)
+    parser.add_argument('--portable',action='store_true',help='Use a generated synthetic passphrase and also unlock the archive in Linux')
     args=parser.parse_args()
     if os.name!='nt':raise SystemExit('This rehearsal requires Windows DPAPI and Scheduled Tasks.')
     identifier=secrets.token_hex(6);prefix='echo-recovery-check-'+identifier
@@ -187,8 +189,32 @@ $null=Register-ScheduledTask -TaskName $name -Action $action -Principal $princip
             data=json.dumps({'files':FILES,'limits':LIMITS}).encode()))
         payload={'kind':'echo-remote','version':2,'created_at':time.time(),**saved,'bootstrap':bootstrap}
         archive=directory/'synthetic.echo-backup'
-        write_archive(archive,payload,protector,lambda name:docker('exec','-i',prefix+'-api','python','-c',PHOTO,data=json.dumps(name).encode()))
-        restored=read_archive(archive,protector);bootstrap=restored_bootstrap(restored)
+        phrase=secrets.token_urlsafe(32) if args.portable else None
+        archive_protector=PassphraseProtector(phrase) if args.portable else protector
+        write_archive(archive,payload,archive_protector,lambda name:docker('exec','-i',prefix+'-api','python','-c',PHOTO,data=json.dumps(name).encode()))
+        restored=read_archive(archive,archive_protector);bootstrap=restored_bootstrap(restored)
+        if args.portable:
+            # Transfer only an encrypted archive plus synthetic passphrase over stdin.
+            # Execute the current decoder source in memory, without modifying the image.
+            code=r'''
+import base64,hashlib,json,sys,tempfile,types
+from pathlib import Path
+data=json.load(sys.stdin)
+crypto=types.ModuleType('recovery_passphrase');exec(compile(data['crypto'],'recovery_passphrase.py','exec'),crypto.__dict__)
+archive_module=types.ModuleType('recovery_archive');exec(compile(data['archive_source'],'recovery_archive.py','exec'),archive_module.__dict__)
+with tempfile.TemporaryDirectory() as directory:
+    path=Path(directory)/'synthetic.echo-backup';path.write_bytes(base64.b64decode(data['archive']))
+    payload=archive_module.read_archive(path,crypto.PassphraseProtector(data['phrase']))
+    assert hashlib.sha256(json.dumps(payload,sort_keys=True).encode()).hexdigest()==data['digest']
+print('Portable Windows archive verified in Linux without Windows keys.')
+'''
+            import hashlib
+            transfer={'crypto':(ROOT/'tools/recovery_passphrase.py').read_text(),
+                'archive_source':(ROOT/'tools/recovery_archive.py').read_text(),
+                'archive':base64.b64encode(archive.read_bytes()).decode(),'phrase':phrase,
+                'digest':hashlib.sha256(json.dumps(restored,sort_keys=True).encode()).hexdigest()}
+            docker('exec','-i',prefix+'-api','python','-c',code,data=json.dumps(transfer).encode())
+            print('Portable Windows archive verified in Linux without Windows keys.',flush=True)
         # A stale host policy must be replaced along with both bootstrap envelopes.
         stale={'default_access':'read','devices':{}}
         (directory/'home-access.dpapi').write_bytes(protector.encrypt(json.dumps(stale).encode()))
@@ -201,7 +227,7 @@ $null=Register-ScheduledTask -TaskName $name -Action $action -Principal $princip
         assert recover('RestoreBootstrap',bootstrap)['state']=='bootstrap_restored'
         assert json.loads(protector.decrypt((directory/'home-access.dpapi').read_bytes()))==policy
         wait_ready();probe('verify',proof)
-        print('PASS: DPAPI archive restored into fresh API/Hermes containers and a fresh data volume; stale host policy replaced. No network, provider calls or audio.',flush=True)
+        print('PASS: '+('Portable' if args.portable else 'DPAPI')+' archive restored into fresh API/Hermes containers and a fresh data volume; stale host policy replaced. No network, provider calls or audio.',flush=True)
     finally:
         if task_created:
             powershell(f"$t=Get-ScheduledTask -TaskName {quote(task)}; if (-not $t.Actions.Arguments.Contains({quote(str(helper))})) {{ throw 'Task identity changed' }}; Stop-ScheduledTask -TaskName {quote(task)}; Unregister-ScheduledTask -TaskName {quote(task)} -Confirm:$false")

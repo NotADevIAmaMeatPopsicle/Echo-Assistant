@@ -67,6 +67,21 @@ physical power cycle. `tests.test_recovery_archive` separately covers legacy
 archives, corrupt blobs, unsafe archive members, linked targets, interrupted file
 replacement and suppressing old announcement playback.
 
+For the actual Windows recovery helper, temporary Scheduled Task and Hermes
+startup, use the broader stack rehearsal with existing API and agent images:
+
+```text
+python tools/check_stack_recovery.py --context YOUR_DOCKER_CONTEXT --api-image YOUR_ECHO_IMAGE --agent-image YOUR_HERMES_IMAGE --portable
+```
+
+This mode uses a generated synthetic passphrase, verifies that Linux can unlock
+the Windows-created archive, and restores it into fresh containers and a fresh
+volume. Omitting `--portable` exercises the Windows DPAPI archive instead.
+Both modes clean up their own task and Docker resources. Neither provisions a
+new operating system, contacts a model provider, or changes the live installation.
+`tests.test_recovery_passphrase` covers wrong-passphrase rejection before host
+changes, altered envelopes, preserved original archives and private terminal input.
+
 ## Display flows
 
 The browser checks require an existing Node runtime, Google Chrome and

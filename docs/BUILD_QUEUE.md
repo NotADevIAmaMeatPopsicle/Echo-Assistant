@@ -24,14 +24,28 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Portable recovery checkpoint:** backup creation can use a privately entered
+passphrase, and existing archives can be converted locally without replacing
+their originals. Portable manifests use scrypt and authenticated encryption;
+photos remain encrypted. Inspect/restore auto-detect protection, reject incorrect
+passphrases before host changes, and retain Windows-protected archive support.
+Seventeen focused checks cover encrypted round trips, corruption, source preservation
+and private terminal input. A portable backup requires the owner to retain its
+passphrase separately; existing Windows backups are not converted automatically.
+The portable rehearsal opened a Windows-created archive inside Linux without
+Windows keys, then restored fresh API/Hermes containers and a fresh data volume.
+The tools are installed in the private checkout, and its existing Windows archive
+still verifies. No production data was restored and no audio was used.
+
 **Windows/Hermes recovery checkpoint:** the actual Windows recovery helper and
 a temporary Scheduled Task recovered both services after container restart.
 A DPAPI archive then restored into fresh containers and a fresh data volume,
 preserving synthetic pairing, notes, photos, room policy and calendar receipts;
 Hermes configuration and authentication were verified. A stale host home-access
 policy is now replaced from the archive. Twelve focused checks also pass.
-No production service, model call or audio was used in the rehearsal. Fresh-OS
-provisioning and recovery without the original Windows DPAPI keys remain open.
+No production service, model call or audio was used in the rehearsal. The portable
+checkpoint above adds archives independent of the original Windows DPAPI keys;
+fresh-OS provisioning remains open.
 
 **Personal calendar voice checkpoint:** Deck and Mini personal sessions now answer
 agenda requests for today, tomorrow and the next seven days from approved sources.
@@ -329,8 +343,8 @@ parity. Known gaps documented in the smart-display guide remain:
 - [ ] Full Windows host and Hermes disaster-recovery rehearsal.
       Same-account Windows task recovery and fresh-container/volume API/Hermes
       archive restoration are verified with synthetic data. Fresh Windows/Docker
-      provisioning, model restoration and recovery after losing the Windows
-      account's DPAPI keys remain open; see [Deployment](DEPLOYMENT.md).
+      provisioning and model restoration remain open. Portable passphrase archives
+      provide an alternative to Windows-account-bound backups; see [Deployment](DEPLOYMENT.md).
 
 These are separate from the physical and live-service acceptance above. Do not
 mark the overall goal complete while the required feature set remains open.

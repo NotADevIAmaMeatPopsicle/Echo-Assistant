@@ -18,6 +18,26 @@ MAX_ENVELOPE=24_000_000
 MAX_PHOTO=6_000_000
 MAX_ARCHIVE=MAX_ENVELOPE+60*MAX_PHOTO+100_000
 ENVELOPE='recovery.dpapi'
+PORTABLE_ENVELOPE='recovery.passphrase'
+
+
+def envelope_name(protector):
+    name=getattr(protector,'archive_envelope',ENVELOPE)
+    if name not in {ENVELOPE,PORTABLE_ENVELOPE}:raise ValueError('Unsupported recovery protection')
+    return name
+
+
+def protection_kind(path):
+    """Identify protection without unlocking any data or contacting the host."""
+    path=Path(path)
+    if path.is_symlink() or path.stat().st_size>MAX_ARCHIVE:raise ValueError('Recovery archive is too large or linked')
+    if not zipfile.is_zipfile(path):return 'windows'
+    with zipfile.ZipFile(path) as archive:
+        names=archive.namelist()
+        if len(names)>61 or len(set(names))!=len(names):raise ValueError('Unexpected archive entries')
+        protected=set(names)&{ENVELOPE,PORTABLE_ENVELOPE}
+        if len(protected)!=1:raise ValueError('Ambiguous recovery protection')
+        return 'passphrase' if PORTABLE_ENVELOPE in protected else 'windows'
 
 
 def restored_bootstrap(payload):
@@ -82,14 +102,17 @@ def read_archive(path,protector):
     if path.is_symlink() or path.stat().st_size>MAX_ARCHIVE:raise ValueError('Recovery archive is too large or linked')
     if not zipfile.is_zipfile(path):
         if path.stat().st_size>4_000_000:raise ValueError('Legacy recovery archive is too large')
+        if envelope_name(protector)!=ENVELOPE:raise ValueError('Legacy archive requires Windows protection')
         return validate(json.loads(protector.decrypt(path.read_bytes())))
     with zipfile.ZipFile(path) as archive:
         entries=archive.infolist()
         if len(entries)>61 or len({i.filename for i in entries})!=len(entries):raise ValueError('Unexpected archive entries')
-        envelope=archive.getinfo(ENVELOPE)
+        name=envelope_name(protector)
+        if set(archive.namelist())&{ENVELOPE,PORTABLE_ENVELOPE}!={name}:raise ValueError('Recovery protection does not match this archive')
+        envelope=archive.getinfo(name)
         if envelope.file_size>MAX_ENVELOPE or envelope.compress_type!=zipfile.ZIP_STORED:raise ValueError('Invalid envelope')
         payload=validate(json.loads(protector.decrypt(archive.read(envelope))))
-        if payload['version']!=2 or set(archive.namelist())!={ENVELOPE,*payload.get('photos',{})}:
+        if payload['version']!=2 or set(archive.namelist())!={name,*payload.get('photos',{})}:
             raise ValueError('Archive inventory does not match its protected manifest')
         for name,item in payload.get('photos',{}).items():
             entry=archive.getinfo(name)
@@ -118,7 +141,7 @@ def write_archive(path,payload,protector,reader):
     with path.open('xb') as stream:
         try:
             with zipfile.ZipFile(stream,'w',compression=zipfile.ZIP_STORED) as archive:
-                archive.writestr(ENVELOPE,sealed)
+                archive.writestr(envelope_name(protector),sealed)
                 for name,item in payload.get('photos',{}).items():
                     raw=checked_blob(reader(name),item,MAX_PHOTO)
                     if len(raw)!=item['size']:raise ValueError('Photo changed during backup')
