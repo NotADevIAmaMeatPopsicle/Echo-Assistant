@@ -28,7 +28,7 @@ function renderAgenda(){
   let day='';
   $('agenda-events').innerHTML=events.length ? events.map(e=>{
     const key=localEventDate(e), heading=key!==day ? `<h3 class="agenda-day">${esc(new Date(key+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))}</h3>` : ''; day=key;
-    return `${heading}<div class="agenda-event"><span class="agenda-time">${e.all_day ? 'All day' : esc(new Date(e.start).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}))}</span><div><strong>${esc(e.title)}</strong><p class="tiny soft">${esc(e.calendar_name)}${e.location ? ' · '+esc(e.location) : ''}</p></div></div>`;
+    return `${heading}<div class="agenda-event"><span class="agenda-time">${e.all_day ? 'All day' : esc(new Date(e.start).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}))}</span><div><strong>${esc(e.title)}</strong><p class="tiny soft">${esc(e.calendar_name)}${e.location ? ' · '+esc(e.location) : ''}${e.recurring?' · Repeats':''}</p></div><button class="pill calendar-details" type="button" data-event-id="${esc(e.id)}">Details</button></div>`;
   }).join('') : empty(state ? 'Nothing on the agenda for these days.' : 'Reconnect to load your agenda.');
 }
 function renderSources(){
@@ -48,10 +48,10 @@ extensions.push(renderSources);
 $('agenda-form').onsubmit=event=>{event.preventDefault();agendaEndpoint();delete data.agenda;refresh();};
 $('source-load').onclick=()=>action(async()=>{
   const state=await api('/v1/display/source-settings');sourceRevision=state.revision;
-  const selected=new Set([...state.sources.calendars,...state.sources.cameras]),writers=new Set(state.sources.writable_calendars||[]);
+  const selected=new Set([...state.sources.calendars,...state.sources.cameras]),writers=new Set(state.sources.writable_calendars||[]),managers=new Set(state.sources.managed_calendars||[]);
   const items=state.items.filter(i=>['camera','calendar'].includes(i.kind));for(const id of selected)if(!items.some(i=>i.entity_id===id))items.push({entity_id:id,name:id,available:false});
   $('source-status').textContent=state.status==='available' ? 'Checked sources are shared with paired displays. Uncheck to remove access.' : 'Home Assistant is unavailable or not configured. You can clear existing selections.';
-  $('source-choices').innerHTML=items.map(i=>`<div class="source-permissions"><label class="source-choice"><input type="checkbox" data-source-read value="${esc(i.entity_id)}" ${selected.has(i.entity_id)?'checked':''}><span>${esc(i.name)}<small class="soft">${esc(i.entity_id)}${i.available ? '' : ' · unavailable'}</small></span></label>${i.can_create||writers.has(i.entity_id)?`<label class="check-label calendar-write-choice"><input type="checkbox" data-source-write value="${esc(i.entity_id)}" ${writers.has(i.entity_id)?'checked':''}>Allow event creation from Echo displays</label>`:''}</div>`).join('') || empty('No calendar or camera entities were found.');
+  $('source-choices').innerHTML=items.map(i=>`<div class="source-permissions"><label class="source-choice"><input type="checkbox" data-source-read value="${esc(i.entity_id)}" ${selected.has(i.entity_id)?'checked':''}><span>${esc(i.name)}<small class="soft">${esc(i.entity_id)}${i.available ? '' : ' · unavailable'}</small></span></label>${i.can_create||writers.has(i.entity_id)?`<label class="check-label calendar-write-choice"><input type="checkbox" data-source-write value="${esc(i.entity_id)}" ${writers.has(i.entity_id)?'checked':''}>Allow event creation from Echo displays</label>`:''}${i.can_edit||i.can_delete||managers.has(i.entity_id)?`<label class="check-label calendar-write-choice"><input type="checkbox" data-source-manage value="${esc(i.entity_id)}" ${managers.has(i.entity_id)?'checked':''}>Allow edits and deletion of existing events</label>`:''}</div>`).join('') || empty('No calendar or camera entities were found.');
   renderDoorbellChoices(state);
   const shared=new Set(state.sources.presence_sensors||[]),sensors=state.items.filter(i=>i.can_detect_presence);
   for(const id of shared)if(!sensors.some(i=>i.entity_id===id))sensors.push({entity_id:id,name:id,available:false});
@@ -61,14 +61,15 @@ $('source-load').onclick=()=>action(async()=>{
 $('source-form').onsubmit=event=>{event.preventDefault();if(sourceRevision===null)return;action(async()=>{
   const selected=[...$('source-choices').querySelectorAll('[data-source-read]:checked')].map(i=>i.value);
   const writers=[...$('source-choices').querySelectorAll('[data-source-write]:checked')].map(i=>i.value);
+  const managed_calendars=[...$('source-choices').querySelectorAll('[data-source-manage]:checked')].map(i=>i.value);
   const presence_sensors=[...$('source-presence-choices').querySelectorAll('input:checked')].map(i=>i.value);
-  const state=await api('/v1/display/source-settings',{revision:sourceRevision,sources:{calendars:selected.filter(i=>i.startsWith('calendar.')),cameras:selected.filter(i=>i.startsWith('camera.')),writable_calendars:writers,doorbells:doorbellSelection(),presence_sensors}},'PUT');
+  const state=await api('/v1/display/source-settings',{revision:sourceRevision,sources:{calendars:selected.filter(i=>i.startsWith('calendar.')),cameras:selected.filter(i=>i.startsWith('camera.')),writable_calendars:writers,managed_calendars,doorbells:doorbellSelection(),presence_sensors}},'PUT');
   sourceRevision=state.revision;stopCamera();
 },'Display sources saved.');};
 $('source-choices').addEventListener('change',event=>{
   const row=event.target.closest('.source-permissions');if(!row)return;
-  if(event.target.hasAttribute('data-source-write')&&event.target.checked)row.querySelector('[data-source-read]').checked=true;
-  if(event.target.hasAttribute('data-source-read')&&!event.target.checked){const write=row.querySelector('[data-source-write]');if(write)write.checked=false;}
+  if((event.target.hasAttribute('data-source-write')||event.target.hasAttribute('data-source-manage'))&&event.target.checked)row.querySelector('[data-source-read]').checked=true;
+  if(event.target.hasAttribute('data-source-read')&&!event.target.checked){for(const write of row.querySelectorAll('[data-source-write],[data-source-manage]'))write.checked=false;}
 });
 $('camera-choice').onchange=()=>{stopCamera();$('camera-placeholder').textContent='Press Open view to start the selected view.';renderSources();guardButtons();};
 // Decode only the normalized, length-delimited JPEG parts emitted by Echo.
@@ -136,3 +137,5 @@ setInterval(()=>{if($('camera-mode').value==='snapshots')cameraFrame();},5000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&cameraActive)stopCamera();});
 document.addEventListener('echo:page',event=>{if(event.detail!=='day')stopCamera();});
 new MutationObserver(()=>{if(!$('ambient').hidden)stopCamera();}).observe($('ambient'),{attributes:true,attributeFilter:['hidden']});
+
+$('agenda-events').addEventListener('click',event=>{const id=event.target.closest('[data-event-id]')?.dataset.eventId;const item=data.agenda?.events.find(i=>i.id===id);if(item&&typeof showCalendarDetails==='function')showCalendarDetails(item);});

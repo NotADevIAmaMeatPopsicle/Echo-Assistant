@@ -1,0 +1,46 @@
+const {previewBase}=require('./display_check.cjs');
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+(async()=>{
+  const base=await previewBase(),browser=await chromium.launch({channel:'chrome',headless:true});
+  try{
+    const page=await browser.newPage({viewport:{width:1024,height:600}}),errors=[],changes=[];let created;
+    page.on('pageerror',e=>errors.push(e.message));
+    await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
+    await page.route('**/v1/display/calendar/change',r=>{changes.push(r.request().postDataJSON());return r.continue();});
+    await page.route('**/v1/display/calendar/events',r=>{created=r.request().postDataJSON();return r.continue();});
+    await page.goto(base+'/display#day');
+    await page.locator('.calendar-details').first().click();
+    await page.locator('#calendar-details-delete').click();assert.equal(changes.length,0);
+    await page.locator('#calendar-details-cancel').click();assert.equal(changes.length,0);
+    await page.locator('#calendar-details-edit').click();
+    assert.equal(await page.locator('#event-description').inputValue(),'Sample calendar notes.');
+    assert.ok(await page.locator('#event-calendar').isDisabled());
+    await page.locator('#event-title').fill('Updated afternoon plans');
+    await page.locator('#calendar-event-submit').click();
+    await page.locator('#calendar-event-status').getByText('Demo change accepted. No real calendar was changed.').waitFor();
+    assert.equal(changes.length,1);assert.equal(changes[0].operation,'edit');assert.equal(changes[0].event.title,'Updated afternoon plans');
+    await page.locator('#calendar-event-cancel').click();
+    await page.locator('[data-event-id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]').click();
+    await page.locator('#calendar-details-delete').click();
+    await page.screenshot({path:'output/playwright/display-calendar-delete.png',animations:'disabled'});
+    assert.equal(changes.length,1);await page.locator('#calendar-details-confirm').click();
+    await page.locator('#calendar-details-status').getByText('Demo change accepted. No real calendar was changed.').waitFor();
+    assert.equal(changes.length,2);assert.equal(changes[1].operation,'delete');
+    await page.locator('#calendar-details-close').click();
+    await page.locator('#calendar-create').click();await page.locator('#event-title').fill('Weekly walk');
+    await page.locator('#event-repeat').selectOption('weekly');await page.locator('#event-interval').fill('2');await page.locator('#event-count').fill('12');
+    await page.locator('#event-count').click();
+    await page.screenshot({path:'output/playwright/display-calendar-recurrence.png',animations:'disabled'});
+    await page.locator('#calendar-event-submit').click();
+    await page.locator('#calendar-event-status').getByText('Demo event created. No real calendar was changed.').waitFor();
+    assert.deepEqual(created.event.recurrence,{frequency:'weekly',interval:2,count:12});
+    await page.locator('#calendar-event-cancel').click();await page.locator('.rail-settings').click();await page.locator('#source-load').click();
+    const manage=page.locator('[data-source-manage]'),read=page.locator('[data-source-read][value="calendar.household_demo"]');
+    assert.ok(await manage.isChecked());await read.uncheck();assert.equal(await manage.isChecked(),false);await manage.check();assert.ok(await read.isChecked());
+    await page.setViewportSize({width:390,height:844});await page.goto(base+'/display?phone-check=1#day');
+    await page.locator('.calendar-details').first().click();
+    const bounds=await page.locator('#calendar-details-dialog').boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=390);
+    await page.screenshot({path:'output/playwright/display-calendar-details-phone.png',animations:'disabled'});
+    assert.deepEqual(errors,[]);console.log('Calendar details, edit, confirmed deletion, recurrence, owner grants and phone layout passed; synthetic data only.');
+  }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1);});

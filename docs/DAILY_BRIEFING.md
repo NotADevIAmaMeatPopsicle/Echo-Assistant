@@ -107,3 +107,8 @@ submission from the form/chat UI. One synthetic request returned correct event
 fields from the configured Azure model; no real event was created. OpenAI/Azure
 requests follow the [Structured Outputs format](https://developers.openai.com/api/docs/guides/structured-outputs);
 local and Anthropic JSON replies receive the same server-side validation.
+
+For recurring creation, event details, edits and confirmed deletion, see
+[Calendars on Echo](CALENDARS.md). The ordinary one-off form still uses the
+create-event service; recurrence and changes use the calendar WebSocket API.
+Existing recurring-series changes and invitations remain unavailable.

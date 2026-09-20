@@ -51,7 +51,7 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Ask, research, remember** | A configured model or Hermes agent, supported web lookup with citations, longer research tasks, and explicitly saved facts you can review, edit, export, or delete. |
 | **Control your home** | Home Assistant room lights, individual brightness/colour controls, thermostat modes and temperatures, speaker selection, and saved routines with device permissions. |
 | **Play music** | Spotify Connect with artwork, track details, seeking, shuffle/repeat, and volume controls; HTTPS radio presets and supported local media on the display. |
-| **Plan the day** | A daily briefing, selected calendars, timed/all-day event creation, shopping lists, tasks, and notes. |
+| **Plan the day** | A daily briefing, selected calendars, reviewed event creation, repeating schedules, single-event editing/deletion, shopping lists, tasks, and notes. |
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
 | **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, and answered two-way intercom. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
@@ -68,6 +68,10 @@ Make the home screen your own: choose four tiles for time and Echo, weather,
 rooms, music, timers, lists or the thermostat. Music sits at bottom right by
 default, with live artwork and playback control. Swipe left or right between
 pages, or jump straight to a page from the sidebar.
+
+On My day, open event details, edit a supported single event, or create a repeating
+schedule. [Calendar permissions](docs/CALENDARS.md) separate agenda access, creation,
+and changes to existing events. Guest calendars stay read-only.
 
 For a shared room, assign a [Guest display profile](docs/DISPLAY_ACCESS.md) and
 choose its devices and sources. General guest questions use separate temporary
@@ -145,8 +149,10 @@ paired displays, with encrypted host storage.
 Calendars connect through Home Assistant. The owner selects which calendars to
 share and separately permits event creation. The touch form supports timed and
 all-day events. Describe an event by voice or text on the smart display, review
-the model's editable draft, and choose **Create event** to save it. Calendar editing
-and invitations are not implemented. [Daily briefing and calendar guide](docs/DAILY_BRIEFING.md).
+the model's editable draft, and choose **Create event** to save it. Repeat options
+create a bounded series. Single-event edits and confirmed deletion require a
+separate owner permission. Existing-series changes and invitations remain planned.
+[Calendar guide](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md).
 
 ### Cameras, doorbells, and room audio
 
@@ -409,7 +415,7 @@ displays**, then complete its client installation. Start audible tests at **2%**
 | --- | --- |
 | Lights, climate, speakers, and routines | [Home Assistant and permissions](docs/HOME_CONTROL.md) |
 | Music from the Spotify app | [Round receiver](docs/MUSIC.md) · [Pi receiver](docs/PI_SPOTIFY.md) |
-| Calendar agenda and event creation | [Daily briefing and calendars](docs/DAILY_BRIEFING.md) |
+| Calendar agenda, repeats and event changes | [Calendar permissions and forms](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md) |
 | Camera views and doorbell cards | [Cameras and doorbells](docs/CAMERAS_AND_DOORBELLS.md) |
 | Announcements and answered calls | [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) |
 | An always-on host and Hermes | [Docker deployment and UIs](docs/DEPLOYMENT.md) |
@@ -471,7 +477,7 @@ does not claim complete Nest Hub or Echo Show feature parity.
 | [Smart display](docs/SMART_DISPLAY.md) · [Display design](docs/DISPLAY_DESIGN.md) | Pi installation, pairing, page map, typography, and native sizing |
 | [Pi voice](docs/PI_VOICE.md) · [Spotify](docs/PI_SPOTIFY.md) · [Alerts](docs/PI_ALERTS.md) | Independent Pi microphone and speaker paths |
 | [Hardware](docs/HARDWARE.md) · [Wireless](docs/WIRELESS.md) | Round-board identity, original backup, build, flash, and pairing |
-| [Home control](docs/HOME_CONTROL.md) · [Calendars](docs/DAILY_BRIEFING.md) · [Cameras](docs/CAMERAS_AND_DOORBELLS.md) | Sources, permissions, actions, and integration limits |
+| [Home control](docs/HOME_CONTROL.md) · [Calendars](docs/CALENDARS.md) · [Cameras](docs/CAMERAS_AND_DOORBELLS.md) | Sources, permissions, actions, and integration limits |
 | [Music](docs/MUSIC_DISPLAY.md) · [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) | Playback, destinations, announcements, and calls |
 | [Deployment](docs/DEPLOYMENT.md) · [Private access](docs/TAILNET_ACCESS.md) | Docker, Hermes UIs, storage, recovery, and selected-device access |
 | [Crescent assembly](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md) · [Web gallery](docs/WEB_UI.md) | Printable parts, build photographs, and UI examples |

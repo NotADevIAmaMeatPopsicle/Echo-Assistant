@@ -13,6 +13,7 @@ from urllib.parse import urlencode
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from .home import HomeUnavailable
+from .calendar_reference import event_version,single_event
 
 
 class ExperienceUnavailable(RuntimeError): pass
@@ -31,10 +32,11 @@ class Sources(BaseModel):
     calendars: list[str] = Field(default_factory=list, max_length=12)
     cameras: list[str] = Field(default_factory=list, max_length=12)
     writable_calendars: list[str] = Field(default_factory=list, max_length=12)
+    managed_calendars: list[str] = Field(default_factory=list, max_length=12)
     doorbells: list[DoorbellSource] = Field(default_factory=list, max_length=12)
     presence_sensors: list[str] = Field(default_factory=list, max_length=12)
 
-    @field_validator('calendars', 'cameras', 'writable_calendars', 'presence_sensors')
+    @field_validator('calendars', 'cameras', 'writable_calendars', 'managed_calendars', 'presence_sensors')
     @classmethod
     def identifiers(cls, values, info):
         domain = {'cameras': 'camera', 'presence_sensors': 'binary_sensor'}.get(info.field_name, 'calendar')
@@ -45,6 +47,7 @@ class Sources(BaseModel):
     @model_validator(mode='after')
     def selected_writers(self):
         if not set(self.writable_calendars)<=set(self.calendars):raise ValueError('Writable calendars must also be shared for reading')
+        if not set(self.managed_calendars)<=set(self.calendars):raise ValueError('Managed calendars must also be shared for reading')
         if len({d.trigger for d in self.doorbells}) != len(self.doorbells):raise ValueError('Choose each doorbell trigger once')
         if any(d.camera and d.camera not in self.cameras for d in self.doorbells):raise ValueError('Doorbell cameras must also be shared')
         return self
@@ -125,6 +128,8 @@ class Experiences:
             items.append({'entity_id': identifier, 'kind': identifier.split('.')[0],
                           'name': name[:160] if isinstance(name, str) else identifier,
                           'can_create':identifier.startswith('calendar.') and type(attrs.get('supported_features')) is int and bool(attrs['supported_features']&1),
+                          'can_edit':identifier.startswith('calendar.') and type(attrs.get('supported_features')) is int and bool(attrs['supported_features']&4),
+                          'can_delete':identifier.startswith('calendar.') and type(attrs.get('supported_features')) is int and bool(attrs['supported_features']&2),
                           'can_detect_presence': self.presence_capable(state),
                           'available': state.get('state') not in {None, 'unknown', 'unavailable'}})
         items.sort(key=lambda i:(i['kind'] not in {'calendar','camera'},i['name']))
@@ -140,6 +145,8 @@ class Experiences:
             if not selected <= known: raise ValueError('A selected source is no longer in Home Assistant')
             if not set(checked.writable_calendars)<={i['entity_id'] for i in inventory if i['can_create']}:
                 raise ValueError('A writable calendar does not support event creation')
+            if not set(checked.managed_calendars)<={i['entity_id'] for i in inventory if i['can_edit'] or i['can_delete']}:
+                raise ValueError('This calendar does not support changing existing events')
             if not set(checked.presence_sensors)<={i['entity_id'] for i in inventory if i['can_detect_presence']}:
                 raise ValueError('Choose motion, occupancy or presence binary sensors')
         return self.store.save(checked.model_dump(), revision)
@@ -189,11 +196,15 @@ class Experiences:
             for identifier in ids:
                 item=dict(known.get(identifier, {'entity_id': identifier, 'kind': kind[:-1], 'name': identifier, 'available': False}))
                 item['writable']=identifier in selected['writable_calendars'] and item.get('can_create',False)
+                item['editable']=identifier in selected['managed_calendars'] and item.get('can_edit',False)
+                item['deletable']=identifier in selected['managed_calendars'] and item.get('can_delete',False)
                 items.append(item)
         current=self.store.snapshot()
         allowed=set(current['sources']['calendars']+current['sources']['cameras'])
         items=[item for item in items if item['entity_id'] in allowed]
         for item in items:item['writable']=item['writable'] and item['entity_id'] in current['sources']['writable_calendars']
+        for item in items:
+            for flag in ('editable','deletable'):item[flag]=item[flag] and item['entity_id'] in current['sources']['managed_calendars']
         return {'status': 'available', 'items': items, 'revision':current['revision']}
 
     def agenda(self, start, days=7):
@@ -220,7 +231,11 @@ class Experiences:
                         key = hashlib.sha256((identifier+began+ended+summary).encode()).hexdigest()[:32]
                         events.append({'id': key, 'calendar': identifier, 'calendar_name': source['name'],
                                        'title': summary[:300], 'start': began, 'end': ended, 'all_day': all_day,
-                                       'location': str(event.get('location') or '')[:300], '_sort': sort})
+                                       'location': str(event.get('location') or '')[:300],
+                                       'description':str(event.get('description') or '')[:2000],
+                                       'recurring':bool(event.get('rrule') or event.get('recurrence_id')),
+                                       'reference':{'calendar':identifier,'uid':event['uid'],'on_date':began[:10],'version':event_version(event)} if single_event(event) else None,
+                                       '_sort': sort})
                     except (KeyError, ValueError, TypeError, AttributeError): continue
             except HomeUnavailable: failures.append(identifier)
         events.sort(key=lambda e: (e['_sort'], e['title']))

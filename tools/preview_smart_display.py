@@ -41,10 +41,10 @@ def fixtures():
     data['/v1/displays']={'items':[]}
     data['/v1/display/voice']={'available':False,'mode':'push_to_talk','message':'Silent preview.'}
     data['/v1/display/sources']={'status':'available','items':[
-        {'entity_id':'calendar.household_demo','kind':'calendar','name':'Household · sample','available':True,'can_create':True,'writable':True},
+        {'entity_id':'calendar.household_demo','kind':'calendar','name':'Household · sample','available':True,'can_create':True,'writable':True,'can_edit':True,'can_delete':True,'editable':True,'deletable':True},
         {'entity_id':'camera.porch_demo','kind':'camera','name':'Porch · sample','available':True}]}
     data['/v1/display/source-settings']={'revision':0,'status':'available',
-        'sources':{'calendars':['calendar.household_demo'],'cameras':['camera.porch_demo'],'writable_calendars':['calendar.household_demo']},
+        'sources':{'calendars':['calendar.household_demo'],'cameras':['camera.porch_demo'],'writable_calendars':['calendar.household_demo'],'managed_calendars':['calendar.household_demo']},
         'items':deepcopy(data['/v1/display/sources']['items'])}
     data['/v1/display/source-settings']['items'].append({'entity_id':'event.porch_demo','kind':'event','name':'Front door press · sample','available':True})
     data['/v1/display/source-settings']['sources']['doorbells']=[]
@@ -91,6 +91,9 @@ class DisplayPreview(Preview):
     media = MediaPresets(None,None)
     lock = RLock()
     calendar_requests=set()
+    for event in state['/v1/display/agenda']['events']:
+        event['description']='Sample calendar notes.'
+        event['reference']={'calendar':event['calendar'],'uid':event['id'],'on_date':event['start'][:10],'version':'f'*64}
     announcements=Announcements(None,None,SimpleNamespace(snapshot=lambda:[{'id':'a'*32,'name':'Kitchen display · sample'}]),schedules,lambda:{'status':'disconnected'})
     announcements.configure([{'id':'round','room':'Living room','enabled':True},{'id':'a'*32,'room':'Kitchen','enabled':True}],0)
 
@@ -244,7 +247,7 @@ class DisplayPreview(Preview):
             state.update(sources=sources,revision=state['revision']+1)
             self.state['/v1/display/presence']={'status':'available' if sources['presence_sensors'] else 'not_selected','revision':state['revision'],'items':[{'entity_id':i['entity_id'],'name':i['name'],'available':True,'occupied':False} for i in state['items'] if i['entity_id'] in sources['presence_sensors']]}
             self.state['/v1/display/doorbells']={'status':'available' if sources['doorbells'] else 'not_selected','events':[],'revision':state['revision']}
-            self.state['/v1/display/sources']={'status':'available' if identifiers else 'not_selected','revision':state['revision'],'items':[{**i,'writable':i['entity_id'] in sources['writable_calendars']} for i in state['items'] if i['entity_id'] in identifiers]}
+            self.state['/v1/display/sources']={'status':'available' if identifiers else 'not_selected','revision':state['revision'],'items':[{**i,'writable':i['entity_id'] in sources['writable_calendars'],'editable':i['entity_id'] in sources.get('managed_calendars',[]),'deletable':i['entity_id'] in sources.get('managed_calendars',[])} for i in state['items'] if i['entity_id'] in identifiers]}
             return {'sources':sources,'revision':state['revision']}
         if path=='/v1/demo/doorbell':
             import secrets
@@ -263,6 +266,20 @@ class DisplayPreview(Preview):
                     'start':tomorrow+'T12:00','end':tomorrow+'T13:00','all_day':False,
                     'timezone':body.get('timezone','UTC'),'location':'','description':'','start_fold':0,'end_fold':0},
                     'questions':['Review this synthetic example before creating it.'],'expires_at':time.time()+900}}
+        if path=='/v1/display/calendar/change':
+            policy=self.state['/v1/display/source-settings']
+            reference=body['reference']
+            if body['revision']!=policy['revision'] or reference['calendar'] not in policy['sources'].get('managed_calendars',[]):raise ValueError()
+            if body['request_id'] not in self.calendar_requests:
+                events=self.state['/v1/display/agenda']['events']
+                old=next(e for e in events if e.get('reference')==reference)
+                if body['operation']=='delete':events.remove(old)
+                else:
+                    event=CalendarEvent.model_validate(body['event']);bounds=event.bounds()
+                    old.update(title=event.title,description=event.description,location=event.location,all_day=event.all_day,
+                        start=bounds.get('start_date',bounds.get('start_date_time')),end=bounds.get('end_date',bounds.get('end_date_time')))
+                self.calendar_requests.add(body['request_id'])
+            return {'status':'accepted','text':'Demo change accepted. No real calendar was changed.'}
         if path=='/v1/display/calendar/events':
             event=CalendarEvent.model_validate(body['event']);policy=self.state['/v1/display/source-settings']
             if body['revision']!=policy['revision'] or event.calendar not in policy['sources']['writable_calendars']:raise ValueError()

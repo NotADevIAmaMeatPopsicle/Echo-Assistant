@@ -9,7 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from .experiences import Sources, Experiences, ExperienceUnavailable, ExperienceConflict
 from .display_profiles import ScopedSources
 from .home import HomeUnavailable
-from .calendar_events import CalendarEvent
+from .calendar_events import CalendarEvent,EventReference
+from typing import Literal
 from .conversation_request import run_conversation
 from .camera_stream import CameraStream
 
@@ -31,6 +32,15 @@ class DraftRequest(BaseModel):
     model_config=ConfigDict(extra='forbid',strict=True)
     text:str=Field(min_length=1,max_length=2000)
     timezone:str=Field(min_length=1,max_length=80)
+
+
+class ChangeEvent(BaseModel):
+    model_config=ConfigDict(extra='forbid',strict=True)
+    revision:int=Field(ge=0)
+    request_id:str=Field(pattern=r'^[a-f0-9]{32}$')
+    operation:Literal['edit','delete']
+    reference:EventReference
+    event:CalendarEvent|None=None
 
 
 def install(app, experiences, authorize, owner, writer=None, briefing=None, doorbells=None, drafts=None,displays=None):
@@ -92,6 +102,14 @@ def install(app, experiences, authorize, owner, writer=None, briefing=None, door
     def create_event(body:CreateEvent,principal=Depends(authorize)):
         if writer is None:raise HTTPException(503,'Calendar creation unavailable')
         result=call(lambda:writer.create(body.event.model_dump(),body.revision,body.request_id,principal))
+        if briefing:briefing.invalidate()
+        return result
+
+    @app.post('/v1/display/calendar/change')
+    def change_event(body:ChangeEvent,principal=Depends(authorize)):
+        if writer is None:raise HTTPException(503,'Calendar editing unavailable')
+        result=call(lambda:writer.change(body.operation,body.reference.model_dump(),
+            body.event.model_dump() if body.event else None,body.revision,body.request_id,principal))
         if briefing:briefing.invalidate()
         return result
 

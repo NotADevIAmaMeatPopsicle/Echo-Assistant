@@ -75,6 +75,7 @@ The suite covers planning, lists, photos, connection loss, conversation,
 touch typing and English swipe entry (`--check display_keyboard`),
 shared text fields and modal keyboards (`--check display_form_keyboard`),
 owner/guest display access (`--check display_profiles`),
+calendar details, recurring creation and confirmed changes (`--check display_calendar_changes`),
 Home tile choices and touch page navigation (`--check display_home`),
 microphone permission cancellation, daily briefing, calendars, music, cameras,
 announcements, intercom and the Pi's native voice/music/alert controls. It checks

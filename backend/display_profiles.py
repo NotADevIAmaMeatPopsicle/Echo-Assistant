@@ -86,7 +86,7 @@ class ScopedSources:
         selected=state['sources']
         for key in ('calendars','cameras','presence_sensors'):
             selected[key]=[entity for entity in selected[key] if entity in profile[key]]
-        selected['writable_calendars']=[];selected['doorbells']=[]
+        selected['writable_calendars']=[];selected['managed_calendars']=[];selected['doorbells']=[]
         return state
 
 

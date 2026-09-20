@@ -23,7 +23,12 @@ document.body.append(eventDialog);
 const eventScroll=document.createElement('div');eventScroll.id='calendar-event-scroll';
 $('calendar-event-fields').before(eventScroll);eventScroll.append($('calendar-event-fields'));
 let eventDraft=null;
+let editingEvent=null;
 let calendarDraftRequest=null;
+const recurrenceFields=document.createElement('div');recurrenceFields.className='calendar-recurrence';
+recurrenceFields.innerHTML='<label>Repeat<select id="event-repeat"><option value="">Does not repeat</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label><div id="event-repeat-options" class="two-columns" hidden><label>Every<input id="event-interval" type="number" min="1" max="99" value="1"></label><label>Total occurrences<input id="event-count" type="number" min="2" max="366" value="10"></label></div><p id="event-repeat-note" class="tiny soft" hidden>Includes the first event. Monthly and yearly schedules skip dates that do not exist. Timed repeats use the Home Assistant time zone. Manage an existing series in your calendar app.</p>';
+$('calendar-event-fields').append(recurrenceFields);
+$('event-repeat').onchange=()=>{$('event-repeat-options').hidden=$('event-repeat-note').hidden=!$('event-repeat').value;};
 const draftComposer=document.createElement('details');draftComposer.className='calendar-draft-composer';
 draftComposer.innerHTML='<summary>Describe an event in your own words</summary><label for="calendar-draft-text">Describe the event<textarea id="calendar-draft-text" maxlength="2000" rows="2" placeholder="Lunch with Sam tomorrow at noon for an hour"></textarea></label><button class="pill" id="calendar-draft-build" type="button">Draft from words</button><p class="tiny soft">Uses your configured model. Review the fields below before creating anything.</p>';
 eventScroll.prepend(draftComposer);
@@ -32,7 +37,8 @@ function openCalendarEvent(draft=null){
   if(draft&&(!Number.isFinite(draft.expires_at)||draft.expires_at*1000<Date.now()))return toast('That draft expired. Describe the event again with the current date.');
   const writable=(data.sources?.items||[]).filter(i=>i.kind==='calendar'&&i.writable&&i.available);
   draftNotes.replaceChildren();draftComposer.open=false;$('calendar-draft-build').disabled=false;
-  eventDraft=null;$('calendar-event-form').reset();$('calendar-event-fields').disabled=false;$('calendar-event-submit').disabled=!fresh('sources')||!writable.length;$('calendar-event-submit').textContent='Create event';
+  editingEvent=null;draftComposer.hidden=false;recurrenceFields.hidden=false;eventDialog.querySelector('h2').textContent='New calendar event';
+  eventDraft=null;$('calendar-event-form').reset();$('event-calendar').disabled=false;$('event-repeat').onchange();$('calendar-event-fields').disabled=false;$('calendar-event-submit').disabled=!fresh('sources')||!writable.length;$('calendar-event-submit').textContent='Create event';
   $('event-start').type=$('event-end').type='datetime-local';
   $('event-calendar').innerHTML='<option value="">Choose a calendar</option>'+writable.map(i=>`<option value="${esc(i.entity_id)}">${esc(i.name)}</option>`).join('');
   if(writable.length===1)$('event-calendar').value=writable[0].entity_id;
@@ -72,7 +78,7 @@ $('calendar-draft-build').onclick=async()=>{
 };
 function resetDraftControls(){
   $('calendar-draft-build').disabled=false;$('calendar-event-fields').disabled=false;
-  $('calendar-event-submit').disabled=!fresh('sources')||!(data.sources?.items||[]).some(i=>i.kind==='calendar'&&i.writable&&i.available);
+  $('calendar-event-submit').disabled=!fresh('sources')||!(data.sources?.items||[]).some(i=>i.kind==='calendar'&&(editingEvent?i.entity_id===editingEvent.calendar&&i.editable:i.writable)&&i.available);
 }
 function closeEvent(){if($('calendar-event-submit').dataset.sending==='true')return;eventDialog.close();createButton.focus();}
 eventDialog.addEventListener('close',()=>{calendarDraftRequest?.abort();calendarDraftRequest=null;resetDraftControls();});
@@ -88,14 +94,69 @@ $('calendar-event-form').onsubmit=async event=>{
     let end=$('event-end').value;
     if($('event-all-day').checked){const day=new Date(end+'T12:00:00');day.setDate(day.getDate()+1);end=localDate(day);}
     eventDraft={revision:data.sources.revision,request_id:crypto.randomUUID().replaceAll('-',''),event:{calendar:$('event-calendar').value,title:$('event-title').value,description:$('event-description').value,location:$('event-location').value,start:$('event-start').value,end,all_day:$('event-all-day').checked,timezone:$('event-timezone').value,start_fold:Number($('event-start-fold').value),end_fold:Number($('event-end-fold').value)}};
+    if(!editingEvent&&$('event-repeat').value)eventDraft.event.recurrence={frequency:$('event-repeat').value,interval:Number($('event-interval').value),count:Number($('event-count').value)};
+    if(editingEvent)Object.assign(eventDraft,{operation:'edit',reference:editingEvent.reference});
   }
   button.dataset.sending='true';button.disabled=true;$('calendar-event-fields').disabled=true;$('calendar-event-status').textContent='Sending to your calendar…';
   $('calendar-draft-build').disabled=true;
-  try{const result=await api('/v1/display/calendar/events',eventDraft);$('calendar-event-status').textContent=result.text;button.textContent=result.status==='accepted'?'Accepted':'Check your calendar';delete data.briefing;void refresh();}
+  try{const result=await api(editingEvent?'/v1/display/calendar/change':'/v1/display/calendar/events',eventDraft);$('calendar-event-status').textContent=result.text;button.textContent=result.status==='accepted'?'Accepted':'Check your calendar';delete data.briefing;void refresh();}
   catch(error){
-    if([403,409,422].includes(error.status)){eventDraft=null;$('calendar-event-fields').disabled=false;button.textContent='Create event';$('calendar-event-status').textContent=error.message+' Review the fields and calendar permissions, then try again.';}
+    if([403,409,422].includes(error.status)){eventDraft=null;$('calendar-event-fields').disabled=false;button.textContent=editingEvent?'Save changes':'Create event';$('calendar-event-status').textContent=error.message+' Review the fields and calendar permissions, then try again.';}
     else{$('calendar-event-status').textContent=error.message+' Check the agenda if the connection was lost. Retrying sends the same request identifier.';button.textContent='Retry same request';}
     button.disabled=false;$('calendar-draft-build').disabled=!!eventDraft;
   }
   finally{button.dataset.sending='false';}
+};
+const calendarDetails=document.createElement('dialog');calendarDetails.id='calendar-details-dialog';
+calendarDetails.innerHTML='<div class="row spread"><h2 id="calendar-details-title"></h2><button class="icon-button" id="calendar-details-close" aria-label="Close event details" type="button">×</button></div><div id="calendar-details-content"></div><p id="calendar-details-status" class="tiny soft" role="status"></p><div class="row"><button class="pill" id="calendar-details-edit" type="button">Edit event</button><button class="pill" id="calendar-details-delete" type="button">Delete…</button><button class="pill" id="calendar-details-cancel" type="button" hidden>Keep event</button><button class="pill danger" id="calendar-details-confirm" type="button" hidden>Delete event</button></div>';
+document.body.append(calendarDetails);
+let detailedEvent=null,deleteDraft=null,deletingEvent=false;
+function showCalendarDetails(item){
+  detailedEvent=item;deleteDraft=null;
+  $('calendar-details-title').textContent=item.title;
+  const firstDay=new Date(item.start.slice(0,10)+'T12:00:00'),lastDay=new Date(item.end.slice(0,10)+'T12:00:00');lastDay.setDate(lastDay.getDate()-1);
+  const times=item.all_day?firstDay.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+(localDate(lastDay)!==item.start?' → '+lastDay.toLocaleDateString():'')+' · All day':`${new Date(item.start).toLocaleString()} → ${new Date(item.end).toLocaleString()}`;
+  $('calendar-details-content').innerHTML=`<p class="soft">${esc(item.calendar_name)}</p><p>${esc(times)}</p>${item.location?`<p>${esc(item.location)}</p>`:''}<p class="calendar-event-notes">${esc(item.description||'No notes.')}</p>${item.recurring?'<p class="soft">Repeating event · manage this series in your calendar app.</p>':''}`;
+  const source=data.sources?.items.find(s=>s.entity_id===item.calendar),valid=fresh('sources')&&source?.available&&item.reference&&!item.recurring;
+  $('calendar-details-edit').hidden=!valid||!source.editable;
+  $('calendar-details-delete').hidden=!valid||!source.deletable;
+  $('calendar-details-confirm').hidden=$('calendar-details-cancel').hidden=true;
+  $('calendar-details-confirm').disabled=$('calendar-details-edit').disabled=$('calendar-details-delete').disabled=false;
+  $('calendar-details-confirm').textContent='Delete event';
+  $('calendar-details-status').textContent=valid&&(source.editable||source.deletable)?'Edits and deletion are enabled by the owner. The event is rechecked before a change.':'Read-only here. The owner can share supported calendar changes in Settings → Calendars & cameras.';
+  calendarDetails.showModal();
+}
+function closeCalendarDetails(){if(!deletingEvent)calendarDetails.close();}
+$('calendar-details-close').onclick=closeCalendarDetails;
+calendarDetails.addEventListener('cancel',event=>{if(deletingEvent)event.preventDefault();});
+$('calendar-details-edit').onclick=()=>{
+  const item=detailedEvent;calendarDetails.close();openCalendarEvent();editingEvent=item;
+  draftComposer.hidden=true;recurrenceFields.hidden=true;eventDialog.querySelector('h2').textContent='Edit calendar event';
+  $('event-calendar').innerHTML=`<option value="${esc(item.calendar)}">${esc(item.calendar_name)}</option>`;$('event-calendar').disabled=true;
+  const zone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+  const local=iso=>{const d=new Date(iso);return `${localDate(d)}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
+  applyCalendarDraft({event:{...item,timezone:zone,start:item.all_day?item.start:local(item.start),end:item.all_day?item.end:local(item.end)}});
+  if(!item.all_day)for(const field of ['start','end'])$('event-'+field+'-fold').value=String(Math.abs(new Date($( 'event-'+field).value).getTime()-new Date(item[field]).getTime())>=3599000?1:0);
+  $('calendar-event-status').textContent='Review your changes, then save. The event will stay in this calendar.';
+  $('calendar-event-submit').textContent='Save changes';resetDraftControls();
+};
+$('calendar-details-delete').onclick=()=>{
+  $('calendar-details-delete').hidden=$('calendar-details-edit').hidden=true;
+  $('calendar-details-confirm').hidden=$('calendar-details-cancel').hidden=false;
+  $('calendar-details-status').textContent='Delete this event from its calendar? This removes the event for everyone who uses that calendar.';
+};
+$('calendar-details-cancel').onclick=()=>{calendarDetails.close();showCalendarDetails(detailedEvent);};
+$('calendar-details-confirm').onclick=async()=>{
+  if(deletingEvent)return;
+  if(!deleteDraft)deleteDraft={operation:'delete',reference:detailedEvent.reference,revision:data.sources.revision,request_id:crypto.randomUUID().replaceAll('-','')};
+  deletingEvent=true;$('calendar-details-confirm').disabled=true;$('calendar-details-cancel').disabled=true;
+  try{
+    const result=await api('/v1/display/calendar/change',deleteDraft);
+    $('calendar-details-status').textContent=result.text;$('calendar-details-confirm').textContent=result.status==='accepted'?'Accepted':'Check your calendar';
+    $('calendar-details-cancel').hidden=true;delete data.briefing;void refresh();
+  }catch(error){
+    $('calendar-details-status').textContent=error.message;
+    if([403,409,422].includes(error.status))$('calendar-details-status').textContent+=' Close this view and refresh the agenda before trying again.';
+    else{$('calendar-details-confirm').disabled=false;$('calendar-details-confirm').textContent='Retry same request';$('calendar-details-status').textContent+=' If the connection was lost, check the calendar. Retrying uses the same request identifier.';}
+  }finally{deletingEvent=false;$('calendar-details-cancel').disabled=false;}
 };

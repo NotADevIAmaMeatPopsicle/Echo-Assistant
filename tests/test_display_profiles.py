@@ -88,7 +88,7 @@ class DisplayProfileTests(unittest.TestCase):
                 ('GET','/v1/tasks'),('POST','/v1/tasks'),('GET','/v1/routines'),('POST','/v1/routines/'+'a'*32+'/run'),
                 ('GET','/v1/display/briefing?timezone=UTC'),('GET','/v1/display/photos'),('GET','/v1/display/doorbells'),
                 ('GET','/v1/schedules'),('GET','/v1/voice'),('POST','/v1/text'),('POST','/v1/display/calendar/draft'),
-                ('POST','/v1/display/calendar/events'),('POST','/v1/home/speakers/select'),('POST','/v1/home/rooms/bedroom/actions'),
+                ('POST','/v1/display/calendar/events'),('POST','/v1/display/calendar/change'),('POST','/v1/home/speakers/select'),('POST','/v1/home/rooms/bedroom/actions'),
                 ('POST','/v1/home/thermostat/actions'),('GET','/v1/settings'),('POST','/v1/audio/messages'),
                 ('POST','/v1/intercom/calls'),('POST','/v1/music/control')]:
             with self.subTest(path=path):self.assertEqual(self.client.request(method,path,headers=self.guest).status_code,403)

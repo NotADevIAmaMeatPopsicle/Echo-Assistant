@@ -38,7 +38,7 @@ def allowed(method,path):
     if method=='GET' and (path in reads or re.fullmatch(r'/v1/tasks/[a-f0-9]{32}',path)): return True
     exact={
         'POST':{'/v1/chat','/v1/timers','/v1/household','/v1/schedules','/v1/memory','/v1/tasks','/v1/notifications','/v1/display/voice',
-                '/v1/display/home/control','/v1/music/control','/v1/home/speakers/select','/v1/home/speakers/control','/v1/display/calendar/events','/v1/display/calendar/draft'},
+                '/v1/display/home/control','/v1/music/control','/v1/home/speakers/select','/v1/home/speakers/control','/v1/display/calendar/events','/v1/display/calendar/change','/v1/display/calendar/draft'},
         'PUT':{'/v1/schedule-preferences'},
     }
     if path in exact.get(method,set()): return True

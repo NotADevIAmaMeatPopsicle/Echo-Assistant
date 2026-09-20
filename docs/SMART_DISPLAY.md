@@ -194,9 +194,9 @@ access policy, discover unselected calendar/camera sources, or enroll another
 display. Revocation is checked on every request. Camera permissions are checked
 again after fetching a frame. Snapshots and authenticated responses are not cached.
 
-Calendar and camera selection is opt-in and currently shared across paired
-displays. Per-user private calendars and per-room source policies remain future
-work. Calendars already connected in Home Assistant can be selected; this build
+Calendar and camera selection is opt-in. Household displays use the globally
+shared sources; owner-assigned Guest profiles can narrow those choices per device.
+Per-person private calendar accounts remain future work. Calendars already connected in Home Assistant can be selected; this build
 does not ask for new Google or Microsoft credentials. Camera requests stay on
 the configured Home Assistant origin and never forward its token to redirects.
 
@@ -222,9 +222,10 @@ a stream already opened directly in a browser; press Stop to end playback.
 Push-to-talk capture, request cancellation and reply routing are implemented.
 Native Pi wake and request interruption are implemented; physical echo-control acceptance is still required.
 Natural-language calendar drafts can be reviewed and created on the smart display;
-see [calendar drafting](DAILY_BRIEFING.md#describe-an-event). Further integrations include calendar event editing,
-grouped audio, external calling,
-and household/guest profiles. These are not working features yet. Commercial
+see [calendar drafting](DAILY_BRIEFING.md#describe-an-event). Single-event editing,
+confirmed deletion and recurring creation are implemented; see [Calendars](CALENDARS.md).
+Existing-series changes, invitations, grouped audio, external calling and
+per-person identities remain open. Per-device Household/Guest profiles are available. Commercial
 video and proprietary casting depend on supported providers and licensing.
 
 ## Pi hardware and bring-up
@@ -465,3 +466,7 @@ stream limits and remaining physical acceptance.
 [Pi alerts](PI_ALERTS.md) adds a native chime worker with per-display timer and
 reminder routing, quiet hours, and visible snooze/dismiss controls. It is disabled
 until the attached speaker is selected in Settings.
+
+Calendar details, creation, repeats and single-event changes are covered in
+[Calendars on Echo](CALENDARS.md). Changes to existing events require a separate
+owner grant; previous creation permissions do not enable editing or deletion.

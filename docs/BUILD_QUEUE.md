@@ -24,6 +24,17 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Calendar management checkpoint:** event details, single-event editing/deletion
+and bounded recurring creation are deployed to the private host and Pi browser.
+Changes to existing events require a new owner grant, which remains off for all
+current calendars. Before changes, the backend checks the current event and
+preserves durable retry receipts. The Windows suite passed 483 tests with seven
+platform-specific skips; 34 focused Linux tests passed. Browser checks cover
+calendar changes, repeat forms, existing drafts and guest restrictions. The Pi
+serves matching assets and remains armed at 2%; settings and pairing were preserved.
+No real calendar events, home-device state or audio were changed. Existing series,
+invitations and Mini calendar review remain open; see [Calendars](CALENDARS.md).
+
 **Display access checkpoint:** owner-assigned Household/Guest profiles are deployed
 to the private host and current Pi client. Guests receive only selected devices
 and read-only sources, with separate temporary conversation and no household
@@ -136,8 +147,8 @@ and configuration states, and record any unsupported service explicitly.
 The completed software checkpoints above do not mean full Nest Hub/Echo Show
 parity. Known gaps documented in the smart-display guide remain:
 
-- [ ] Calendar event editing/deletion, recurring calendar events, invitations and
-      a calendar-review path for the Mini.
+- [x] Supported single-event editing/deletion and bounded recurring creation, with separate owner permissions and explicit review (software; external calendar writes untested).
+- [ ] Existing recurring-series editing/deletion, invitations and a calendar-review path for the Mini.
 - [ ] Synchronized grouped music across endpoints.
 - [ ] External calling with a supported provider.
 - [ ] Household/guest profiles and per-user/per-room source policies.
