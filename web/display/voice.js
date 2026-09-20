@@ -2,6 +2,10 @@
 endpoints.displayVoice='/v1/display/voice';
 let micStream=null,micContext=null,micNode=null,micChunks=[],micSamples=0,micOpening=false,voiceRequest=null,voiceReplyUrl=null,voiceRequestHome=false,voiceEpoch=0,voiceCancelling=false,microphoneState=null;
 const voicePlayer=$('voice-reply');voicePlayer.volume=.02;
+const voiceAvailabilityMessages=new Set([
+  'Checking the speech service…', 'Preview only · voice capture is off.',
+  'Voice service unavailable. You can still type.', 'No microphone detected. You can still type.'
+]);
 function voiceButtons(){
   const inCall=typeof intercomIsBusy==='function'&&intercomIsBusy();
   const native=typeof piVoiceEnabled==='function'&&piVoiceEnabled(),nativeBusy=native&&piVoiceBusy();
@@ -38,7 +42,7 @@ extensions.push(()=>{
   if(!micStream && !voiceRequest && !micOpening && !chatAbort && voicePlayer.paused){
     if(!data.displayVoice?.available)$('display-voice-status').textContent=data.health?.display_demo ? 'Preview only · voice capture is off.' : 'Voice service unavailable. You can still type.';
     else if(microphoneState==='none')$('display-voice-status').textContent='No microphone detected. You can still type.';
-    else if($('display-voice-status').textContent==='Checking the speech service…')$('display-voice-status').textContent='Tap the microphone, or type a message.';
+    else if(voiceAvailabilityMessages.has($('display-voice-status').textContent))$('display-voice-status').textContent='Tap the microphone, or type a message.';
   }
   voiceButtons();
 });

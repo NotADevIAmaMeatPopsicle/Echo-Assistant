@@ -184,3 +184,9 @@ After removing the rule, the original bridge session returned successfully with
 the pairing file unchanged and all prior firewall tables preserved. No audio,
 home commands, browser reload or fresh pairing was used. This covers loss of
 the Echo connection; physical power cycling and Wi-Fi/router restart remain open.
+
+That live check exposed a stale speech-availability caption after connectivity
+returned. The display now clears automatic service/microphone warnings when
+availability recovers, while retaining cancellation and request-result messages.
+The focused silent browser check covers service recovery, microphone removal
+and return, and delayed permission cancellation without opening an audio device.
