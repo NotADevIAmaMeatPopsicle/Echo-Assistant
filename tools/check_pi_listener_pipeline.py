@@ -21,6 +21,7 @@ class Music:
         if busy:self.holds[key]=True
         else:self.holds.pop(key,None)
     def snapshot(self):return {'status':'paused'}
+    def duck(self,key,busy):pass
 
 
 class Detector:

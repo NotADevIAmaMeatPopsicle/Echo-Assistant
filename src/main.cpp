@@ -17,6 +17,7 @@
 #include "ui_type.h"
 #include "mute_button.h"
 #include "touch_gesture.h"
+#include "screen_idle.h"
 #include "intercom_state.h"
 #include "intercom_scene.h"
 
@@ -54,6 +55,15 @@ static TouchGesture touchGesture;
 static Page upperPressPage=Page::Voice,lowerPressPage=Page::Voice;
 static Preferences preferences;
 static int brightness=120;
+static ScreenIdle screenIdle;
+static int appliedBrightness=-1;
+static bool discardWakeTouch=false;
+static uint32_t wakeReleaseAt=0;
+static void applyScreenBrightness() {
+    int value=screenIdle.level==ScreenIdle::Level::Off?0:screenIdle.level==ScreenIdle::Level::Dim?max(1,brightness/5):brightness;
+    if(value!=appliedBrightness) {panel->setBrightness(value);appliedBrightness=value;lastFrame=millis()-100;}
+}
+static bool wakeScreen() {bool off=screenIdle.activity(millis());applyScreenBrightness();return off;}
 static bool thinking=false,tempReady=false,soundReady=false;
 static float tempCurrent=0,tempTarget=0,tempMin=0,tempMax=0;
 static char tempUnit='-',tempMode[16]="unknown",soundState[16]="unknown";
@@ -195,6 +205,7 @@ static void homeAction(const char* action) {
     else Host.printf("EVENT home_action=%s request=%lu\n",action,(unsigned long)homeActionState.request);
 }
 static void draw() {
+    if(screenIdle.level==ScreenIdle::Level::Off)return;
     uint32_t started=micros();
     auto audio=audioStatus(); volumeShown=audio.volume;
     if(page==Page::Intercom) {
@@ -227,6 +238,7 @@ static void draw() {
     m.result=homeActionState.phase!=HomeActionState::Phase::Idle?homeActionState.message():millis()-homeLegacyAt<8000?homeResult.c_str():"";
     m.weather=weatherTemperature;m.weatherUnit=weatherUnit;m.humidity=weatherHumidity;m.condition=weatherCondition.c_str();
     m.micMuted=wakeMuted;m.micReady=audio.micReady;m.brightness=brightness;m.wifi=networkConnected();m.sdReady=sdReady;m.sdMegabytes=sdMegabytes;
+    m.screenDim=screenIdle.dimSeconds;m.screenOff=screenIdle.offSeconds;
     m.connection=wakeArmed?(networkConnected()?"Connected":"USB connected"):strcmp(networkState(),"not_paired")==0?"Wi-Fi not paired":strcmp(networkState(),"connecting_wifi")==0?"Connecting to Wi-Fi":strcmp(networkState(),"waiting_host")==0?"Waiting for your host":networkConnected()?"Waiting for your host":"Connection unavailable";
     m.timerBusy=timerBusy;m.timerCount=timerCount;m.timerFinished=timerFinished;m.timerSeconds=max(0,timerSeconds-int((millis()-timerAt)/1000));m.timerMinutes=timerMinutes;
     m.timerResult=millis()-timerResultAt<8000?timerResult.c_str():"";m.timerLabel=timerLabel.c_str();
@@ -240,7 +252,7 @@ static void report(unsigned query=0) {
     auto s=audioStatus();
     auto net=networkStats();
     auto usb=usbStats();
-    Host.printf("STATUS product=round-voice version=0.14.0 protocol=1 duplex=1 intercom=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
+    Host.printf("STATUS product=round-voice version=0.15.0 protocol=1 duplex=1 intercom=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
         displayReady,touchReady,ESP.getPsramSize(),sdReady,(unsigned long)sdMegabytes,pmuReady,
         batteryPresent,batteryPercent,charging,s.micReady,s.speakerReady,unsigned(s.mode),
         (unsigned long)s.recordedSamples,s.peak,s.volume,(unsigned long)s.errors,ESP.getFreeHeap(),
@@ -284,6 +296,8 @@ static void pollMuteButton() {
     muteButtonAt=now;
     auto press=[&](bool upper,Page startPage) {
         if(upper)++upperPresses;else ++lowerPresses;
+        // Microphone mute remains immediately accessible on Home/Voice.
+        if(wakeScreen() && !(upper && (startPage==Page::Home || startPage==Page::Voice)))return;
         if(page!=startPage)return;
         if(intercom.busy()) {if(upper && intercom.phase==IntercomState::Active)muteIntercom();else if(!upper)endIntercom();return;}
         const char* action=ControlScene::physicalAction(page,upper);
@@ -427,11 +441,12 @@ static void handleCommand(const String& command) {
     else if (command.startsWith("TIMER_STATE ")) {
         int count,remaining,finished;
         if (sscanf(command.c_str()+12,"%d %d %d",&count,&remaining,&finished)==3 && count>=0 && count<=16 && remaining>=0 && remaining<=86400) {
-            if (finished && !timerFinished) page=Page::Timer;
+            if (finished && !timerFinished) {wakeScreen();page=Page::Timer;}
             timerCount=count; timerSeconds=remaining; timerFinished=finished==1; timerAt=millis(); timerAvailable=true;
         }
     }
     else if ((command=="WAKE" || command.startsWith("WAKE ")) && wakeArmed && !wakeMuted && !intercom.busy() && !listenUntil) {
+        wakeScreen();
         page=Page::Voice; thinking=false;
         cueRequest=command=="WAKE"?1:strtoul(command.c_str()+5,nullptr,10);
         cueBefore=audioStatus().cueCompletions; cuePending=true;
@@ -577,6 +592,8 @@ void setup() {
     VoiceScene::prepareOrb(voiceOrb,static_cast<VoiceScene::OrbPixel*>(ps_malloc(VoiceScene::orbCapacity*sizeof(VoiceScene::OrbPixel))));
     preferences.begin("round-voice",false);
     brightness=constrain(preferences.getInt("brightness",120),20,255);
+    screenIdle.configure(preferences.getUInt("screenDim",120),preferences.getUInt("screenOff",600));
+    screenIdle.activity(millis());
     wakeMuted=preferences.getBool("mic_muted",false);
     panel->setBrightness(brightness); canvas->fillScreen(INK); canvas->flush();
     Wire.begin(Board::sda,Board::scl); Wire.setClock(400000);
@@ -615,6 +632,14 @@ void loop() {
     sendMic();
     int16_t rx=0,ry=0;
     bool pressed=touchReady && touch.getPoint(&rx,&ry,1)>0;
+    if(pressed && wakeScreen())discardWakeTouch=true;
+    if(discardWakeTouch) {
+        touchGesture=TouchGesture{};
+        if(pressed)wakeReleaseAt=0;
+        else if(!wakeReleaseAt)wakeReleaseAt=millis();
+        else if(millis()-wakeReleaseAt>=50)discardWakeTouch=false;
+        pressed=false;
+    }
     if(pressed && !touchGesture.tracking())touchPage=page;
     auto gesture=touchGesture.update(pressed,constrain(465-rx,0,465),constrain(465-ry,0,465),millis());
     // Incoming wake/music/physical-key navigation invalidates the old surface.
@@ -720,12 +745,26 @@ void loop() {
                 } else if (y>=265 && y<=307 && x>=95 && x<=227 && soundMuted>=0 && (soundFeatures&8)) homeAction(soundMuted?"sound_unmute":"sound_mute");
             }
         } else if (page==Page::Settings) {
-            if (y>=280 && y<=322 && x>=95 && x<=227) page=Page::Network;
-            else if (y>=280 && y<=322 && x>=239 && x<=371) page=Page::Intercom;
+            if (y>=280 && y<=322 && x>=90 && x<181) page=Page::Screen;
+            else if (y>=280 && y<=322 && x>=188 && x<279) page=Page::Network;
+            else if (y>=280 && y<=322 && x>=286 && x<377) page=Page::Intercom;
             else if (TouchTargets::microphone.contains(x,y)) setWakeMuted(!wakeMuted);
             else if (TouchTargets::brightnessDown.contains(x,y) || TouchTargets::brightnessUp.contains(x,y)) {
                 brightness=constrain(brightness+(x<233?-20:20),ControlScene::brightnessMinimum,ControlScene::brightnessMaximum);
-                panel->setBrightness(brightness); preferences.putInt("brightness",brightness);
+                applyScreenBrightness(); preferences.putInt("brightness",brightness);
+            }
+        } else if (page==Page::Screen) {
+            if(y>=287 && y<329 && x>=239 && x<371)page=Page::Settings;
+            else if(y>=287 && y<329 && x>=95 && x<227){screenIdle.sleep();applyScreenBrightness();}
+            else if(x>=99 && x<367 && ((y>=165 && y<207)||(y>=214 && y<256))) {
+                const unsigned times[]={0,60,120,300,600,900};
+                bool dim=y<207;unsigned current=dim?screenIdle.dimSeconds:screenIdle.offSeconds;
+                int index=0;for(int i=0;i<6;++i)if(times[i]==current)index=i;
+                for(int n=1;n<=6;++n) {
+                    unsigned next=times[(index+n)%6];
+                    if(screenIdle.configure(dim?next:screenIdle.dimSeconds,dim?screenIdle.offSeconds:next))break;
+                }
+                preferences.putUInt("screenDim",screenIdle.dimSeconds);preferences.putUInt("screenOff",screenIdle.offSeconds);
             }
         } else if (page==Page::Music && y>=282 && y<=324 && wakeArmed && millis()-musicAt<5000) {
             auto state=MusicUi::resolve(true,musicState.c_str());
@@ -763,6 +802,9 @@ void loop() {
         savedVolume=audioStatus().volume; preferences.putInt("volume",savedVolume); preferenceAt=0;
     }
     if (millis()-lastPower>=5000) { lastPower=millis(); updatePower(); }
+    auto currentAudio=audioStatus();
+    bool engaged=cuePending || listenUntil || thinking || intercom.busy() || currentAudio.mode==AudioMode::Recording || currentAudio.mode==AudioMode::Chime || currentAudio.mode==AudioMode::Playback || (currentAudio.mode==AudioMode::Remote && !remoteIsMusic);
+    screenIdle.update(millis(),engaged);applyScreenBrightness();
     // Full-frame QSPI flushes are expensive; leave USB enough time to refill
     // 48 kHz output. Touch still runs on every loop and gets an immediate frame.
     if (touchBegan || swiped || millis()-lastFrame>=100) { lastFrame=millis(); draw(); }

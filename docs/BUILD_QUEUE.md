@@ -16,6 +16,19 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Current handoff:** Deck screen protection and in-memory voice troubleshooting
+are deployed. Known generated speech passes both wake phrases and the live host
+transcription/assistant path without playback. This does not verify room pickup:
+the observed USB-headset input is quiet and no owner wake event was observed in
+the latest diagnostic window. Use the input meter and stage history during the
+next real attempt. Mini firmware 0.15.0 builds with Screen settings and idle OLED
+protection; installation is pending because no USB Mini is attached to this laptop.
+No motion/occupancy/presence-class binary sensors are currently exposed by Home
+Assistant. Do not claim that presence wake or acoustic acceptance is complete.
+One quiet 2% headphone-to-microphone wake check produced no detected wake; its
+question was therefore not played. This does not establish a microphone fault
+or human-speech pickup. The next test needs someone speaking near the microphone.
+
 - [x] Recurring alarms, reminders, snooze, quiet hours, restart/DST behavior (software).
 - [x] Voice/text list commands; list editing and ordering (software).
 - [x] Detailed lights, climate modes and speaker playback controls (software; simulated devices only).
@@ -38,13 +51,17 @@ Prioritize the Pi audio path before extending round intercom. See
 - [x] Pi display visual polish: bundled typography, smooth status ring, contrast and touch spacing; deployed with dedicated kiosk sizing. Owner visual acceptance of this pass remains open.
 - [x] Home tile selection and saved positions, Music tile with artwork/control, and horizontal page swipes that leave keyboard/control gestures intact (software).
 - [x] Native Pi wake recognition during Spotify, optional 80% music ducking and shared-output setup (software; live wake/cue/restore acceptance pending).
+- [x] Deck configurable idle dim/sleep and wake-only first touch; native HDMI Off/On reported by X11. Physical backlight/touch acceptance pending.
+- [x] Pi input meter and bounded, volatile wake/capture/reply diagnostics; no recordings or ambient transcripts saved.
+- [x] Mini OLED idle dim/dark settings, touch wake and audio-preserving screen state (compiled and rendered; firmware installation pending).
 - [x] Integrated software verification, fresh Docker build, repeatable browser suite, and refreshed screenshots/documentation. Physical and external-service acceptance below remains open.
 
 ## Hardware acceptance when the owner returns
 
 - [x] Stable Pi power, HDMI at 1024 × 600, USB touch, owner visual check.
 - [ ] Exact panel model and complete touch calibration.
-- [ ] Identify and configure the microphone and speaker to be attached to the Pi; physical mute/indicator wiring.
+- [x] Provisional USB headset selected for Pi microphone/playback; Spotify playback owner-confirmed.
+- [ ] Final microphone/speaker assembly and physical mute/indicator wiring.
 - [x] Deploy the current display software and restricted gateway; Pi pairing and restart recovery.
 - [x] Live access revocation and re-enrollment through a temporary Pi bridge; primary pairing preserved.
 - [x] Recovery after a 90-second loss of the Pi's Echo connection, with the original pairing retained.
@@ -84,8 +101,8 @@ restart-safe duplicate protection, clock changes, permissions and local briefing
 composition; the related source and display-voice checks also pass. Silent browser
 checks cover the form and phone layout. No real calendar events were created.
 
-Next: owner visual acceptance of the polish pass, then audio hardware acceptance
-when the Pi microphone and speaker are attached.
+Next: observe a real Pi voice attempt using the new diagnostic meter/history,
+then install the built Mini firmware when its USB connection is available.
 The optional round intercom adapter and firmware controls are implemented; see
 [Round intercom](ROUND_INTERCOM.md). They do not replace the Pi's own audio path.
 

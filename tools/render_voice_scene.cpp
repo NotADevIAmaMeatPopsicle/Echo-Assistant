@@ -18,6 +18,7 @@
 #include "../include/ui_type.h"
 #include "../include/mute_button.h"
 #include "../include/touch_gesture.h"
+#include "../include/screen_idle.h"
 
 struct Raster {
     std::vector<uint16_t> pixels=std::vector<uint16_t>(466*466,0);
@@ -190,6 +191,25 @@ int main(int argc,char** argv) {
         puts("PASS: mute button bounce, startup, hold, repeat, bus-fault and rollover cases");
     }
     const char* directory=argc>1?argv[1]:".";
+    {
+        ScreenIdle screen;
+        assert(screen.update(119999,false)==ScreenIdle::Level::Awake);
+        assert(screen.update(120000,false)==ScreenIdle::Level::Dim);
+        assert(screen.update(600000,false)==ScreenIdle::Level::Off);
+        assert(screen.activity(600010));
+        assert(screen.update(700000,true)==ScreenIdle::Level::Awake);
+        assert(!screen.configure(600,120));assert(screen.configure(0,0));
+        screen.sleep();assert(screen.update(800000,false)==ScreenIdle::Level::Off);
+        screen.activity(0xfffffff0);assert(screen.configure(60,120));
+        assert(screen.update(0xea60,false)==ScreenIdle::Level::Dim);
+        assert(screen.update(0x1d4c0,false)==ScreenIdle::Level::Off);
+        Raster raster;ControlScene::Model m;m.page=ControlScene::Page::Screen;
+        ControlScene::render(raster,m);raster.checkBounds();
+        assert(raster.has("Dim after 2 min") && raster.has("Dark after 10 min"));
+        char file[1024];snprintf(file,sizeof(file),"%s/screen-comfort.ppm",directory);raster.save(file);
+        assert(ControlScene::swipePage(ControlScene::Page::Screen,false)==ControlScene::Page::Settings);
+        puts("PASS: screen dim/off timers, activity, explicit sleep, settings validation and rollover");
+    }
 
     // A host's active status cannot open a call microphone without local consent.
     IntercomState call;

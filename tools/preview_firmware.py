@@ -33,6 +33,7 @@ def main():
     states += ['lights-unassigned','lights-partial','lights-pending']
     states += ['spotify-'+s for s in ('not_configured','runtime_missing','unavailable','disconnected','discoverable','connected','playing','stopped','unexpected')]
     states += ['intercom-'+s for s in ('off','rooms','incoming','outgoing','active','muted')]
+    states += ['screen-comfort']
     for state in states:
         image=Image.open(OUT/f'{state}.ppm').convert('RGBA')
         mask=Image.new('L',image.size);ImageDraw.Draw(mask).ellipse((0,0,465,465),fill=255)

@@ -65,6 +65,21 @@ unavailable or revoked access stops capture and prevents new requests.
 
 ## Privacy and recovery
 
+**Settings → Talk to this Pi → Voice troubleshooting** shows the live microphone
+level and the last stages of a voice attempt. These distinguish a missing wake,
+an empty capture, a failed host request and a reply playback failure. Stage names,
+levels and durations stay in RAM for at most 15 minutes (32 events); Clear removes
+them immediately. They do not include ambient words, microphone recordings or
+exception payloads. Restarting the listener clears them. The transcript/result
+still expires after two minutes as described below.
+
+If samples arrive but the level stays almost silent while you speak, check the
+headset's physical mute switch and microphone position. If **Wake word detected**
+appears followed by **No usable speech**, wait for the cue and speak closer. If
+there is no wake event, **Talk** bypasses wake recognition and tests command capture.
+Software tests with generated speech verify the model path but cannot establish
+room pickup distance or identify a physical mute switch's position.
+
 Idle microphone samples are processed locally and are not sent to the host.
 Only the bounded command after activation is uploaded to the private speech
 endpoint. Microphone audio and decoded replies stay in memory; reply playback

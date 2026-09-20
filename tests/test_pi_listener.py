@@ -25,6 +25,20 @@ class Music:
 
 
 class PiListenerTests(unittest.TestCase):
+    def test_diagnostics_are_bounded_measurements_without_recordings(self):
+        with TemporaryDirectory() as directory:
+            listener=Listener(lambda *args:None,Music(),directory)
+            listener.measure(array('h',[1000,-1000]*640).tobytes())
+            for i in range(40):listener.note('capture_finished',voiced_ms=i,transcript='not retained')
+            d=listener.diagnostics()
+            self.assertEqual(len(d['events']),32);self.assertEqual(d['frames'],1)
+            self.assertAlmostEqual(d['level_dbfs'],-30.3,places=1)
+            self.assertFalse(d['audio_saved']);self.assertNotIn('not retained',json.dumps(d))
+            with patch('listener.time.monotonic',return_value=time.monotonic()+901):
+                self.assertEqual(listener.diagnostics()['events'],[])
+                self.assertIsNone(listener.diagnostics()['level_dbfs'])
+            listener.control('clear_diagnostics');self.assertEqual(listener.diagnostics()['events'],[])
+
     def test_music_duck_and_legacy_pause_do_not_claim_echo_cancellation(self):
         with TemporaryDirectory() as directory:
             music=Music();listener=Listener(lambda *args:None,music,directory)

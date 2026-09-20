@@ -71,8 +71,9 @@ does not reduce backlight power. This implementation does not configure Wayland.
 
 AMOLED pixels can develop permanent burn-in from prolonged static content. LCDs
 are much less susceptible, though temporary image retention is possible. These
-settings apply to the Deck/browser display; Mini firmware has separate brightness
-controls and does not inherit the Deck's power settings. No presence sensor is
+settings apply to the Deck/browser display; the current Mini firmware adds its own
+Settings → Screen timers and does not inherit the Deck's settings. It needs a
+firmware update on existing boards. No presence sensor is
 configured: touch and accepted wake words work, but camera, PIR and room-presence
 wake are not currently implemented. Echo does not infer occupancy from the mic.
 

@@ -5,9 +5,9 @@
 
 namespace ControlScene {
 constexpr int brightnessMinimum=20,brightnessMaximum=255;
-enum class Page { Voice, Home, Thermostat, ThermostatMode, Soundbar, SoundbarVolume, Weather, Music, Settings, Network, Timer, NewTimer, Lights, SpeakerPicker, Intercom };
+enum class Page { Voice, Home, Thermostat, ThermostatMode, Soundbar, SoundbarVolume, Weather, Music, Settings, Network, Timer, NewTimer, Lights, SpeakerPicker, Intercom, Screen };
 inline Page swipePage(Page page,bool left) {
-    Page parent=page==Page::ThermostatMode?Page::Thermostat:page==Page::SoundbarVolume || page==Page::SpeakerPicker?Page::Soundbar:page==Page::Network?Page::Settings:page==Page::NewTimer?Page::Timer:page;
+    Page parent=page==Page::ThermostatMode?Page::Thermostat:page==Page::SoundbarVolume || page==Page::SpeakerPicker?Page::Soundbar:page==Page::Network || page==Page::Screen?Page::Settings:page==Page::NewTimer?Page::Timer:page;
     if(!left && parent!=page)return parent;
     const Page pages[]={Page::Voice,Page::Home,Page::Soundbar,Page::Thermostat,Page::Lights,Page::Music,Page::Weather,Page::Timer,Page::Intercom,Page::Settings};
     for(int i=0;i<10;++i)if(pages[i]==parent)return pages[(i+(left?1:9))%10];
@@ -37,6 +37,7 @@ struct Model {
     bool micMuted=false,micReady=true,wifi=false,sdReady=false,timerBusy=false,timerFinished=false,musicConnected=false;
     bool homePending=false,homeFailed=false;
     int brightness=120,timerCount=0,timerSeconds=0,timerMinutes=5;
+    unsigned screenDim=120,screenOff=600;
     unsigned sdMegabytes=0;
     const char *connection="Connection unavailable",*timerLabel="",*timerResult="",*musicTitle="",*musicArtist="",*musicState="";
 };
@@ -194,7 +195,16 @@ template<class Surface> void render(Surface& g,const Model& m) {
             pill(g,TouchTargets::microphone,m.micMuted?"Unmute microphone":"Mute microphone",m.micMuted?amber:mint);
             centered(g,"Brightness",222,1,dim);pill(g,TouchTargets::brightnessDown,"-",dim,m.brightness>brightnessMinimum);pill(g,TouchTargets::brightnessUp,"+",dim,m.brightness<brightnessMaximum);
             snprintf(value,sizeof(value),"%d%%",m.brightness*100/255);centered(g,value,263,1,dim);
-            pill(g,95,280,132,"Connection",mint);pill(g,239,280,132,"Intercom",mint);break;
+            pill(g,90,280,91,"Screen",mint);pill(g,188,280,91,"Wi-Fi",mint);pill(g,286,280,91,"Calls",mint);break;
+        case Page::Screen:
+            centered(g,"Screen comfort",128,2);
+            centered(g,"Tap a timer to change it",151,0,dim);
+            if(m.screenDim)snprintf(value,sizeof(value),"Dim after %u min",m.screenDim/60);else strcpy(value,"Dimming off");
+            pill(g,99,165,268,value,mint);
+            if(m.screenOff)snprintf(value,sizeof(value),"Dark after %u min",m.screenOff/60);else strcpy(value,"Automatic dark off");
+            pill(g,99,214,268,value,mint);
+            centered(g,"Touch once to wake. Music stays on.",277,0,dim);
+            pill(g,95,287,132,"Sleep now",mint);pill(g,239,287,132,"Back",dim);break;
         case Page::Network:
             centered(g,"Connection",132,2);centered(g,m.wifi?"Paired Wi-Fi":m.system.connected?"USB / local host":"Host disconnected",184,2,m.system.connected?mint:dim);centered(g,m.connection,225,1,dim);
             centered(g,"Use USB to pair with your host",269,1,dim);

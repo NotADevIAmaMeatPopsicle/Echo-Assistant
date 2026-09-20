@@ -17,6 +17,23 @@ Target: ESP32-S3 with 16 MB flash and 8 MB octal PSRAM, 466 × 466 CO5300 displa
 
 ## Build and flash
 
+### Screen protection
+
+The current firmware adds **Settings → Screen** with independent dim/dark timers
+(2 and 10 minutes by default), Never choices, and Sleep now. Dark sets the OLED's
+brightness to zero and stops frame rendering; it does not suspend the ESP32 or
+its audio/network tasks. Touch once to wake without activating a hidden control.
+An accepted wake word, active conversation/call or alarm restores visibility.
+Music alone may continue with the screen dark. Brightness and timer choices persist.
+The upper button on Home/Echo still toggles microphone mute immediately, even
+while dark; a physical button on a device-control page wakes first.
+
+This is separate from the Deck's HDMI settings. New firmware must be installed
+on the Mini before these controls appear. Hardware dark/wake and continued-audio
+acceptance remain required; there is no configured presence sensor.
+
+### Firmware installation
+
 After the host setup has created `.venv`, install and run PlatformIO there:
 
 ```powershell

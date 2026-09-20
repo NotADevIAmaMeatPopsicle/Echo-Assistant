@@ -28,8 +28,11 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     fs.mkdirSync('output/playwright',{recursive:true});await page.screenshot({path:'output/playwright/pi-listening.png',animations:'disabled'});
     await page.locator('#voice-send').click();await page.waitForFunction(()=>document.getElementById('assistant-phase').textContent==='On it.');
     state.phase='speaking';state.result={id:'a'.repeat(32),transcript:'Set a timer for tea.',text:'Your timer is set for five minutes.',status:'complete'};
+    state.diagnostics={frame_age_seconds:.1,level_dbfs:-64,recent_peak_dbfs:-55,recent_rms_dbfs:-63,events:[{stage:'wake_detected',age_seconds:12},{stage:'no_speech',age_seconds:3}]};
     await page.waitForFunction(()=>document.getElementById('assistant-phase').textContent==='Here’s what I found.');await page.getByText('Your timer is set for five minutes.',{exact:true}).waitFor();
     await page.locator('#voice-cancel').click();assert.equal(commands.at(-1),'stop');
+    await page.waitForFunction(()=>document.getElementById('pi-voice-events').textContent.includes('No usable speech'));
+    assert.match(await page.locator('#pi-input-level').textContent(),/quiet/);
     await page.locator('#pi-voice-mute').click();await page.waitForFunction(()=>document.getElementById('assistant-phase').textContent==='A little quiet.');assert.ok(await page.locator('#voice-start').isDisabled());
     offline=true;await page.waitForFunction(()=>document.getElementById('assistant-phase').textContent==='Reconnecting to this Pi…');assert.ok(await page.locator('#voice-start').isDisabled());
     assert.ok(!focus.some(Boolean),'Native presence must not create a browser audio lease that cancels itself');assert.deepEqual(errors,[]);

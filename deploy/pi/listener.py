@@ -1,6 +1,7 @@
 """Native, opt-in Pi voice endpoint. Wake detection stays on this Pi."""
 from array import array
 from concurrent.futures import Future
+from collections import deque
 import importlib.util
 import io
 import json
@@ -16,6 +17,7 @@ import sys
 import threading
 import time
 import wave
+import urllib.error
 
 from audio_once import wav, scaled_reply
 from alerts import chime
@@ -52,9 +54,9 @@ class Detector:
         self.recognizer = KaldiRecognizer(self.model,16000,json.dumps([*PHRASES,'[unk]']))
         self.recognizer.SetWords(True)
         self.recognizer.SetPartialWords(True)
-        self.partial_hits=0
+        self.partial_hits=0;self.last_match=None
 
-    def reset(self): self.recognizer.Reset();self.partial_hits=0
+    def reset(self): self.recognizer.Reset();self.partial_hits=0;self.last_match=None
 
     def feed(self, pcm):
         final=self.recognizer.AcceptWaveform(pcm)
@@ -63,6 +65,7 @@ class Detector:
         phrase=result.get('text' if final else 'partial','').strip().lower()
         recognized=(phrase in PHRASES and len(words)==2 and ' '.join(w.get('word','') for w in words)==phrase
                 and all(type(w.get('conf')) in (float,int) and .8 <= w['conf'] <= 1 for w in words))
+        if recognized:self.last_match=phrase
         if final:self.partial_hits=0;return recognized
         # Continuous music may never yield an utterance-ending silence. Require
         # two consecutive confident, complete partial phrases before waking.
@@ -104,6 +107,7 @@ class Listener:
         self.phase='disabled';self.error=None;self.config_error=False;self.request_id=None;self.cancel_sent=None;self.pending_http=None;self.talk_options=None
         self.result=None;self.result_at=0.;self.client=secrets.token_hex(16);self.last_focus=0.;self.last_host=0.;self.host_ready=False;self.health_thread=None
         self.devices_at=0.;self.devices_in=[];self.devices_out=[]
+        self.events=deque(maxlen=32);self.levels=deque(maxlen=125);self.level_at=0.;self.frame_count=0
         if self.path.exists():
             try:
                 info=self.path.stat()
@@ -114,6 +118,35 @@ class Listener:
     def ready(self):
         return importlib.util.find_spec('vosk') is not None and (self.model/'am/final.mdl').is_file()
 
+    def note(self,stage,**numbers):
+        # Only fixed stage names and numeric measurements. Never ambient words,
+        # PCM, credentials, exception text, or full request/response payloads.
+        with self.lock:
+            self.events.append({'stage':stage,'at':time.monotonic(),
+                                **{k:v for k,v in numbers.items() if type(v) in (int,float)}})
+
+    def measure(self,pcm):
+        values=array('h');values.frombytes(pcm)
+        if sys.byteorder!='little':values.byteswap()
+        if not values:return
+        now=time.monotonic();rms=math.sqrt(sum(v*v for v in values)/len(values))
+        peak=max(abs(v) for v in values)
+        with self.lock:
+            self.frame_count+=1;self.level_at=now
+            self.levels.append((now,rms,peak))
+
+    def diagnostics(self):
+        with self.lock:
+            now=time.monotonic()
+            levels=[v for v in self.levels if now-v[0]<=10]
+            db=lambda value:round(20*math.log10(max(value,1)/32768),1)
+            return {'frames':self.frame_count,'frame_age_seconds':round(now-self.level_at,1) if self.level_at else None,
+                    'level_dbfs':db(levels[-1][1]) if levels else None,
+                    'recent_peak_dbfs':db(max(v[2] for v in levels)) if levels else None,
+                    'recent_rms_dbfs':db(max(v[1] for v in levels)) if levels else None,
+                    'events':[{**{k:v for k,v in e.items() if k!='at'},'age_seconds':round(now-e['at'],1)} for e in self.events if now-e['at']<=900],
+                    'retention_seconds':900,'audio_saved':False}
+
     def settings(self):
         with self.lock:
             if time.monotonic()-self.devices_at>15:
@@ -121,7 +154,7 @@ class Listener:
             if self.result and time.monotonic()-self.result_at>120:self.result=None
             return {'supported':True,'settings':dict(self.config),'inputs':self.devices_in,'outputs':self.devices_out,
                     'runtime_installed':self.ready(),'phase':self.phase,'error':self.error,'result':self.result,
-                    'phrases':list(PHRASES),'software_mute':True}
+                    'phrases':list(PHRASES),'software_mute':True,'diagnostics':self.diagnostics()}
 
     def configure(self,value):
         if self.config_error:raise Unavailable('Repair the saved Pi voice settings first')
@@ -162,7 +195,9 @@ class Listener:
     def control(self,action,allow_home=None,reply_audio=None):
         if any(value is not None and type(value) is not bool for value in (allow_home,reply_audio)):raise ValueError("Invalid voice permission")
         if action!="talk" and (allow_home is not None or reply_audio is not None):raise ValueError("Voice permissions belong to a talk request")
-        if action=='stop':self.talk.clear();self.talk_options=None;self.interrupt()
+        if action=='clear_diagnostics':
+            with self.lock:self.events.clear();self.levels.clear();self.frame_count=0;self.level_at=0.
+        elif action=='stop':self.talk.clear();self.talk_options=None;self.interrupt()
         elif action=='talk':
             if not self.config['enabled'] or self.config['muted']:raise Unavailable('Enable and unmute this Pi microphone first')
             self.interrupt();self.talk_options={"allow_home":self.config["allow_home"] if allow_home is None else allow_home,"reply_audio":True if reply_audio is None else reply_audio};self.talk.set()
@@ -228,7 +263,7 @@ class Listener:
                 if not block:raise Unavailable('Microphone disconnected')
                 last=time.monotonic();pending.extend(block)
                 while len(pending)>=2560:
-                    frame=bytes(pending[:2560]);del pending[:2560];yield frame
+                    frame=bytes(pending[:2560]);del pending[:2560];self.measure(frame);yield frame
 
     def play(self,pcm,config,*,barge=False):
         with os.fdopen(os.memfd_create('echo-voice',os.MFD_CLOEXEC),'w+b') as source:
@@ -251,14 +286,19 @@ class Listener:
         if self.pending_http is not None and not self.pending_http.done():raise Unavailable('The previous voice request is still stopping')
         options=self.talk_options or {'allow_home':config['allow_home'],'reply_audio':True};self.talk_options=None
         self.talk.clear();self.phase='cue';self.audio_focus(config,True);self.last_focus=time.monotonic()
+        self.note('cue_started')
         # The first warm note from the same locally generated alert sound.
         with wave.open(io.BytesIO(chime(config['volume'])),'rb') as cue:pcm=cue.readframes(48000)
         self.play(pcm,config)
+        self.note('cue_finished')
         self.detector.reset();self.phase='listening';self.end_capture.clear();segment=Segment()
+        self.note('capture_started')
         while not segment.feed(next(self.frames)) and not self.end_capture.is_set():pass
         pcm=segment.result()
-        if not pcm:self.error='I did not catch that. Try again after the cue.';return
+        self.note('capture_finished',duration_ms=segment.samples/16,voiced_ms=segment.voiced/16)
+        if not pcm:self.error='I did not catch that. Try again after the cue.';self.note('no_speech');return
         self.phase='thinking';self.request_id=secrets.token_hex(16);identifier=self.request_id
+        self.note('request_sent');request_at=time.monotonic()
         result=Future();self.pending_http=result
         def ask():
             try:result.set_result(self.request('/v1/display/voice?allow_home='+str(options['allow_home']).lower()+'&reply_audio='+str(options['reply_audio']).lower()+'&capture_id='+identifier,wav(pcm),'audio/wav',120))
@@ -268,11 +308,15 @@ class Listener:
             frame=next(self.frames)
             if self.detector.feed(frame):self.talk.set();raise InterruptedError()
         self.check(config);reply=result.result();self.request_id=None
+        self.note('reply_received',elapsed_ms=round((time.monotonic()-request_at)*1000),transcript_characters=len(str(reply.get('transcript',''))))
         self.result={'id':identifier,'text':str(reply.get('text',''))[:4000],'transcript':str(reply.get('transcript',''))[:1200],'status':reply.get('status','unavailable'),'home_actions':reply.get('home_actions',[])[:12]};self.result_at=time.monotonic()
         if reply.get('audio'):
             self.phase='speaking';self.detector.reset()
+            self.note('reply_playing')
             self.play(scaled_reply(reply['audio']['data'],config['volume']),config,barge=True)
-        elif reply.get('audio_error'):self.error=reply['audio_error']
+            self.note('reply_finished')
+        elif reply.get('audio_error'):self.error=reply['audio_error'];self.note('reply_audio_failed')
+        elif not reply.get('transcript'):self.note('transcription_empty')
 
     def run(self):
         while not self.stop.wait(.3):
@@ -280,6 +324,8 @@ class Listener:
             if self.config_error or not config['enabled'] or config['muted']:
                 self.phase='muted' if config['enabled'] and config['muted'] else 'disabled';continue
             if self.externally_busy():self.phase='busy';continue
+            if not self.host_ready:
+                self.phase='unavailable';self.error='Waiting for the private speech host.';continue
             try:
                 self.cancel.clear();self.phase='armed';self.check(config)
                 if config['input'] not in {d['id'] for d in self.captures()} or config['output'] not in {d['id'] for d in self.speakers()}:raise Unavailable('Attached microphone or speaker is unavailable')
@@ -292,15 +338,19 @@ class Listener:
                     # Echo's own spoken replies still require AEC for hands-free interruption.
                     self.phase='armed'
                     if self.talk.is_set() or self.detector.feed(frame):
+                        self.note('talk_pressed' if self.talk.is_set() else 'wake_detected')
                         try:self.command(config)
                         finally:self.audio_focus(config,False)
                         self.detector.reset()
             except InterruptedError:
+                self.note('interrupted')
                 self.phase='muted' if self.config['muted'] else 'stopping';self.interrupt()
-            except Exception:
+            except Exception as error:
                 if self.cancel.is_set() or config!=self.config:
                     self.phase='muted' if self.config['muted'] else 'stopping'
                 else:
+                    self.note('request_failed' if self.phase=='thinking' else 'playback_failed' if self.phase in {'cue','speaking'} else 'microphone_or_host_unavailable',
+                              http_status=error.code if isinstance(error,urllib.error.HTTPError) else 0)
                     self.phase='unavailable';self.error='Pi voice is waiting for its microphone, speaker, wake runtime or private host connection.'
                     self.interrupt();self.stop.wait(2)
             finally:
