@@ -16,6 +16,13 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Recovery checkpoint:** archive version 2 now includes shared encrypted photos,
+room-audio settings, doorbell state and calendar dispatch receipts. A fresh
+network-isolated API, container restart and restore into a new volume passed,
+including persistent pairing and owner/display separation. Eight focused recovery
+tests passed on Windows and Linux. Production data and running services were not
+changed by that rehearsal. Full Windows/Hermes disaster recovery remains open.
+
 **Current handoff:** Deck screen protection, optional presence wake and in-memory
 voice troubleshooting are deployed. Known generated speech passes both wake phrases and the live host
 transcription/assistant path without playback. This does not verify room pickup:
@@ -49,6 +56,7 @@ or human-speech pickup. The next test needs someone speaking near the microphone
 - [x] Pi Spotify receiver, ALSA playback, output attenuation and endpoint-specific naming (initial headset playback owner-confirmed; shared-output listening and session recovery remain acceptance).
 - [x] Pi alarm/reminder chimes, saved destination routing and visible snooze/dismiss controls (software; physical audio pending).
 - [x] Pi pairing/install/rollback client bundle; installed and OS restart verified.
+- [x] Complete saved-data recovery archive, legacy archive reading, photo integrity, room policy and calendar receipts; isolated API restart/restore verified with synthetic data.
 - [x] Pi display visual polish: bundled typography, smooth status ring, contrast and touch spacing; deployed with dedicated kiosk sizing. Owner visual acceptance of this pass remains open.
 - [x] Home tile selection and saved positions, Music tile with artwork/control, and horizontal page swipes that leave keyboard/control gestures intact (software).
 - [x] Native Pi wake recognition during Spotify, optional 80% music ducking and shared-output setup (software; live wake/cue/restore acceptance pending).

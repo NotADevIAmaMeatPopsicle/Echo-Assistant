@@ -61,9 +61,48 @@ downloaded only when this explicit build command is run.
 
 Use the repository Python for these scripts. Startup thereafter uses
 `tools/remote_device.py start`, and the desktop launcher targets the selected host.
-Recovery archives use `tools/backup_remote.py`; they are encrypted to the local
-Windows account. Archive creation has been exercised; a complete live disaster
-restore remains an acceptance item.
+Recovery archives use `tools/backup_remote.py`. A fresh API bootstrap, container
+restart and encrypted-archive restore into a new volume have been exercised with
+synthetic data. The full Windows recovery-task and Hermes disaster restore remain
+acceptance items; the isolated API check does not prove those paths.
+
+### Back up and restore saved data
+
+Run from the configured checkout on the Windows account used to manage the host:
+
+```text
+python tools/backup_remote.py create
+python tools/backup_remote.py inspect PATH_TO_ARCHIVE.echo-backup
+python tools/backup_remote.py restore PATH_TO_ARCHIVE.echo-backup
+```
+
+Creation reads a stable snapshot without stopping Echo. The archive includes saved
+settings, explicit memory, lists, schedules, routines, pairing, source permissions,
+media presets, room-audio settings, doorbell state, calendar dispatch receipts and
+the shared photo album. It excludes microphone recordings, conversations, browser
+sessions, research results and model weights. Pi-local audio/screen settings and
+browser Home tiles are on the Pi and require its own backup.
+
+Version 2 archives contain a Windows-DPAPI-protected manifest and the album's
+already encrypted photo blobs. The manifest protects their hashes and the storage
+key. Photo ciphertext is copied one image at a time; plaintext images never enter
+the archive. Inspect checks every member's size and hash before reporting success.
+These archives require the Windows account that created them; retain access to
+that profile when planning recovery onto another computer.
+
+**Restore replaces the saved snapshot.** It first creates and verifies a recovery
+point for the current installation, then stops the API and Hermes, stages all
+replacement data, and restores the protected bootstrap before restarting them.
+Ordinary file-write failures roll back the changed files; interrupted host power
+still requires recovery from the retained archive. Queued announcements are
+cancelled and previously claimed deliveries are marked uncertain, so restoring an
+old queue cannot replay them. Restoring a snapshot does
+not undo events or actions already sent to an external service.
+
+Version 1 archives remain readable. They lack shared photos and the newer room
+and calendar-receipt stores, so those are empty after a version 1 restore. The
+automatically created version 2 pre-restore archive preserves the current data.
+Use a recent archive when recovering calendar dispatch records.
 
 ## Browser access and storage
 

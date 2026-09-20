@@ -27,6 +27,31 @@ native-source checksums, and preserves the previous context outside the image.
 An explicit Docker build still needs network access for pinned dependencies.
 Building an image does not provision a host or migrate private settings.
 
+### Isolated installation and recovery rehearsal
+
+After staging the source, build a separate test tag and select the Docker context
+explicitly:
+
+```text
+docker --context YOUR_DOCKER_CONTEXT build -t echo-host:recovery-check deploy/host/context
+python tools/check_host_recovery.py --context YOUR_DOCKER_CONTEXT --image echo-host:recovery-check
+```
+
+The check uses only that existing image, newly named and labeled disposable
+volumes, and generated credentials. Containers have no network, published ports or
+device mounts. It boots the actual API, creates a sample note, photo and display
+pairing, checks owner/display permissions, restarts the container, and restores
+the recovery archive into a second empty volume. It verifies the photo bytes,
+room policy, pairing and calendar duplicate-protection record after restore.
+It removes only its own labeled containers and volumes; production stays running.
+
+On Windows the test archive uses the actual account-bound DPAPI protector. On
+Linux it uses a temporary AES key for the test envelope. This proves the API data
+path, not Windows Scheduled Task recovery, Hermes recovery, provider access or a
+physical power cycle. `tests.test_recovery_archive` separately covers legacy
+archives, corrupt blobs, unsafe archive members, linked targets, interrupted file
+replacement and suppressing old announcement playback.
+
 ## Display flows
 
 The browser checks require an existing Node runtime, Google Chrome and
