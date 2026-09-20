@@ -58,6 +58,7 @@ from .calendar_drafts import CalendarDrafts, draft_request
 from .doorbells import Doorbells
 from .announcements import Announcements, AnnouncementUnavailable
 from .announcement_api import install as install_announcements
+from .group_music import GroupMusic,install as install_group_music
 from .intercom import Intercom
 from .intercom_api import install as install_intercom
 from .photos import Photos
@@ -138,6 +139,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         return auth.authorize(request)
     def owner(request:Request):
         if authorize(request).startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
+    install_group_music(app,GroupMusic(runtime_root,store.protector,enabled=deployment_mode=='device'),authorize,owner)
     install_schedules(app,schedules,authorize)
     install_display_alerts(app,DisplayAlerts(assistant,schedules),authorize)
     announcements=Announcements(runtime_root,store.protector,displays,schedules,

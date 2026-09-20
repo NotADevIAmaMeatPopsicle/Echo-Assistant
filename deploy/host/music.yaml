@@ -1,0 +1,18 @@
+# Optional overlay for compose.yaml. This service has no host-published ports.
+services:
+  music:
+    image: ghcr.io/music-assistant/server:2.10.4@sha256:37a9a2776e838a754c9f5b38c432567389952304e7cb8f6b44b6cd28043de6de
+    container_name: echo-music
+    restart: unless-stopped
+    volumes:
+      - music_data:/data
+    networks:
+      default:
+        aliases: [echo-music]
+    mem_limit: 1536m
+    cpus: 2
+    logging:
+      driver: none
+volumes:
+  music_data:
+    name: echo_music_data

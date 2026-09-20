@@ -67,6 +67,13 @@ def fixtures():
         'artwork':'/v1/music/artwork/'+'a'*64,'open_url':''}
     data['/v1/display/music/now-playing']={**data['/v1/music/now-playing'],'supported':True,'receiver_name':'Echo Display','output_volume':2,'output_configured':True,'artwork':'/v1/display/music/artwork/'+'a'*64}
     data['/v1/display/music/settings']={'supported':False}
+    data['/v1/music/groups']={'status':'available','revision':1,'binding':'a'*64,'max_volume':30,'items':[
+        {'id':key,'name':name,'provider':'sendspin','available':True,'state':'paused','volume':2,'muted':False,
+         'features':['pause','volume_set','volume_mute','set_members'],'members':[],'leader':None,'in_group':False,
+         'blocked':False,'compatible':['demo-deck' if key=='demo-mini' else 'demo-mini'],
+         'title':'A little room to breathe','artist':'Sample track'} for key,name in [('demo-deck','Echo Deck · sample'),('demo-mini','Echo Mini · sample')]]}
+    data['/v1/music/groups/settings']={'revision':1,'config':{'enabled':True,'url':'http://echo-music:8095','players':['demo-deck','demo-mini'],'max_volume':30},'token_saved':True}
+    data['/v1/music/groups/discovery']=deepcopy(data['/v1/music/groups'])
     home = data['/v1/home']; home['status'] = 'configured'
     home['lights']['revision'] = revision
     for room, identifier in zip(home['lights']['rooms'], ['bedroom','living_room','dining_room','patio']): room['id'] = identifier
@@ -135,6 +142,8 @@ class DisplayPreview(Preview):
             return self.camera_sample(path.endswith('/stream'))
         assets = {'/assets/display/polish.css':('display/polish.css','text/css'),
                   '/assets/display/profiles.css':('display/profiles.css','text/css'),
+                  '/assets/display/group-music.js':('display/group-music.js','text/javascript'),
+                  '/assets/display/group-music.css':('display/group-music.css','text/css'),
                   '/assets/display/profiles.js':('display/profiles.js','text/javascript'),
                   '/assets/display/screen.css':('display/screen.css','text/css'),
                   '/assets/display/screen.js':('display/screen.js','text/javascript'),
@@ -231,6 +240,26 @@ class DisplayPreview(Preview):
     do_PATCH = do_DELETE = do_PUT = do_POST
 
     def mutate(self, path, body):
+        if path=='/v1/music/groups/settings':
+            current=self.state[path]
+            if body['revision']!=current['revision']:raise ValueError()
+            current.update(config=body['config'],revision=current['revision']+1,token_saved=True)
+            self.state['/v1/music/groups']['revision']=current['revision']
+            return current
+        if path=='/v1/music/groups/members':
+            music=self.state['/v1/music/groups'];leader=next(p for p in music['items'] if p['id']==body['leader'])
+            leader['members']=body['members']
+            for p in music['items']:
+                if p['id']==leader['id']:continue
+                p['leader']=leader['id'] if p['id'] in body['members'] else None;p['in_group']=bool(p['leader'])
+            music['binding']=hashlib.sha256(json.dumps(music['items']).encode()).hexdigest()
+            return {'status':'accepted','text':'Demo group updated. No audio played.'}
+        if path=='/v1/music/groups/control':
+            p=next(p for p in self.state['/v1/music/groups']['items'] if p['id']==body['player'])
+            if body['action']=='volume':p['volume']=body['value']
+            elif body['action']=='mute':p['muted']=body['value']
+            else:p['state']={'play':'playing','pause':'paused','stop':'idle'}.get(body['action'],p['state'])
+            return {'status':'accepted','text':'Demo control accepted. No audio played.'}
         if path=='/v1/audio/rooms' and self.command=='PUT':
             parsed=Configure.model_validate(body)
             return self.announcements.configure([e.model_dump() for e in parsed.endpoints],parsed.revision)

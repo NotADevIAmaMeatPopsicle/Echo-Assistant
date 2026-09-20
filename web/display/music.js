@@ -14,8 +14,8 @@ function selectMusicTab(name,focus=false){
 }
 document.querySelectorAll('[data-music-tab]').forEach(button=>{
   button.onclick=()=>selectMusicTab(button.dataset.musicTab);
-  button.onkeydown=event=>{const names=['spotify','local','speakers'],index=names.indexOf(button.dataset.musicTab);let next;
-    if(event.key==='ArrowRight')next=(index+1)%3;if(event.key==='ArrowLeft')next=(index+2)%3;if(event.key==='Home')next=0;if(event.key==='End')next=2;
+  button.onkeydown=event=>{const names=[...document.querySelectorAll('[data-music-tab]')].filter(b=>!b.hidden).map(b=>b.dataset.musicTab),index=names.indexOf(button.dataset.musicTab);let next;
+    if(event.key==='ArrowRight')next=(index+1)%names.length;if(event.key==='ArrowLeft')next=(index+names.length-1)%names.length;if(event.key==='Home')next=0;if(event.key==='End')next=names.length-1;
     if(next!==undefined){event.preventDefault();selectMusicTab(names[next],true);}
   };
 });

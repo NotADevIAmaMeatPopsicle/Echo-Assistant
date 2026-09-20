@@ -131,6 +131,11 @@ Echo's own spoken reply requires an echo-cancelled input. An optional
 pickup and feedback still need physical verification. See [display music](docs/MUSIC_DISPLAY.md), [Pi receiver
 setup](docs/PI_SPOTIFY.md), and [voice setup](docs/PI_VOICE.md).
 
+The optional [Music Assistant connection](docs/GROUP_MUSIC.md) adds a **Together**
+tab for shared-player controls and reviewed room grouping. It works with compatible
+players already configured in Music Assistant; native grouped playback on the Pi
+and round speaker is still being integrated.
+
 ### Your day, lists, and reminders
 
 **My day** combines weather, upcoming calendar events, reminders, tasks, and
