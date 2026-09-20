@@ -21,6 +21,7 @@ function renderDisplayPresence(){
   let active=inCall ? 'intercom' : micStream ? 'listening' : micOpening ? 'opening' : voiceCancelling ? 'stopping' : voiceRequest || chatAbort ? 'thinking' : !voicePlayer.paused ? 'speaking' : 'ready';
   const states={ready:['Ready when you are.','Type a thought, or tap to talk.'],opening:['A moment…','Opening this device’s microphone.'],listening:['I’m listening.','Speak naturally, then send your recording.'],thinking:['On it.','A little thinking. I’ll be right with you.'],speaking:['Here’s what I found.','Replying on this device.'],stopping:['Stopping…','Closing the microphone and request.'],intercom:['Room call','Use Room audio to answer, mute or hang up.'],disconnected:['Reconnecting to Echo…','Checking this display’s connection to the server.']};
   let detail=states[active];
+  if(inCall&&typeof externalCallBusy==='function'&&externalCallBusy())detail=['Voice & video call','Use Room audio to mute, enable video or hang up.'];
   if(active==='ready'){
     if(!fresh('timers')||signInRequired){active='disconnected';detail=states.disconnected;}
     else if(data.health?.display_demo)detail=['Ready when you are.','Try the preview. Microphone and sound are off.'];

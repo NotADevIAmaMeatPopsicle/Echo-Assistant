@@ -11,8 +11,8 @@ $('room-tab-announcements').onclick=()=>roomAudioTab(false);$('room-tab-intercom
 const icClient=crypto.randomUUID().replaceAll('-','');
 let icEnabled=false,icData=null,icCall=null,icPollBusy=false,icOperation=false,icOpening=false,icEpoch=0,icRevision=0,icStarting=false,icActiveId=null;
 let icContext=null,icNode=null,icGain=null,icMic=null,icSource=null,icModule=false,icController=null,icQueue=[],icUploading=false,icSequence=0,icUploadGeneration=0,icError=null;
-function intercomIsBusy(){return icOpening||!!icCall&&icCall.status!=='ended';}
-function intercomExternalBusy(){return micOpening||!!micStream||!!voiceRequest||!!chatAbort||!voicePlayer.paused||!player.paused||!!announceCurrent;}
+function intercomIsBusy(){return icOpening||!!icCall&&icCall.status!=='ended'||typeof externalCallBusy==='function'&&externalCallBusy();}
+function intercomExternalBusy(){return micOpening||!!micStream||!!voiceRequest||!!chatAbort||!voicePlayer.paused||!player.paused||!!announceCurrent||typeof externalCallBusy==='function'&&externalCallBusy();}
 function icChanged(){document.dispatchEvent(new Event('echo:intercom'));renderIntercom();}
 function renderIntercom(){
   const paired=!!data.session?.receiver_id,active=icCall?.status==='active',ringing=icCall?.status==='ringing';

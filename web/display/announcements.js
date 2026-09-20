@@ -1,6 +1,6 @@
 /* Room audio is opt-in per receiver. No messages, claims or audio in browser storage. */
 'use strict';
-titles.audio='A little closer, room to room.';
+titles.audio='A voice, a little closer.';
 endpoints.audioRooms='/v1/audio/rooms';endpoints.audioMessages='/v1/audio/messages';
 pageEndpoints.audioMessages='audio';
 const roomPage=document.createElement('section');roomPage.id='page-audio';roomPage.className='page';roomPage.hidden=true;

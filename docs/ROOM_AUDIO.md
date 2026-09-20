@@ -1,5 +1,9 @@
 # Room audio
 
+For two-person browser voice/video calls through an optional provider, see
+[Voice and video calling](CALLING.md). The household features below use Echo's
+own private room routing and do not need LiveKit.
+
 Send a short spoken message to selected Echo receivers from **Planner → Room audio**.
 The round speaker and each paired display are separate destinations. An owner
 browser can send messages and configure rooms; receiving requires a paired display

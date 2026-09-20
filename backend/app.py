@@ -1,5 +1,6 @@
 """Loopback device API and Echo app. Cloud conversation requires explicit settings."""
 import os
+import asyncio
 from pathlib import Path
 import secrets
 from functools import partial
@@ -65,6 +66,7 @@ from .announcement_api import install as install_announcements
 from .group_music import GroupMusic,install as install_group_music
 from .intercom import Intercom
 from .intercom_api import install as install_intercom
+from .calling import Calling, CallStore, install as install_calling
 from .photos import Photos
 from .photo_api import install as install_photos
 from .media_presets import MediaPresets, install as install_media
@@ -93,10 +95,18 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
                 scheduler_stop.wait(1.5)
         doorbell_thread=Thread(target=watch_doorbells,name='echo-doorbells',daemon=True)
         doorbell_thread.start()
+        def watch_calls():
+            while not scheduler_stop.is_set():
+                calling.tick()
+                scheduler_stop.wait(2)
+        call_thread=Thread(target=watch_calls,name='echo-calls',daemon=True)
+        call_thread.start()
         try: yield
         finally:
             scheduler_stop.set(); scheduler_thread.join(timeout=3)
             doorbell_thread.join(timeout=4)
+            call_thread.join(timeout=6)
+            await asyncio.to_thread(calling.tick, close=True)
             app.state.speech_stop.set()
             display_voice.close()
             research.close()
@@ -187,6 +197,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         lambda:voice_status(runtime_root) if runtime_root else {'status':'disconnected'})
     install_announcements(app,announcements,store,authorize,owner)
     install_intercom(app,Intercom(announcements),authorize)
+    calling=Calling(CallStore(runtime_root,store.protector),displays,enabled=deployment_mode=='device')
+    install_calling(app,calling,authorize,owner)
     experiences = Experiences(home, SourceStore(runtime_root, store.protector))
     from .member_agenda import MemberAgenda
     personal_echo.agenda=MemberAgenda(experiences,displays,schedules)
@@ -206,7 +218,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     web = Path(__file__).resolve().parents[1]/'web'
     app.mount('/assets', StaticFiles(directory=web), name='assets')
 
-    app.add_middleware(BrowserHeadersMiddleware)
+    app.add_middleware(BrowserHeadersMiddleware,call_origins=calling.origins)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request, error):

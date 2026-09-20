@@ -53,7 +53,7 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Play music** | Spotify Connect with artwork, track details, seeking, shuffle/repeat, and volume controls; HTTPS radio presets and supported local media on the display. |
 | **Plan the day** | A daily briefing, selected calendars, reviewed event creation, repeating schedules, reviewed event/occurrence changes, shopping lists, tasks, and notes. |
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
-| **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, and answered two-way intercom. |
+| **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, answered two-way intercom, and optional [browser voice/video calls](docs/CALLING.md) through LiveKit. Provider and physical calling acceptance remain open. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
 | **Share deliberately** | Owner-assigned Household or Guest profiles for Deck and Mini, selected devices and sources, and optional local guest home voice. Personal sign-in adds separate memory, personality and conversation on Deck and Mini. Mini firmware awaits installation. |
 
@@ -443,7 +443,7 @@ displays**, then complete its client installation. Start audible tests at **2%**
 | Music from the Spotify app | [Round receiver](docs/MUSIC.md) · [Pi receiver](docs/PI_SPOTIFY.md) |
 | Calendar agenda, repeats and event changes | [Calendar permissions and forms](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md) |
 | Camera views and doorbell cards | [Cameras and doorbells](docs/CAMERAS_AND_DOORBELLS.md) |
-| Announcements and answered calls | [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) |
+| Announcements and answered calls | [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) · [Browser voice/video calls](docs/CALLING.md) |
 | An always-on host and Hermes | [Docker deployment and UIs](docs/DEPLOYMENT.md) |
 | Access from selected phones/computers | [Private Tailscale access](docs/TAILNET_ACCESS.md) |
 

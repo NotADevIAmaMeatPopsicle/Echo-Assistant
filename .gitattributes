@@ -9,6 +9,7 @@
 *.stl binary
 *.png binary
 *.gif binary
+web/vendor/* text eol=lf
 enclosure/**/*.json text eol=lf
 enclosure/**/*.md text eol=lf
 enclosure/**/*.txt text eol=lf

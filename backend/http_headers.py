@@ -3,7 +3,7 @@ from starlette.datastructures import MutableHeaders
 
 
 class BrowserHeadersMiddleware:
-    def __init__(self, app): self.app = app
+    def __init__(self, app, call_origins=lambda:[]): self.app,self.call_origins = app,call_origins
 
     async def __call__(self, scope, receive, send):
         async def add_headers(message):
@@ -14,6 +14,9 @@ class BrowserHeadersMiddleware:
                 headers['Referrer-Policy'] = 'no-referrer'
                 headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
                 if scope.get('path') == '/display':
+                    origins=self.call_origins()
+                    if origins:
+                        headers['Content-Security-Policy']=headers['Content-Security-Policy'].replace("connect-src 'self'", "connect-src 'self' "+' '.join(origins))
                     # Optional photos are browser-local object URLs, never uploaded.
                     headers['Content-Security-Policy'] = headers['Content-Security-Policy'].replace("img-src 'self' data:", "img-src 'self' data: blob:")
                     headers['Content-Security-Policy'] += '; media-src \'self\' blob: https:'

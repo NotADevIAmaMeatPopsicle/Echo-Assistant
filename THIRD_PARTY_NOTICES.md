@@ -1,5 +1,28 @@
 # Third-party sources
 
+## Optional browser calling
+
+`web/vendor/livekit-client-2.22.3.umd.js` is the unmodified official
+**livekit-client 2.22.3** browser bundle (Apache-2.0), downloaded from its npm
+release with SHA-512 archive verification. Source:
+https://github.com/livekit/client-sdk-js/tree/v2.22.3 . Its SHA-256 is
+`7fa17e37af5e996d8a25f15a637dcc0620215bc01b394e5d209f726afe7dc04d`.
+The upstream license is in `third_party/licenses/livekit-client-LICENSE`.
+
+Keep `web/vendor/livekit-NOTICES.txt` with the deployed bundle. It preserves the
+SDK license and notices for its bundled/runtime dependencies, identified from
+the published source map and upstream lock: protobuf 1.10.1 (Apache-2.0 and
+BSD-3-Clause), LiveKit mutex 1.1.1 and protocol 1.50.4 (Apache-2.0), events 3.3.0
+(MIT), jose 6.2.9 (MIT), loglevel 1.9.2 (MIT), machina 7.0.1 (MIT), sdp 3.2.2
+(MIT), sdp-transform 2.15.0 (MIT), tslib 2.8.1 (0BSD), and webrtc-adapter 9.0.6
+(BSD-3-Clause). No dependency installation scripts were run.
+
+The isolated provider check uses external **LiveKit server 1.13.7** (Apache-2.0),
+pinned by image digest in `tools/check_calling_provider.py`. Source:
+https://github.com/livekit/livekit/tree/v1.13.7 . It is not vendored here.
+
+## Other sources
+
 Keep these notices with source and binary distributions. Vendored dependencies
 retain their individual licenses; this file does not relicense them.
 

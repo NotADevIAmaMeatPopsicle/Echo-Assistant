@@ -24,6 +24,23 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Browser calling checkpoint:** Deck and browser displays now have optional
+LiveKit voice/video calls with owner configuration, encrypted provider credentials,
+explicit Household-display grants, two-minute one-use codes, quiet 2% playback,
+microphone mute, opt-in camera and hang-up. Calls coordinate Pi audio focus and
+screen wake; cancellation or lost access closes local tracks. Guest/Personal
+profiles cannot call. The existing private UI/network boundary is unchanged.
+Forty-one focused Python checks and two silent browser flows pass. A digest-pinned
+LiveKit 1.13.7 container accepted real room creation, a scoped participant
+WebSocket handshake, and deletion while denying participant admin actions.
+It had no published ports and sent no media. Real provider provisioning,
+Cloud failover and physical call quality remain open. See [Calling](CALLING.md).
+The private host update is deployed, and the Pi has verified the new assets and
+reloaded its kiosk. Calling stays disabled. Pairing, account/source settings and
+Pi private files were preserved; voice remains armed at 2%, Spotify discoverable,
+and no physical audio or home actions were used. Thirty related checks also pass
+inside the isolated Linux host image.
+
 **Portable recovery checkpoint:** backup creation can use a privately entered
 passphrase, and existing archives can be converted locally without replacing
 their originals. Portable manifests use scrypt and authenticated encryption;
@@ -331,6 +348,9 @@ parity. Known gaps documented in the smart-display guide remain:
       and the opt-in Mini host client are implemented. Mini firmware installation,
       actual provider playback and physical timing remain open; see [Grouped music](GROUP_MUSIC.md).
 - [ ] External calling with a supported provider.
+      LiveKit browser signalling, controls, permissions and provider setup software
+      are implemented and tested with isolated signalling. Real provider setup
+      and two-device media acceptance remain open; see [Calling](CALLING.md).
 - [ ] Household/guest profiles and per-user/per-room source policies.
       Per-display Household/Guest profiles, selected home-device and read-only
       source grants, isolated guest conversation and opt-in local guest home

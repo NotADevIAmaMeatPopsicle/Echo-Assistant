@@ -18,6 +18,8 @@ class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if method=='GET' and path=='/v1/calling':return True
+    if method=='POST' and (path in {'/v1/calling/start','/v1/calling/join'} or re.fullmatch(r'/v1/calling/[a-f0-9]{32}/(?:pulse|end)',path)):return True
     if method=='GET' and path in {'/v1/members/available','/v1/member/preferences','/v1/chat'}:return True
     if method in {'POST','DELETE'} and path=='/v1/member/session' or method=='PUT' and path=='/v1/member/preferences':return True
     if method=='DELETE' and path in {'/v1/memory','/v1/chat'}:return True

@@ -1,0 +1,12 @@
+.calling-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,.7fr);gap:24px}
+.calling-card h2{margin:8px 0}.calling-card .orb{width:72px;height:72px;margin:8px auto}
+.calling-stage{text-align:center;min-width:0}.calling-controls{justify-content:center;margin-top:16px}
+.calling-video{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.calling-video video{display:block;max-width:100%;width:320px;max-height:250px;border-radius:18px;background:#030b13;object-fit:contain}
+#calling-local video{width:120px}#calling-code{display:block;overflow-wrap:anywhere;user-select:all;letter-spacing:.06em;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#08192a}
+.calling-card input[type=text]{width:100%;min-width:0}.calling-card label{display:block;margin:16px 0}
+.calling-settings{margin-top:16px}.calling-settings .calling-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.calling-settings label{display:block;margin:12px 0}.calling-settings input:not([type=checkbox]){width:100%;min-width:0}
+#calling-permissions{max-height:220px;overflow:auto}#calling-remote-audio{display:none}
+.calling-help{border-top:1px solid var(--line);padding-top:16px;margin-top:20px}
+@media(max-width:720px){.calling-card{grid-template-columns:1fr;gap:12px}.calling-settings .calling-fields{grid-template-columns:1fr}.room-audio-tabs button{padding-inline:10px;font-size:13px}}

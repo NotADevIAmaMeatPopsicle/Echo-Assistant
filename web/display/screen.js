@@ -79,6 +79,7 @@
   window.addEventListener('wheel',()=>{if(mode!=='sleep')wake();},{passive:true});
   function engaged(){
     return !!chatAbort||displayCaptureBusy||busy||(typeof piVoiceBusy==='function'&&fresh('piVoice')&&piVoiceBusy())||
+      (typeof intercomIsBusy==='function'&&intercomIsBusy())||
       !!document.querySelector('dialog[open]')||[...document.querySelectorAll('video')].some(v=>!v.paused&&!v.ended);
   }
   function tickScreen(){
