@@ -34,7 +34,8 @@ acceptance remain required; there is no configured presence sensor.
 
 ### Firmware installation
 
-Firmware 0.17.0 adds [calendar review](ROUND_CALENDAR.md), retaining screen protection,
+Firmware 0.19.0 adds [personal sign-in](PERSONAL_ACCOUNTS.md#sign-in-on-mini),
+retaining [calendar review](ROUND_CALENDAR.md), screen protection,
 intercom and timed group audio. The host detects the review capability explicitly.
 Installation and physical acceptance of these additions are still required.
 

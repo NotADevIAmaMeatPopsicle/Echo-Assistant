@@ -44,7 +44,7 @@ class Members:
         self.path=Path(root)/'local/echo-members.json' if root else None
         self.protector,self.clock,self.wall=protector,clock,wall
         self.lock=RLock();self.records={};self.sessions={};self.memories={};self.error=False
-        self.base_profile=None;self.on_lock=lambda principal:None
+        self.base_profile=None;self.on_lock=lambda principal:None;self.round_ready=lambda:False
         if self.path and self.path.exists():
             try:
                 if self.path.stat().st_size>6000000:raise ValueError()
@@ -118,9 +118,9 @@ class Members:
 
     def permitted(self,endpoint):
         self.require()
-        if endpoint=='round':return []  # Mini personal sign-in needs its own explicit phone/firmware flow.
+        if endpoint=='round' and not self.round_ready():return []
         base=self.base_profile(str(endpoint))['profile']
-        if endpoint.startswith('display:'):
+        if endpoint=='round' or endpoint.startswith('display:'):
             return [identifier for identifier in base.get('members',[]) if identifier in self.records] if base['mode']=='household' or base['conversation'] else []
         return list(self.records)  # The owner workspace can deliberately enter a personal session.
 

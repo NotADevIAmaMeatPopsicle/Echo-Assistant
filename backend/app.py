@@ -135,6 +135,17 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     from .guest_home import GuestHome
     profiled_echo=ProfileAgent(echo,guest_echo,displays,GuestHome(catalog,actions,displays))
     members=Members(runtime_root,store.protector);members.base_profile=displays.profile_for;displays.members=members
+    # Mini access changes and personal-session changes serialize on one lock.
+    # The base profile remains separate from its effective signed-in view.
+    round_profile.lock=members.lock
+    class MiniView:
+        lock=members.lock
+        def snapshot(self):return displays.profile_for(members.resolve('round'))
+    round_home.profile=MiniView();round_home.principal=lambda:members.resolve('round')
+    def round_member_ready():
+        status=voice_status(runtime_root) if runtime_root else {}
+        return status.get('status') not in {None,'connecting','disconnected'} and status.get('access_profile',{}).get('members',False)
+    members.round_ready=round_member_ready
     personal_echo=MemberAgents(members,store,echo.provider,profiled_echo.home,assistant);profiled_echo.personal=personal_echo
     def lock_personal(principal):
         conversations.clear(str(principal));personal_echo.clear(principal)
@@ -157,7 +168,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         if request.headers.get('x-echo-endpoint'):
             auth.bearer(request)
             if request.headers['x-echo-endpoint']!='round':raise HTTPException(403,'Unknown host endpoint')
-            return round_profile.authorize(request)
+            principal=members.resolve('round')
+            round_profile.authorize(request,displays.profile_for(principal))
+            return principal
         if header.startswith('Display ') or (not header.startswith('Bearer ') and not request.cookies.get('echo_session') and request.cookies.get('echo_display_session')):
             principal=members.resolve(displays.identity(request))
             return check_access_revision(request,displays.authorize(request,principal))
@@ -271,7 +284,12 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         if principal.startswith('display:'):raise HTTPException(403,'Open the owner workspace to manage Echo Mini')
         status=voice_status(runtime_root) if runtime_root else {}
         ready=status.get('status') not in {None,'connecting','disconnected'} and status.get('access_profile',{}).get('firmware',False)
-        return {**round_profile.snapshot(),'firmware_ready':bool(ready)}
+        return {**round_profile.snapshot(),'firmware_ready':bool(ready),'members_ready':bool(members.round_ready())}
+
+    @app.get('/v1/round/session')
+    def mini_session(principal=Depends(authorize)):
+        if principal!='round':raise HTTPException(403,'Mini host identity required')
+        return displays.profile_for(principal)
 
     @app.put('/v1/round/profile',dependencies=[Depends(owner)])
     def save_mini_access(body:SetDisplayProfile):
@@ -279,6 +297,8 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             if conversations.snapshot('round').get('active'):
                 conversations.clear('round');raise HTTPException(409,'The Mini request is stopping. Save access when it finishes.')
             profile=body.profile.model_dump();previous=round_profile.snapshot()
+            if set(profile.get('members',[]))-set(previous['profile'].get('members',[])) and not members.round_ready():
+                raise HTTPException(409,'Connect Mini with personal-account firmware before sharing accounts.')
             if profile['mode']=='guest' and previous['profile']['mode']!='guest' and not mini_access('device')['firmware_ready']:
                 raise HTTPException(409,'Connect Echo Mini with the current profile-aware firmware before enabling Guest mode.')
             validate_guest_profile(profile,previous)
@@ -567,7 +587,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         # inherit household permissions when the owner changes its profile.
         with round_profile.lock:
             authorize(connection)
-            try:return (guest if round_profile.snapshot()['profile']['mode']=='guest' else household)()
+            try:return (guest if round_home.profile.snapshot()['profile']['mode']=='guest' else household)()
             except ValueError as error:raise HTTPException(409,str(error)) from None
             except HomeUnavailable as error:raise HTTPException(503,str(error)) from None
 
@@ -689,17 +709,17 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         if session=='round':
             with round_profile.lock:
                 authorize(connection)
-                if round_profile.snapshot()['profile']['mode']=='household':
+                if displays.profile_for(session)['profile']['mode']=='household':
                     research_result=research_reply(request.text,'device')
                     if research_result is not None:return research_result
                 try:activity=conversations.begin(session)
                 except ConversationBusy as error:raise HTTPException(409,str(error)) from None
-                before=round_profile.snapshot()
+                before=displays.profile_for(session)
             result=await run_conversation(connection,app.state.speech_stop,
                 partial(profiled_echo.respond,allow_home_actions=deployment_mode=='device',progress=activity.progress,calendar_review=request.calendar_review),
                 request.text,session,request.lookup,activity=activity)
             authorize(connection)
-            if round_profile.snapshot()!=before:raise HTTPException(409,'Mini access changed during the reply')
+            if displays.profile_for(session)!=before:raise HTTPException(409,'Mini access changed during the reply')
             return result
         try:
             research_result=research_reply(request.text,session)

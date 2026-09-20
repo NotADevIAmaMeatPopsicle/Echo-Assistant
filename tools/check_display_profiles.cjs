@@ -7,6 +7,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     const page=await browser.newPage({viewport:{width:1024,height:600},hasTouch:true}),errors=[];let saved=null;
     page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});
     const profile={mode:'household',name:'Household',room:'',conversation:true,home_devices:{},calendars:[],cameras:[],presence_sensors:[]};
+    await page.route('**/v1/members',r=>r.fulfill({json:{items:[{id:'c'.repeat(32),name:'Alex'}]}}));
     const display={id:'a'.repeat(32),name:'Guest room display',profile,profile_revision:0};
     let miniSaved=null;const mini={profile:{...profile},profile_revision:0,firmware_ready:false};
     await page.route('**/v1/round/profile',r=>{
@@ -33,15 +34,18 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     assert.deepEqual(saved.profile.cameras,['camera.porch_demo']);
     await page.locator('#mini-access-edit:not(:disabled)').tap();await page.locator('#display-access-save:not(:disabled)').waitFor();
     assert.equal(await page.locator('#display-access-mode option[value=guest]').evaluate(el=>el.disabled),true);
+    assert.equal(await page.locator('[data-profile-member]').isDisabled(),true);
     await page.locator('#display-access-cancel').tap();assert.equal(miniSaved,null);
-    mini.firmware_ready=true;await page.reload();await page.locator('#mini-access-edit:not(:disabled)').tap();
+    mini.firmware_ready=true;mini.members_ready=true;await page.reload();await page.locator('#mini-access-edit:not(:disabled)').tap();
     await page.locator('#display-access-save:not(:disabled)').waitFor();await page.locator('#display-access-mode').selectOption('guest');
     await page.locator('#display-access-name').fill('Guest speaker');await page.locator('#display-access-mode').selectOption('guest');
     assert.equal(await page.locator('[data-profile-source]').count(),0);
     await page.locator('[data-profile-entity]').first().selectOption('control');
+    await page.locator('[data-profile-member]').check();
     await page.locator('#display-access-home-voice').check();await page.locator('#display-access-conversation').uncheck();
     await page.screenshot({path:'output/playwright/mini-access-profile.png',animations:'disabled'});
     await page.locator('#display-access-save').tap();await page.locator('#display-access-dialog').waitFor({state:'hidden'});
+    assert.deepEqual(miniSaved.profile.members,['c'.repeat(32)]);
     assert.equal(miniSaved.revision,0);assert.equal(miniSaved.profile.conversation,false);assert.equal(miniSaved.profile.home_voice,true);
     assert.equal(miniSaved.profile.home_devices[entity],'control');assert.deepEqual(miniSaved.profile.calendars,[]);
     const guest=await browser.newPage({viewport:{width:1024,height:600},hasTouch:true});guest.on('pageerror',e=>errors.push(e.message));
@@ -61,7 +65,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     let chat=null;
     await guest.route('**/v1/chat',r=>{chat=r.request().postDataJSON();return r.fulfill({json:{status:'complete',capability:'home',text:'Synthetic guest command handled.',access_revision:2}});});
     await guest.route('**/v1/display/session',r=>r.fulfill({json:{role:'display',receiver_id:display.id,profile_revision:2,profile:{...display.profile,home_voice:true}}}));
-    await guest.reload();await guest.locator('body.guest-home-voice').waitFor();
+    await guest.reload();try{await guest.locator('body.guest-home-voice').waitFor();}catch(error){console.error({errors,session:await guest.evaluate(()=>data.session),classes:await guest.locator('body').getAttribute('class')});throw error;}
     assert.equal(await guest.locator('#allow-home').isVisible(),true);
     await guest.locator('#allow-home').check();await guest.locator('#chat-text').fill('Turn off Guest lamp');
     await guest.locator('#send-chat').tap();await guest.getByText('Synthetic guest command handled.',{exact:true}).waitFor();

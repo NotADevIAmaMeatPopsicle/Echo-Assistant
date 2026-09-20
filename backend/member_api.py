@@ -52,7 +52,7 @@ def install(app,members,personal,authorize,owner,validate,conversations,clear_sh
 
     @app.get('/v1/members/available')
     def available(principal=Depends(authorize)):
-        return {'items':members.available(str(principal)),'session_minutes':15,'supported':principal!='round'}
+        return {'items':members.available(str(principal)),'session_minutes':15,'supported':principal!='round' or members.round_ready()}
 
     @app.post('/v1/member/session')
     def login(body:MemberLogin,principal=Depends(authorize)):

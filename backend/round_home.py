@@ -18,10 +18,11 @@ class RoundHome:
     def __init__(self,home,catalog,actions,displays,profile):
         self.home,self.catalog,self.actions,self.displays,self.profile=home,catalog,actions,displays,profile
         self.selected='';self.lock=RLock()
+        self.principal=lambda:'round'
 
     def inventory(self):
         expected=self.profile.snapshot()
-        scoped=ScopedAccess(self.actions.access,self.displays,'round',expected,require_voice=False)
+        scoped=ScopedAccess(self.actions.access,self.displays,self.principal(),expected,require_voice=False)
         saved=scoped.snapshot();items=home_view(apply_policy(self.catalog.snapshot(),saved['policy']),expected['profile'])['devices']
         if scoped.snapshot()['revision']!=saved['revision']:raise HTTPException(409,'Mini access changed. Refresh the controls.')
         return expected,scoped,saved,items

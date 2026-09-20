@@ -5,9 +5,9 @@
 
 namespace ControlScene {
 constexpr int brightnessMinimum=20,brightnessMaximum=255;
-enum class Page { Voice, Home, Thermostat, ThermostatMode, Soundbar, SoundbarVolume, Weather, Music, Settings, Network, Timer, NewTimer, Lights, SpeakerPicker, Intercom, Screen, Calendar };
+enum class Page { Voice, Home, Thermostat, ThermostatMode, Soundbar, SoundbarVolume, Weather, Music, Settings, Network, Timer, NewTimer, Lights, SpeakerPicker, Intercom, Screen, Calendar, Account };
 inline Page swipePage(Page page,bool left) {
-    Page parent=page==Page::ThermostatMode?Page::Thermostat:page==Page::SoundbarVolume || page==Page::SpeakerPicker?Page::Soundbar:page==Page::Network || page==Page::Screen?Page::Settings:page==Page::NewTimer?Page::Timer:page;
+    Page parent=page==Page::ThermostatMode?Page::Thermostat:page==Page::SoundbarVolume || page==Page::SpeakerPicker?Page::Soundbar:page==Page::Network || page==Page::Screen || page==Page::Account?Page::Settings:page==Page::NewTimer?Page::Timer:page;
     if(!left && parent!=page)return parent;
     const Page pages[]={Page::Voice,Page::Home,Page::Soundbar,Page::Thermostat,Page::Lights,Page::Music,Page::Weather,Page::Timer,Page::Intercom,Page::Settings};
     for(int i=0;i<10;++i)if(pages[i]==parent)return pages[(i+(left?1:9))%10];
@@ -42,7 +42,7 @@ struct Model {
     const char *connection="Connection unavailable",*timerLabel="",*timerResult="",*musicTitle="",*musicArtist="",*musicState="";
 };
 inline const char* name(Page p) {
-    static const char* names[]={"voice","home","thermostat","thermostat-modes","bose","bose-volume","weather","music-controls","settings","connection","timers","new-timer","lights","speakers","intercom","screen","calendar"};
+    static const char* names[]={"voice","home","thermostat","thermostat-modes","bose","bose-volume","weather","music-controls","settings","connection","timers","new-timer","lights","speakers","intercom","screen","calendar","account"};
     return names[unsigned(p)];
 }
 template<class Surface> void fitted(Surface& g,const char* value,int cx,int y,unsigned size,uint16_t color,int width) {
@@ -195,7 +195,7 @@ template<class Surface> void render(Surface& g,const Model& m) {
             pill(g,TouchTargets::microphone,m.micMuted?"Unmute microphone":"Mute microphone",m.micMuted?amber:mint);
             centered(g,"Brightness",222,1,dim);pill(g,TouchTargets::brightnessDown,"-",dim,m.brightness>brightnessMinimum);pill(g,TouchTargets::brightnessUp,"+",dim,m.brightness<brightnessMaximum);
             snprintf(value,sizeof(value),"%d%%",m.brightness*100/255);centered(g,value,263,1,dim);
-            pill(g,90,280,91,"Screen",mint);pill(g,188,280,91,"Wi-Fi",mint);pill(g,286,280,91,"Calls",mint);break;
+            pill(g,77,280,73,"Screen",mint);pill(g,157,280,73,"Wi-Fi",mint);pill(g,237,280,73,"Calls",mint);pill(g,317,280,73,"Me",mint);break;
         case Page::Screen:
             centered(g,"Screen comfort",128,2);
             centered(g,"Tap a timer to change it",151,0,dim);

@@ -55,7 +55,7 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
 | **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, and answered two-way intercom. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
-| **Share deliberately** | Owner-assigned Household or Guest profiles for Deck and Mini, selected devices and sources, and optional local guest home voice. Deck personal sign-in adds separate memory, personality and conversation. Mini profile firmware awaits installation. |
+| **Share deliberately** | Owner-assigned Household or Guest profiles for Deck and Mini, selected devices and sources, and optional local guest home voice. Personal sign-in adds separate memory, personality and conversation on Deck and Mini. Mini firmware awaits installation. |
 
 Home Assistant, Spotify, and Hermes are optional integrations. Features that need
 an account, a selected source, or an audio device report their availability. The
@@ -491,7 +491,7 @@ checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 | **Packaging** | Host tests, firmware build, fresh Docker/API startup, isolated encrypted-archive restore, Linux Pi checks, browser flows, and privacy guards exercised. Broader fresh-install/provider coverage and a full Windows/Hermes disaster restore remain open. |
 
 Further work includes generic audio-endpoint adapters, synchronized grouped playback,
-master-calendar editing/invitations, personal Mini sign-in, and external calling. Proprietary
+master-calendar editing/invitations, per-person Hermes tool sessions, and external calling. Proprietary
 casting and commercial streaming-video services are not implemented. The project
 does not claim complete Nest Hub or Echo Show feature parity.
 

@@ -55,8 +55,12 @@ An unreadable profile disables access instead of silently restoring Household.
 
 The host stores the profile encrypted in `local/echo-round-profile.json`; recovery
 archive version 2 includes it. Credentials and owner keys remain on the host,
-outside the firmware and browser. This is per-device access, not personal sign-in
-or voice identification. Anyone using a Household Mini has its household access.
+outside the firmware and browser. The base profile is per-device access.
+[Personal accounts](PERSONAL_ACCOUNTS.md#sign-in-on-mini) add deliberate sign-in
+with firmware 0.19.0. They do not identify a person from their voice. Anyone using
+an unsigned-in Household Mini has its household access.
+
+![Mini personal-account keypad rendered from the shared firmware scene with synthetic data](images/mini-personal-account.png)
 
 ## Verification and installation status
 
@@ -66,6 +70,10 @@ global revocation, timers, encrypted persistence and immutable queued identities
 The owner editor is checked at display and phone sizes. Native C++ checks render
 the Guest header and verify control/microphone defaults; firmware 0.18.0 builds
 and has a verified four-image archive.
+
+Firmware **0.19.0** also adds the account picker, masked passcode keypad and
+Lock my session. Its shared native renderer checks circular bounds and input
+clearing; API checks cover shared-account memory, grants, expiry and stale requests.
 
 The host feature is deployed privately. The new Mini firmware has **not been
 flashed**; physical Guest use, touch controls and microphone behavior remain

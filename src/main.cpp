@@ -23,6 +23,7 @@
 #include "intercom_scene.h"
 #include "calendar_scene.h"
 #include "access_profile.h"
+#include "member_scene.h"
 
 // CO5300 setup from YouAndEye's accepted AMOLED surface. See THIRD_PARTY_NOTICES.md.
 static Arduino_DataBus* bus=new Arduino_ESP32QSPI(Board::lcdCs,Board::lcdClock,Board::lcdD0,Board::lcdD1,Board::lcdD2,Board::lcdD3);
@@ -56,6 +57,7 @@ static Page page=Page::Voice;
 static Page touchPage=Page::Voice;
 static TouchGesture touchGesture;
 static MiniAccess miniAccess;
+static MemberAccount memberAccount;
 static CalendarReview calendarReview;
 static void cancelCalendar() {
     if(calendarReview.id[0])Host.printf("EVENT calendar_cancel=%s\n",calendarReview.id);
@@ -227,14 +229,14 @@ static void draw() {
     if(page==Page::Voice) {
         VoiceScene::Model m;
         m.state=VoiceScene::resolve(voiceInput(audio));m.connected=wakeArmed;
-        m.micMuted=wakeMuted||!miniAccess.conversation;m.guest=miniAccess.guest;
+        m.micMuted=wakeMuted||!miniAccess.conversation;m.guest=miniAccess.guest;m.personalName=miniAccess.personal?miniAccess.name:"";
         m.powerKnown=powerKnown;m.battery=batteryPresent;m.percent=batteryPercent;m.charging=charging;
         m.volume=audio.volume;m.peak=min(1.0f,audio.peak/12000.0f);m.response=voiceResult.c_str();
         VoiceSurface surface;VoiceScene::render(surface,m,millis()/1000.0f,voiceAnimation);
         finishFrame(started);return;
     }
     ControlScene::Model m;
-    m.page=page;m.system.guest=miniAccess.guest;m.system.state=VoiceScene::resolve(voiceInput(audio));m.system.connected=wakeArmed;
+    m.page=page;m.system.personalName=miniAccess.personal?miniAccess.name:"";m.system.guest=miniAccess.guest;m.system.state=VoiceScene::resolve(voiceInput(audio));m.system.connected=wakeArmed;
     m.system.micMuted=wakeMuted||!miniAccess.conversation;
     m.system.powerKnown=powerKnown;m.system.battery=batteryPresent;m.system.percent=batteryPercent;m.system.charging=charging;m.system.volume=audio.volume;
     m.temperatureReady=homeFresh();m.modesReady=modesFresh();m.soundReady=soundFresh();m.weatherReady=weatherFresh();m.timersReady=timersFresh();
@@ -256,7 +258,7 @@ static void draw() {
     m.lightsFresh=wakeArmed && lightsAt && millis()-lightsAt<20000;
     m.lightsReady=lightsReady;m.lightsOn=lightsOn;m.lightsMixed=lightsMixed;m.lightsConfigured=lightsConfigured;
     VoiceSurface surface;
-    if(page==Page::Calendar)CalendarScene::render(surface,m,calendarReview);else ControlScene::render(surface,m);
+    if(page==Page::Account)MemberScene::render(surface,m,memberAccount,miniAccess);else if(page==Page::Calendar)CalendarScene::render(surface,m,calendarReview);else ControlScene::render(surface,m);
     finishFrame(started);
 
 }
@@ -264,7 +266,7 @@ static void report(unsigned query=0) {
     auto s=audioStatus();
     auto net=networkStats();
     auto usb=usbStats();
-    Host.printf("STATUS product=round-voice version=0.18.0 protocol=1 duplex=1 intercom=1 timed_audio=1 calendar_review=1 access_profile=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
+    Host.printf("STATUS product=round-voice version=0.19.0 protocol=1 duplex=1 intercom=1 timed_audio=1 calendar_review=1 access_profile=1 member_accounts=1 cue_ready=1 role=local-voice display=%d touch=%d psram=%u sd=%d sd_mb=%lu pmu=%d battery=%d percent=%d charging=%d mic=%d speaker=%d mode=%u samples=%lu peak=%u volume=%d audio_errors=%lu heap=%u wake=%d muted=%d stream=%d stream_drops=%lu usb_drops=%lu transport=%s network=%s rssi=%d query=%u uptime_ms=%lu heartbeat_ms=%lu\n",
         displayReady,touchReady,ESP.getPsramSize(),sdReady,(unsigned long)sdMegabytes,pmuReady,
         batteryPresent,batteryPercent,charging,s.micReady,s.speakerReady,unsigned(s.mode),
         (unsigned long)s.recordedSamples,s.peak,s.volume,(unsigned long)s.errors,ESP.getFreeHeap(),
@@ -337,18 +339,24 @@ static void pollMuteButton() {
 static void handleCommand(const String& command) {
     if (!networkConnected() && networkCommand(command)) return;
     if(command.startsWith("PROFILE_SET ")) {
-        unsigned long revision;unsigned guest,conversation;int offset=0;
-        if(sscanf(command.c_str()+12,"%lu %u %u :%n",&revision,&guest,&conversation,&offset)==3&&offset>0&&miniAccess.configure(revision,guest,conversation,command.c_str()+12+offset)){
+        unsigned long long revision;unsigned guest,conversation;int offset=0;
+        if(sscanf(command.c_str()+12,"%llu %u %u :%n",&revision,&guest,&conversation,&offset)==3&&offset>0&&miniAccess.configure(revision,guest,conversation,command.c_str()+12+offset)){
             cancelCalendar();endIntercom(true);voiceResult="";voiceNotice=false;thinking=false;cuePending=false;listenUntil=0;
             homeResult="";homeActionState=HomeActionState{};tempReady=modesReady=soundReady=weatherReady=timerAvailable=false;
             lightsReady=lightsOn=lightsMixed=lightsConfigured=0;speakerCount=0;speakerSelected=-1;speakerName="";
             musicTitle="";musicArtist="";musicAt=0;
             if(!remoteIsMusic){audioRemoteStop();audioCommand(AudioCommand::Stop);page=miniAccess.conversation?Page::Voice:Page::Home;}
             audioCommand(wakeArmed&&!wakeMuted&&miniAccess.conversation?AudioCommand::StreamOn:AudioCommand::StreamOff);
-            Host.printf("EVENT profile_ready=%lu\n",revision);
+            memberAccount.clear();memberAccount.message[0]=0;
+            if(miniAccess.personal)page=Page::Account;
+            Host.printf("EVENT profile_ready=%llu\n",revision);
         }
         return;
     }
+    if(command.startsWith("ACCOUNT_LIST ")){unsigned count;char extra;if(sscanf(command.c_str()+13,"%u %c",&count,&extra)==1)memberAccount.begin(count);return;}
+    if(command.startsWith("ACCOUNT_ITEM ")){unsigned index;char id[33];int at=0;if(sscanf(command.c_str()+13,"%u %32s :%n",&index,id,&at)==2&&at>0)memberAccount.item(index,id,command.c_str()+13+at);return;}
+    if(command.startsWith("ACCOUNT_ERROR :")){memberAccount.error(command.c_str()+15);return;}
+    if(command=="ACCOUNT_DONE"){memberAccount.inputClear();memberAccount.pending=false;strcpy(memberAccount.message,"Refreshing access...");return;}
     if(command.startsWith("HOME_PERMS ")){
         unsigned temperature,sound,rooms;char extra;
         if(sscanf(command.c_str()+11,"%u %u %u %c",&temperature,&sound,&rooms,&extra)==3)miniAccess.permissions(temperature,sound,rooms);
@@ -738,6 +746,22 @@ void loop() {
     if (touchBegan) {
         int x=gesture.x,y=gesture.y;
         auto s=audioStatus();
+        if(page==Page::Account){
+            if(!wakeArmed){memberAccount.error("Host unavailable");page=Page::Settings;return;}
+            if(miniAccess.personal){
+                if(y>=303&&y<345&&x>=165&&x<301){memberAccount.clear();page=Page::Settings;}
+                else if(y>=250&&y<292&&x>=115&&x<351&&!memberAccount.pending){memberAccount.pending=true;memberAccount.at=millis();Host.println("EVENT account_lock");}
+            }else if(memberAccount.selected<0){
+                if(y>=307&&y<349){if(x>=95&&x<177&&memberAccount.offset>=3)memberAccount.offset-=3;else if(x>=183&&x<283){memberAccount.clear();page=Page::Settings;}else if(x>=289&&x<371&&memberAccount.offset+3<memberAccount.count)memberAccount.offset+=3;}
+                else if(x>=105&&x<361&&y>=143&&y<285&&(y-143)%50<42)memberAccount.choose(memberAccount.offset+(y-143)/50,millis());
+            }else if(!memberAccount.pending){
+                if(y>=337&&y<379){
+                    if(x>=95&&x<227){memberAccount.inputClear();memberAccount.selected=-1;}
+                    else if(x>=239&&x<371&&memberAccount.submit(millis())){Host.printf("EVENT account_login=%s code=%s\n",memberAccount.ids[memberAccount.selected],memberAccount.code);memberAccount.inputClear();}
+                }else if(x>=125&&x<341&&y>=147&&y<327&&(x-125)%74<68&&(y-147)%46<42){int key=((y-147)/46)*3+(x-125)/74;if(key<9)memberAccount.digit(key+1,millis());else if(key==9)memberAccount.inputClear();else if(key==10)memberAccount.digit(0,millis());else memberAccount.backspace(millis());}
+            }
+            lastFrame=millis()-100;return;
+        }
         if (y>=333 && y<=375) {
             if(intercom.busy())return;
             if(page==Page::Calendar)cancelCalendar();
@@ -848,9 +872,10 @@ void loop() {
                 } else if (y>=265 && y<=307 && x>=95 && x<=227 && soundMuted>=0 && (soundFeatures&8)) homeAction(soundMuted?"sound_unmute":"sound_mute");
             }
         } else if (page==Page::Settings) {
-            if (y>=280 && y<=322 && x>=90 && x<181) page=Page::Screen;
-            else if (y>=280 && y<=322 && x>=188 && x<279) page=Page::Network;
-            else if (y>=280 && y<=322 && x>=286 && x<377) page=Page::Intercom;
+            if (y>=280 && y<=322 && x>=77 && x<150) page=Page::Screen;
+            else if (y>=280 && y<=322 && x>=157 && x<230) page=Page::Network;
+            else if (y>=280 && y<=322 && x>=237 && x<310) page=Page::Intercom;
+            else if (y>=280 && y<=322 && x>=317 && x<390) {page=Page::Account;memberAccount.clear();memberAccount.message[0]=0;if(!miniAccess.personal)Host.println("EVENT account_list");}
             else if (TouchTargets::microphone.contains(x,y)) setWakeMuted(!wakeMuted);
             else if (TouchTargets::brightnessDown.contains(x,y) || TouchTargets::brightnessUp.contains(x,y)) {
                 brightness=constrain(brightness+(x<233?-20:20),ControlScene::brightnessMinimum,ControlScene::brightnessMaximum);
@@ -897,6 +922,7 @@ void loop() {
             }
         }
     }
+    if(page!=Page::Account)memberAccount.inputClear();else memberAccount.tick(millis());
     if (timerBusy && (millis()-timerRequestAt>20000 || !wakeArmed)) {
         timerBusy=false;timerResult="Check timer status";timerResultAt=millis();
         if (page==Page::NewTimer) page=Page::Timer;

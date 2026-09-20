@@ -54,13 +54,13 @@ class RoundProfile:
             self.current=value;self.stamp=None
             return self.snapshot()
 
-    def authorize(self,request):
+    def authorize(self,request,state=None):
         from .display_auth import allowed
-        path=request.url.path;method=request.method;state=self.snapshot();profile=state['profile']
+        path=request.url.path;method=request.method;state=state or self.snapshot();profile=state['profile']
         # Only the authenticated host uses this endpoint identity. It is never an
         # alternate credential for a browser or firmware; the board has no API key.
         permitted=allowed(method,path) or method=='POST' and path=='/v1/text'
-        if path=='/v1/round/profile' and method=='GET':return 'round'
+        if path in {'/v1/round/profile','/v1/round/session'} and method=='GET':return 'round'
         if request.headers.get('x-echo-access-revision')!=str(state['profile_revision']):
             raise HTTPException(409,'Mini access changed. Wait for its controls to refresh.')
         if not permitted:raise HTTPException(403,'Use the owner workspace to administer Echo')

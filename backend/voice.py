@@ -37,7 +37,8 @@ from .transport import load_wifi, WifiTransport
 from .round_intercom import RoundIntercom
 from .round_group_music import RoundGroupMusic, ForegroundWire
 from .round_calendar import RoundCalendar
-from .round_access import RoundAccess
+from .round_access import RoundAccess,RemoteRoundProfile
+from .round_members import RoundMembers
 
 ROOT = Path(__file__).resolve().parents[1]
 MAC = __import__('os').environ.get('ECHO_DEVICE_MAC', '').lower()
@@ -168,7 +169,8 @@ def run_session(args, lifecycle, model, recovery, music):
         port=ForegroundWire(port,group)
         with httpx.Client(base_url="http://127.0.0.1:8768", timeout=15, trust_env=False,
                                headers={"Authorization": "Bearer " + token}) as base_client, ThreadPoolExecutor(max_workers=3) as worker, SpeechJobs(worker) as speech_jobs:
-            access_profile=RoundAccess(ROOT);client=access_profile.client(base_client)
+            access_profile=RoundAccess(ROOT,store=RemoteRoundProfile(base_client,worker));client=access_profile.client(base_client)
+            members_ui=RoundMembers(access_profile,base_client,worker,port.write)
             def spoken_result(outcome, reply, *, cancel=None):
                 try:
                     check_cancel(cancel)
@@ -199,6 +201,10 @@ def run_session(args, lifecycle, model, recovery, music):
                 except (httpx.HTTPError, ValueError):
                     outcome, reply = "unavailable", "The local assistant is unavailable right now."
                 result=spoken_result(outcome, reply,cancel=cancel)
+                try:
+                    current=request_client.get('/v1/round/session');current.raise_for_status()
+                    if current.json()['profile_revision']!=request_client.revision:raise SpeechCancelled()
+                except (httpx.HTTPError,ValueError,KeyError):raise SpeechCancelled() from None
                 return (*result,prepared) if prepared else result
 
             speaker = Speaker(port.write)
@@ -269,6 +275,7 @@ def run_session(args, lifecycle, model, recovery, music):
                     calendar.receive(line)
                     calls.receive(line)
                     if phase == 'activation': activation.receive(line)
+                    members_ui.receive(line)
                     display.receive(line)
                     cancelled_alarm = alarms.receive(line)
                     if cancelled_alarm and phase == 'alarm':
@@ -342,6 +349,7 @@ def run_session(args, lifecycle, model, recovery, music):
                             if group.selected:group.submit_control(worker,action)
                             else:music.command(action)
                 if access_profile.refresh():
+                    members_ui.changed()
                     calendar_capable=calendar.supported
                     if pending:pending.cancel();pending=None
                     calendar.clear();alarms.retry();calls.close()
@@ -359,6 +367,7 @@ def run_session(args, lifecycle, model, recovery, music):
                     recognition.reset();resume_music=False
                     if phase!='music':phase,until='cooldown',now+.3
                     status['access_profile']=access_profile.health()
+                members_ui.pump()
                 display.pump()
                 calendar.pump()
                 alarms.pump()

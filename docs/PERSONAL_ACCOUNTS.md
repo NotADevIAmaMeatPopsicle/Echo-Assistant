@@ -1,4 +1,4 @@
-# Personal accounts on a shared Deck
+# Personal accounts on Deck and Mini
 
 Each person can have their own saved facts, personality preferences and temporary
 conversation. Sign-in is deliberate: Echo does not identify people by their voice.
@@ -22,9 +22,31 @@ session**. Anyone physically using that screen can use the unlocked session.
    and memory preferences, or lock the session. You can also ask Echo to remember
    or forget a fact during conversation.
 
-Install the current Pi client before assigning accounts. Existing displays remain
+Install the current Pi client before assigning Deck accounts. Existing displays remain
 Household or Guest until their owner changes them; installing the feature creates
-no accounts and grants no new access. Mini personal sign-in is not implemented.
+no accounts and grants no new access.
+
+## Sign in on Mini
+
+Mini firmware **0.19.0 or newer**, with the matching host, adds **Settings → Me**.
+The owner creates the account as above, then selects it in **Settings → Share the
+round speaker → Mini access → Personal sign-in**. New assignments are disabled
+until Mini reports the required firmware capability.
+
+On Mini, choose the account and use the eight-digit keypad. Only masked digits
+appear. Cancel, navigation away and a 60-second entry timeout clear the entered
+code. Successful sign-in shows the person's name and a **Lock my session** button;
+voice and the native home cards then use that account's grants. The same saved
+facts can be used from Deck or Mini, with separate temporary conversations for
+each login. Manage preferences and individual facts on Deck, or ask Mini to
+remember or forget a fact.
+
+Mini uses the same 15-minute host session. API checks, background access refresh
+and an additional post-synthesis check discard obsolete requests and audio.
+Unreadable or stale access state disables conversation instead of restoring
+household privileges. Passcodes travel over the existing trusted USB or paired
+TLS connection and are not written to firmware preferences or host status.
+Firmware installation and physical keypad/voice acceptance remain open.
 
 ## What is separate
 
@@ -76,7 +98,7 @@ Native listener checks reject an old account's reply before playback. Silent
 browser checks cover creation, access editing, touch sign-in, memory, lock and
 phone layout. These checks do not establish physical keypad or spoken acceptance.
 
-Personal Mini sign-in, voice identification, separate Hermes instances per person
+Voice identification, separate Hermes instances per person
 and external calendar/account sign-in remain future work. Shared Home Assistant
 calendar sources can be granted read-only now. The isolated display preview uses
 temporary demo accounts only; closing the preview process removes them.

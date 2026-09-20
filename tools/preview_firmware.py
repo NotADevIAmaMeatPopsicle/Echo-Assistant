@@ -33,7 +33,7 @@ def main():
     states += ['lights-unassigned','lights-partial','lights-pending']
     states += ['spotify-'+s for s in ('not_configured','runtime_missing','unavailable','disconnected','discoverable','connected','playing','stopped','unexpected')]
     states += ['intercom-'+s for s in ('off','rooms','incoming','outgoing','active','muted')]
-    states += ['screen-comfort','voice-guest']
+    states += ['screen-comfort','voice-guest','account-picker','account-keypad','account-active']
     states += ['calendar-'+s for s in ('draft','confirm','pending','accepted','rejected','unconfirmed','deck','wide')]
     for state in states:
         image=Image.open(OUT/f'{state}.ppm').convert('RGBA')

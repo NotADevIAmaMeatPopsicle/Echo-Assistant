@@ -21,6 +21,7 @@
 #include "../include/screen_idle.h"
 #include "../include/calendar_scene.h"
 #include "../include/access_profile.h"
+#include "../include/member_scene.h"
 
 struct Raster {
     std::vector<uint16_t> pixels=std::vector<uint16_t>(466*466,0);
@@ -205,6 +206,20 @@ int main(int argc,char** argv) {
         char file[1024];snprintf(file,sizeof(file),"%s/voice-guest.ppm",directory);raster.save(file);
         assert(access.configure(3,0,1,"Household") && access.temperature && access.speaker && access.lights==15);
         puts("PASS: Mini guest defaults, explicit controls, conversation off, malformed policy and circular guest header");
+    }
+    {
+        MemberAccount account;MiniAccess access;ControlScene::Model m;m.system.connected=true;
+        assert(account.begin(16));assert(!account.item(16,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Invalid"));
+        for(unsigned i=0;i<16;++i){char id[33];snprintf(id,sizeof(id),"%032x",i+1);assert(account.item(i,id,"Alex - synthetic"));}
+        auto renderAccount=[&](const char* state){Raster raster;MemberScene::render(raster,m,account,access);raster.checkBounds();char file[1024];snprintf(file,sizeof(file),"%s/account-%s.ppm",directory,state);raster.save(file);};
+        renderAccount("picker");assert(account.choose(15,1));
+        for(unsigned i=0;i<9;++i)account.digit(i,2);assert(account.digits==8);assert(account.submit(3));
+        account.inputClear();assert(!account.code[0]&&account.pending);account.error("Passcode not accepted");
+        for(unsigned i=0;i<8;++i)account.digit(i,4);renderAccount("keypad");account.tick(60005);assert(account.selected==-1&&!account.code[0]);
+        assert(access.configure((uint64_t(1)<<48)+123,2,1,"Alex"));assert(access.personal&&access.guest&&!access.speaker);
+        assert(!access.configure(uint64_t(1)<<53,2,1,"Alex"));account.message[0]=0;renderAccount("active");
+        assert(ControlScene::swipePage(ControlScene::Page::Account,false)==ControlScene::Page::Settings);
+        puts("PASS: Mini account bounds, masked code, clearing, timeout, 53-bit revisions and circular layout");
     }
     {
         CalendarReview draft;const char* id="cccccccccccccccccccccccccccccccc";

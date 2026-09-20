@@ -24,6 +24,23 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
+**Mini personal sign-in checkpoint:** the private host now supports the same
+personal accounts on Deck and Mini. Owner assignment requires connected firmware
+0.19.0. Mini adds Settings → Me, a bounded account picker, masked eight-digit
+keypad and Lock my session. Home cards and voice use effective account grants;
+shared facts remain separate from household memory, and temporary conversations
+remain separate for each login. API-owned sessions refresh asynchronously so the
+host audio pump does not block on access reads. Stale access fails closed.
+
+Sixty-five focused tests pass on Windows and isolated Linux. Native C++ checks
+cover input bounds, clearing, timeouts, full-width revisions and circular rendering;
+firmware 0.19.0 builds with a verified four-image bundle. Silent browser checks
+cover the owner capability gate and assignment, plus existing Deck personal flows.
+The host update is deployed privately, with pairing, grants and saved data preserved.
+Deck's unchanged client remains armed at 2%, with Spotify discoverable and grouped
+music ready. No sound or real home action was used. Mini firmware remains unflashed;
+physical account/voice acceptance is open. See [Personal accounts](PERSONAL_ACCOUNTS.md).
+
 **Personal account checkpoint:** the private host and current Pi bundle now support
 owner-created accounts, explicit per-display assignment, an eight-digit touch
 passcode, separate saved memory and personality, and a 15-minute personal session.
@@ -38,7 +55,8 @@ cover account creation, grants, keypad sign-in, memory, locking, existing Guest/
 editing and phone layout. The synthetic preview supports temporary accounts too.
 The host and Pi update preserved private files and pairing; the listener returned
 armed at 2%, Spotify remained discoverable, and no sound or home devices were used.
-No real accounts were created. Personal Mini sign-in, separate personal Hermes tools,
+No real accounts were created. The later Mini checkpoint adds its sign-in software;
+separate personal Hermes tools,
 external account linking and physical account-use acceptance remain open. See
 [Personal accounts](PERSONAL_ACCOUNTS.md).
 
@@ -282,10 +300,10 @@ parity. Known gaps documented in the smart-display guide remain:
 - [ ] Household/guest profiles and per-user/per-room source policies.
       Per-display Household/Guest profiles, selected home-device and read-only
       source grants, isolated guest conversation and opt-in local guest home
-      voice commands and Mini profile software are implemented. Deck personal identities and separate memory/accounts are implemented. Personal
-      Mini sign-in, separate personal Hermes tools and external accounts remain open;
-      Mini installation and physical
-      acceptance are pending. See [Display access](DISPLAY_ACCESS.md).
+      voice commands and Mini profile software are implemented. Deck and Mini personal
+      identities and separate memory/accounts are implemented. Separate personal
+      Hermes tools and external accounts remain open. Mini installation and
+      physical acceptance are pending. See [Display access](DISPLAY_ACCESS.md).
 - [ ] Supported casting/commercial-video integrations, subject to provider access
       and licensing; current local media and Spotify do not establish those features.
 - [ ] Full Windows host and Hermes disaster-recovery rehearsal.

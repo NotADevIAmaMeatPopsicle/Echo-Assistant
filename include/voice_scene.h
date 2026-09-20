@@ -86,7 +86,7 @@ struct Model {
     bool connected=false, powerKnown=false, battery=false, charging=false, micMuted=false,guest=false;
     int percent=-1, volume=0;
     float peak=0;
-    const char* response="";
+    const char* response="";const char* personalName="";
 };
 struct Animation {
     float level=0, motion=0, red=0, green=0, blue=0;
@@ -133,7 +133,7 @@ template<class Surface> void icon(Surface& g,int x,int y,int type,uint16_t c) {
 }
 template<class Surface> void header(Surface& g,const Model& m,uint16_t color,const char* status=nullptr) {
     if(m.micMuted || m.state==State::Muted) { status="MICROPHONE MUTED"; color=amber; }
-    const char* heading=status?status:m.connected?(m.guest?"ECHO / GUEST":"ECHO ASSISTANT"):"HOST OFFLINE";
+    const char* heading=status?status:m.connected?(m.personalName[0]?m.personalName:m.guest?"ECHO / GUEST":"ECHO ASSISTANT"):"HOST OFFLINE";
     g.circle(233-g.width(heading,0)/2-10,49,2,m.connected?color:dim);
     g.text(heading,233,53,0,m.micMuted || m.state==State::Muted?amber:dim);
     char power[40];
