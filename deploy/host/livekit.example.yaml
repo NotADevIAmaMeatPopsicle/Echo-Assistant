@@ -1,0 +1,12 @@
+# Private reference only: render the real file outside Git with generated keys.
+# The selected node address must be the existing, verified host Tailscale IPv4.
+port: 7880
+bind_addresses: ["0.0.0.0"]
+rtc:
+  tcp_port: 7881
+  force_tcp: true
+  node_ip: YOUR_HOST_TAILSCALE_IPV4
+  use_external_ip: false
+  advertise_internal_ip: false
+keys:
+  YOUR_GENERATED_API_KEY: YOUR_GENERATED_API_SECRET

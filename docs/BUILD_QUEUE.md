@@ -6,6 +6,13 @@ card backup is separate from Git; reuse of that card is authorized.
 
 ## Build direction
 
+**Private calling checkpoint:** a pinned LiveKit server now runs on the private
+host behind the existing device-restricted Tailscale gateway. The deployed route
+passed a real two-participant ICE/TCP check without microphone capture or sound.
+Owner start/end and paired Deck permission were verified; the kiosk refreshed.
+Existing device grants, pairing and user settings were preserved. Physical call
+audio/video remains ECHO-07; no telephone or public guest calling is claimed.
+
 **Touch entry checkpoint:** the shared text keyboard is deployed to the host and
 served by the Pi bridge. Lists, notes, calendar drafts and display text settings
 now support tap entry without an external keyboard. Three focused synthetic
@@ -426,8 +433,9 @@ parity. Known gaps documented in the smart-display guide remain:
       actual provider playback and physical timing remain open; see [Grouped music](GROUP_MUSIC.md).
 - [ ] External calling with a supported provider.
       LiveKit browser signalling, controls, permissions and provider setup software
-      are implemented and tested with isolated signalling. Real provider setup
-      and two-device media acceptance remain open; see [Calling](CALLING.md).
+      are implemented. The managed private server is deployed, with real ICE/TCP
+      verified through its restricted gateway. Two-device physical media acceptance
+      remains open; see [Calling](CALLING.md).
 - [ ] Household/guest profiles and per-user/per-room source policies.
       Per-display Household/Guest profiles, selected home-device and read-only
       source grants, isolated guest conversation and opt-in local guest home

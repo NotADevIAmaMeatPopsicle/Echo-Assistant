@@ -254,6 +254,33 @@ The temporary cache relocation does not close the long-term capacity task.
 
 ## Dependent software tasks
 
+### ECHO-07: private calling deployed; physical acceptance open
+
+The pinned LiveKit server is installed on the existing private Docker host.
+The API uses an exact deployment binding for internal administration, encrypted
+saved credentials and an owned private provider volume. The normal launcher
+preserves the optional service. Existing pairing, user settings and the five-node
+Tailscale allowlist are unchanged. No new cloud account is needed.
+
+The gateway forwards only the exact v0/v1 signalling and validation routes;
+its TCP 7881 listener verifies the same source IP and stable node identity before
+connecting to Docker's loopback publication. The browser omits public STUN for
+this private route. No UDP publication or provider admin endpoint was added.
+
+Two synthetic browser participants established nominated, selected TCP pairs
+through the final deployed route, with the expected remote address and port.
+Capture and playback counters stayed zero. Owner start/end and paired Deck
+calling permission were verified, and the Deck kiosk was refreshed. Temporary
+rehearsal resources were removed. The code passed 41 focused Linux tests and
+34 gateway tests. [Private calling](PRIVATE_CALLING.md) records setup and recovery.
+
+Calling is enabled only for the owner and selected paired Deck. Physical duplex
+sound/video, camera opt-in, phone behavior and audio focus remain ECHO-07, with
+the Pi microphone absent at the last hardware check. This does not close the
+whole calling acceptance task or claim telephone/public guest support.
+
+### Hardware and provider preparation
+
 The latest hardware preparation verified the retained 16 MiB Mini backup against
 its saved SHA-256 and validated the four-image 0.19.0 firmware bundle. The Mini
 is not connected over USB, so its current identity and state remain unverified
@@ -280,7 +307,7 @@ needed before creating separate instances; the household agent remains active.
 | ID | Task / clear finish condition | Prerequisite |
 | --- | --- | --- |
 | ECHO-06 | Grouped music: connect the intended Music Assistant provider, register both supported endpoints, verify synchronized playback and source interruption/recovery. | Mini firmware installed; actual provider available. Software adapters already exist. |
-| ECHO-07 | Calling: configure the chosen LiveKit service and verify a two-device call, camera opt-in, mute/hang-up and endpoint audio focus. | Provider credentials and available mic/camera endpoints. Signalling/UI software already exists. |
+| ECHO-07 | Calling: configure the chosen LiveKit service and verify a two-device call, camera opt-in, mute/hang-up and endpoint audio focus. | Private provider deployed and TCP verified; available mic/camera endpoints are still needed for physical acceptance. |
 | ECHO-11 | Google live acceptance: OAuth sign-in, explicit source sharing, agenda reads, reviewed creates/edits/deletes on a test calendar. | Owner Google OAuth client, ECHO-01. |
 | ECHO-12 | Install the prepared Mini firmware after checking board identity and original backup; verify account, calendar, intercom and grouped-music pages on the physical board. | Board connected and verified; deployment coordinator. |
 | ECHO-13 | Final Pi microphone/speaker/mute wiring and quiet acoustic acceptance: wake, cue, intelligible capture/reply, 80% music ducking, interruption and no feedback. | Final chosen audio hardware; owner available. Existing headset Spotify playback is confirmed. |

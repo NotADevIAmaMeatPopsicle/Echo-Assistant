@@ -30,6 +30,12 @@ def docker_context():
     return result
 
 
+def calling_private_origin():
+    """Optional deployment binding; never inferred from owner call settings."""
+    from .calling import LiveKit
+    return LiveKit(private_origin=value('calling_private_origin')).private_origin
+
+
 def device_host():
     result = value('device_host', os.environ.get('ECHO_BIND_ADDRESS',''))
     try: address = ipaddress.IPv4Address(result)

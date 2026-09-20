@@ -7,6 +7,38 @@ from backend import deployment
 
 
 class DeploymentTests(unittest.TestCase):
+    def test_private_calling_binding_is_explicit_and_canonical(self):
+        with TemporaryDirectory() as temp:
+            root=Path(temp);(root/'local').mkdir()
+            (root/'local/deployment.json').write_text(json.dumps({'calling_private_origin':'wss://calls.example.com:8443'}))
+            with patch.object(deployment,'ROOT',root),patch.dict('os.environ',{},clear=True):
+                self.assertEqual(deployment.calling_private_origin(),'wss://calls.example.com:8443')
+            with patch.object(deployment,'ROOT',root),patch.dict('os.environ',{'ECHO_CALLING_PRIVATE_ORIGIN':''},clear=True):
+                self.assertEqual(deployment.calling_private_origin(),'')
+            with patch.object(deployment,'ROOT',root),patch.dict('os.environ',{'ECHO_CALLING_PRIVATE_ORIGIN':'http://echo-calling:7880'},clear=True):
+                with self.assertRaises(ValueError):deployment.calling_private_origin()
+
+    def test_managed_calling_survives_normal_api_start_and_stop(self):
+        from tools import remote_device
+        origin='wss://calls.example.com:8443'
+        with patch.object(deployment,'device_host',return_value='192.168.1.50'), \
+             patch.object(deployment,'docker_context',return_value='example'), \
+             patch.object(deployment,'calling_private_origin',return_value=origin), \
+             patch.object(remote_device.subprocess,'run') as run:
+            remote_device.compose('api','up','-d','--no-build')
+            args=run.call_args.args[0]
+            self.assertIn(str(remote_device.ROOT/'deploy/host/calling.yaml'),args)
+            self.assertEqual(run.call_args.kwargs['env']['ECHO_CALLING_PRIVATE_ORIGIN'],origin)
+            self.assertEqual(args[-1],'api')
+            remote_device.compose('api','stop')
+            self.assertEqual(run.call_args.args[0][-2:],['api','calling'])
+        with patch.object(deployment,'device_host',return_value='192.168.1.50'), \
+             patch.object(deployment,'docker_context',return_value='example'), \
+             patch.object(deployment,'calling_private_origin',return_value=''), \
+             patch.object(remote_device.subprocess,'run') as run:
+            remote_device.compose('api','up','-d','--no-build')
+            self.assertNotIn(str(remote_device.ROOT/'deploy/host/calling.yaml'),run.call_args.args[0])
+
     def test_environment_overrides_ignored_host_config(self):
         with TemporaryDirectory() as temp:
             root=Path(temp);(root/'local').mkdir()

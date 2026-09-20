@@ -15,9 +15,15 @@ from tools.start_remote_api import connection,tunnel
 
 def compose(service,*arguments):
     files=[ROOT/'deploy/remote/compose.yaml'] if service=='agent' else [ROOT/'deploy/host/compose.yaml',ROOT/'deploy/host/device.yaml']
+    environment={**__import__('os').environ,'ECHO_BIND_ADDRESS':deployment.device_host()}
+    private_calling=deployment.calling_private_origin() if service=='api' else ''
+    if private_calling:
+        files.append(ROOT/'deploy/host/calling.yaml')
+        environment['ECHO_CALLING_PRIVATE_ORIGIN']=private_calling
     command=['docker','--context',deployment.docker_context(),'compose']
     for path in files:command+=['-f',str(path)]
-    subprocess.run([*command,*arguments,service],check=True, env={**__import__('os').environ, 'ECHO_BIND_ADDRESS':deployment.device_host()})
+    services=[service,'calling'] if private_calling and arguments and arguments[0]=='stop' else [service]
+    subprocess.run([*command,*arguments,*services],check=True,env=environment)
 
 
 def discovery(enabled):

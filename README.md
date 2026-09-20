@@ -53,7 +53,7 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Play music** | Spotify Connect with artwork, track details, seeking, shuffle/repeat, and volume controls; HTTPS radio presets and supported local media on the display. |
 | **Plan the day** | A daily briefing, selected calendars, reviewed event creation, repeating schedules, reviewed event/occurrence changes, shopping lists, tasks, and notes. |
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
-| **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, answered two-way intercom, and optional [browser voice/video calls](docs/CALLING.md) through LiveKit. Provider and physical calling acceptance remain open. |
+| **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, answered two-way intercom, and optional [browser voice/video calls](docs/CALLING.md). A private LiveKit server is deployed with verified TCP connectivity; physical calling acceptance remains open. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
 | **Share deliberately** | Owner-assigned Household or Guest profiles for Deck and Mini, selected devices and sources, and optional local guest home voice. Personal sign-in adds separate memory, personality and conversation on Deck and Mini. Mini firmware awaits installation. |
 
@@ -511,13 +511,14 @@ checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 | **Round speaker** | Physical prototype, existing voice/music path, and touch navigation exercised. New intercom and OLED screen-protection firmware compiled; installation and physical checks remain. Sustained playback, distant wake, battery operation, and repeatable enclosure fit need broader acceptance. |
 | **Pi display** | Installed and running at 1024 × 600. Pairing, OS restart, live revocation/re-enrollment, and recovery after a 90-second Echo connection outage verified. Exact panel identification, complete touch calibration, cold power-on, and Wi-Fi/router restart checks remain. |
 | **Pi audio and room calls** | Native wake, push-to-talk, reply routing, Spotify, alarms, announcements, and intercom implemented. Provisional USB-headset Spotify playback is owner-confirmed; wake/cue/reply audibility, feedback, interruption, and final microphone/speaker assembly remain open. |
+| **Browser calling** | Private LiveKit server and restricted Tailscale gateway deployed. Two synthetic browser participants established selected TCP connections on the deployed route, with no capture or playback. Deck is authorized and its interface refreshed; real two-device sound/video remains unverified. |
 | **Home and daily tools** | Controls, lists, reminders, briefing, calendar forms, camera relay, and doorbell UI implemented. Live calendar writes and camera/doorbell behavior need configured integrations and acceptance. |
 | **Packaging** | Host tests, firmware build, Windows recovery-task execution, fresh-container API/Hermes archive restore, Linux Pi checks, browser flows, and privacy guards exercised. Portable passphrase backups support recovery without the original Windows account. Broader fresh-install/provider coverage remains open. |
 
 Further work includes generic audio-endpoint adapters, synchronized grouped playback,
 real Google account acceptance, provisioning the separate personal
-Hermes instances supported by the account connector, and live acceptance
-of the optional external calling provider. Proprietary
+Hermes instances supported by the account connector, and physical acceptance
+of voice/video calls. Proprietary
 casting and commercial streaming-video services are not implemented. The project
 does not claim complete Nest Hub or Echo Show feature parity.
 

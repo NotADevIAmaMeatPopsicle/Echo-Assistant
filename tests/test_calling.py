@@ -10,10 +10,11 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
+import httpx
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from backend.app import create_app
-from backend.calling import CallSettings, CallSettingsUpdate, CallStore, Calling, jwt
+from backend.calling import CallSettings, CallSettingsUpdate, CallStore, Calling, LiveKit, jwt
 from backend.linux_protection import LinuxProtector
 from backend.display_auth import allowed
 
@@ -172,6 +173,141 @@ class CallingApiTests(unittest.TestCase):
 
     def test_lifespan_starts_and_stops_cleanup(self):
         with TestClient(self.app) as client:self.assertEqual(client.get('/health').status_code,200)
+
+    def test_deployment_binding_reaches_real_app_call_response(self):
+        origin='wss://calls.private.example:8443'
+        with patch.dict(os.environ,{'ECHO_CALLING_PRIVATE_ORIGIN':origin}):
+            app=create_app('x'*40)
+        requests=[]
+        def accept(request):
+            requests.append(request)
+            return httpx.Response(200,json={})
+        app.state.calling.provider.transport=httpx.MockTransport(accept)
+        client=TestClient(app)
+        body=update().model_dump(mode='json')
+        body.update(url=origin,api_key='example-key',api_secret='synthetic-secret-'*3,allowed_displays=[])
+        self.assertEqual(client.put('/v1/calling/settings',headers=self.auth,json=body).status_code,200)
+        response=client.post('/v1/calling/start',headers=self.auth,json={'client':'1'*32})
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertIs(response.json()['private_transport'],True)
+        self.assertEqual(str(requests[0].url),'http://echo-calling:7880/twirp/livekit.RoomService/CreateRoom')
+        self.assertEqual(response.json()['url'],origin)
+
+
+class PrivateCallingTransportTests(unittest.TestCase):
+    def setUp(self):
+        self.requests = []
+        def accept(request):
+            self.requests.append(request)
+            return httpx.Response(200, json={})
+        self.transport = httpx.MockTransport(accept)
+        self.private = 'wss://calls.private.example:8443'
+        self.store = CallStore(None, None)
+        values = update().model_dump()
+        values['url'] = self.private
+        self.store.save(CallSettingsUpdate.model_validate(values))
+
+    def test_only_canonical_private_origins_are_accepted(self):
+        for origin in ('', 'wss://calls.private.example', self.private, 'wss://127.0.0.1:8443', 'wss://[::1]:8443'):
+            with self.subTest(origin=origin):
+                self.assertEqual(LiveKit(origin).private_origin, origin)
+        for origin in (None, False, 'http://echo-calling:7880', 'https://calls.private.example',
+                       'WSS://calls.private.example', 'wss://Calls.private.example',
+                       'wss://calls.private.example/', 'wss://calls.private.example/path',
+                       'wss://calls.private.example?', 'wss://calls.private.example#',
+                       'wss://calls.private.example?token=private', 'wss://user:secret@calls.private.example',
+                       'wss://calls.private.example:443', 'wss://calls.private.example:08443',
+                       'wss://calls.private.example:0', 'wss://calls.private.example:65536',
+                       'wss://calls.private.example.', 'wss://calls..example', 'wss://-calls.example',
+                       'wss://[fe80::1%eth0]:8443', 'wss://[fe80::1%25eth0]:8443',
+                       'wss://[0:0:0:0:0:0:0:1]:8443', 'wss://127.000.000.001:8443',
+                       'wss://calls.private.example\n', ' wss://calls.private.example'):
+            with self.subTest(origin=origin), self.assertRaises(ValueError):
+                LiveKit(origin)
+
+    def test_private_admin_uses_fixed_http_and_keeps_admin_token_out_of_response(self):
+        provider = LiveKit(self.private, transport=self.transport)
+        provider.request(self.store.state, 'CreateRoom', {'name':'synthetic-room'})
+        request = self.requests[-1]
+        self.assertEqual(str(request.url), 'http://echo-calling:7880/twirp/livekit.RoomService/CreateRoom')
+        token = request.headers['Authorization'].removeprefix('Bearer ')
+        payload = json.loads(base64.urlsafe_b64decode(token.split('.')[1]+'=='))
+        self.assertEqual(payload['video'], {'roomCreate':True})
+        self.assertEqual(payload['sub'], 'echo-server')
+        self.assertNotIn(token, str(request.url))
+        self.assertNotIn(token, request.content.decode())
+        self.assertNotIn(self.store.state.api_secret.get_secret_value(), request.headers['Authorization'])
+
+    def test_similar_or_public_origins_keep_https_admin_and_no_private_mode(self):
+        provider = LiveKit(self.private, transport=self.transport)
+        for origin in ('wss://calls.private.example', 'wss://calls.private.example:9443',
+                       'wss://CALLS.private.example:8443', 'wss://calls.private.example.evil:8443',
+                       'wss://project.livekit.cloud'):
+            with self.subTest(origin=origin):
+                settings = self.store.state.model_copy(update={'url':origin})
+                self.assertFalse(provider.private_transport(settings))
+                provider.request(settings, 'DeleteRoom', {'room':'synthetic-room'})
+                self.assertEqual(str(self.requests[-1].url), 'https://'+origin[6:].lower()+'/twirp/livekit.RoomService/DeleteRoom')
+        unbound = LiveKit(transport=self.transport)
+        self.assertFalse(unbound.private_transport(self.store.state))
+        unbound.request(self.store.state, 'CreateRoom', {})
+        self.assertEqual(self.requests[-1].url.scheme, 'https')
+
+    def test_private_start_join_only_expose_server_derived_mode(self):
+        app = create_app('x'*40)
+        app.state.calling.store = self.store
+        app.state.calling.provider = LiveKit(self.private, transport=self.transport)
+        auth = {'Authorization':'Bearer '+'x'*40}
+        with TestClient(app) as client:
+            start = client.post('/v1/calling/start', headers=auth, json={'client':'1'*32})
+            self.assertEqual(start.status_code, 200, start.text)
+            started = start.json()
+            joined = client.post('/v1/calling/join', headers=auth, json={'client':'2'*32,'code':started['code']})
+            self.assertEqual(joined.status_code, 200, joined.text)
+            for response in (started, joined.json()):
+                self.assertIs(response['private_transport'], True)
+                self.assertEqual(response['url'], self.private)
+                self.assertNotIn('echo-calling', json.dumps(response))
+                self.assertNotIn(self.requests[0].headers['Authorization'].removeprefix('Bearer '), json.dumps(response))
+                self.assertNotIn(self.store.state.api_secret.get_secret_value(), json.dumps(response))
+                payload = json.loads(base64.urlsafe_b64decode(response['token'].split('.')[1]+'=='))
+                self.assertNotIn('roomCreate', payload['video'])
+            self.assertNotIn('private_transport', client.get('/v1/calling', headers=auth).json())
+            self.assertNotIn('private_transport', client.get('/v1/calling/settings', headers=auth).json())
+            pulse = client.post('/v1/calling/'+started['id']+'/pulse', headers=auth, json={'client':'1'*32})
+            self.assertEqual(pulse.status_code, 200)
+            self.assertNotIn('private_transport', pulse.json())
+            ended = client.post('/v1/calling/'+started['id']+'/end', headers=auth, json={'client':'1'*32})
+            self.assertEqual(ended.status_code, 200)
+            self.assertEqual(str(self.requests[-1].url), 'http://echo-calling:7880/twirp/livekit.RoomService/DeleteRoom')
+
+    def test_public_start_join_and_owner_settings_cannot_select_private_admin(self):
+        displays = SimpleNamespace(profile_for=lambda p:{'profile':{'mode':'household'},'profile_revision':0})
+        for origin in ('', 'wss://different.private.example:8443'):
+            with self.subTest(private_origin=origin):
+                calls = Calling(self.store, displays, LiveKit(origin, transport=self.transport), clock=lambda:1000)
+                started = calls.start('owner', '1'*32)
+                joined = calls.join('owner', '2'*32, started['code'])
+                self.assertNotIn('private_transport', started)
+                self.assertNotIn('private_transport', joined)
+                self.assertEqual(self.requests[-1].url.scheme, 'https')
+                calls.end(started['id'], 'owner', '1'*32)
+        for field in ('private_origin', 'private_transport', 'admin_url'):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                CallSettingsUpdate.model_validate({**update().model_dump(),field:'http://arbitrary.internal'})
+
+    def test_private_provider_errors_are_redacted_and_delete_404_remains_success(self):
+        def fail(request):
+            return httpx.Response(503, text='private-response-'+self.store.state.api_secret.get_secret_value())
+        provider = LiveKit(self.private, transport=httpx.MockTransport(fail))
+        with self.assertRaises(HTTPException) as error:
+            provider.request(self.store.state, 'CreateRoom', {})
+        self.assertEqual(error.exception.status_code, 502)
+        self.assertNotIn('private-response', error.exception.detail)
+        self.assertNotIn('echo-calling', error.exception.detail)
+        self.assertNotIn(self.store.state.api_secret.get_secret_value(), error.exception.detail)
+        provider = LiveKit(self.private, transport=httpx.MockTransport(lambda request:httpx.Response(404)))
+        self.assertIsNone(provider.request(self.store.state, 'DeleteRoom', {}))
 
 
 if __name__=='__main__':unittest.main()

@@ -1,0 +1,38 @@
+# Optional overlay. Configure the private gateway and populate calling_config first.
+# Media is TCP-only; these Docker ports are reachable only from the host itself.
+services:
+  api:
+    depends_on:
+      calling:
+        condition: service_started
+    environment:
+      ECHO_CALLING_PRIVATE_ORIGIN: ${ECHO_CALLING_PRIVATE_ORIGIN:?Set the existing private Echo WSS origin}
+  calling:
+    image: livekit/livekit-server:v1.13.7@sha256:6fd3b7088874c4d119160dd688798dfec852bc014786d392caad15f6f63912a3
+    container_name: echo-calling
+    command: ["--config", "/config/livekit.yaml"]
+    user: "10000:10000"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    ports:
+      - "127.0.0.1:7880:7880/tcp"
+      - "127.0.0.1:7881:7881/tcp"
+    volumes:
+      - calling_config:/config:ro
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=16777216,uid=10000,gid=10000,mode=0700
+    networks:
+      default:
+        aliases: [echo-calling]
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 2
+    pids_limit: 64
+    logging:
+      driver: none
+volumes:
+  calling_config:
+    name: echo_calling_config

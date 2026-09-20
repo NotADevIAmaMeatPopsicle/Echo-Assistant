@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import hmac
+import ipaddress
 import json
 import re
 import secrets
@@ -134,11 +135,48 @@ def jwt(settings, identity, grants, now, ttl=60):
 
 
 class LiveKit:
+    def __init__(self, private_origin='', *, transport=None):
+        # This binding comes from deployment, never the owner settings/API.
+        # A noncanonical alias must not broaden the private transport boundary.
+        if not isinstance(private_origin, str):
+            raise ValueError('Use an empty or canonical WSS private calling origin')
+        if private_origin:
+            try:
+                parsed = urlsplit(private_origin)
+                if (len(private_origin) > 240 or not re.fullmatch(r'wss://[A-Za-z0-9.\-\[\]:]+', private_origin)
+                        or parsed.scheme != 'wss' or not parsed.hostname
+                        or parsed.username is not None or parsed.password is not None
+                        or parsed.path or parsed.query or parsed.fragment):
+                    raise ValueError()
+                hostname = parsed.hostname
+                try:
+                    address = ipaddress.ip_address(hostname)
+                    host = '['+address.compressed+']' if address.version == 6 else str(address)
+                except ValueError:
+                    if (len(hostname) > 253 or re.fullmatch(r'[0-9.]+', hostname)
+                            or not all(re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', label)
+                                       for label in hostname.split('.'))):
+                        raise ValueError() from None
+                    host = hostname
+                port = parsed.port
+                if port is not None and not 1 <= port <= 65535:
+                    raise ValueError()
+                canonical = 'wss://'+host+(':'+str(port) if port not in (None,443) else '')
+                if private_origin != canonical:
+                    raise ValueError()
+            except ValueError:
+                raise ValueError('Use an empty or canonical WSS private calling origin') from None
+        self.private_origin, self.transport = private_origin, transport
+
+    def private_transport(self, settings):
+        return bool(self.private_origin and settings.url == self.private_origin)
+
     def request(self, settings, method, body):
         token = jwt(settings, 'echo-server', {'roomCreate': True}, time.time())
+        origin = 'http://echo-calling:7880' if self.private_transport(settings) else 'https://'+urlsplit(settings.url).netloc
         try:
-            with httpx.Client(timeout=5, trust_env=False, follow_redirects=False) as client:
-                response = client.post('https://'+urlsplit(settings.url).netloc+'/twirp/livekit.RoomService/'+method,
+            with httpx.Client(timeout=5, trust_env=False, follow_redirects=False, transport=self.transport) as client:
+                response = client.post(origin+'/twirp/livekit.RoomService/'+method,
                                        headers={'Authorization': 'Bearer '+token}, json=body)
             if method == 'DeleteRoom' and response.status_code == 404: return
             response.raise_for_status()
@@ -178,9 +216,12 @@ class Calling:
         # Clients cannot create/manage rooms, send data or publish screen sharing.
         grants = {'roomJoin': True, 'room': call['room'], 'canSubscribe': True, 'canPublish': True,
                   'canPublishData': False, 'canPublishSources': ['microphone', 'camera']}
-        return {'id': call['id'], 'url': call['settings'].url,
-                'token': jwt(call['settings'], peer['identity'], grants, self.clock()),
-                'expires_at': call['expires'], 'invite_expires_at': call['invite_expires']}
+        result = {'id': call['id'], 'url': call['settings'].url,
+                  'token': jwt(call['settings'], peer['identity'], grants, self.clock()),
+                  'expires_at': call['expires'], 'invite_expires_at': call['invite_expires']}
+        if getattr(self.provider, 'private_transport', lambda settings: False)(call['settings']) is True:
+            result['private_transport'] = True
+        return result
 
     def start(self, principal, client):
         with self.lock:

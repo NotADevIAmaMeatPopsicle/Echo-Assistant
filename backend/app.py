@@ -67,7 +67,7 @@ from .announcement_api import install as install_announcements
 from .group_music import GroupMusic,install as install_group_music
 from .intercom import Intercom
 from .intercom_api import install as install_intercom
-from .calling import Calling, CallStore, install as install_calling
+from .calling import Calling, CallStore, LiveKit, install as install_calling
 from .google_calendar import GoogleCalendars, install as install_google_calendar
 from .photos import Photos
 from .photo_api import install as install_photos
@@ -204,7 +204,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         lambda:voice_status(runtime_root) if runtime_root else {'status':'disconnected'})
     install_announcements(app,announcements,store,authorize,owner)
     install_intercom(app,Intercom(announcements),authorize)
-    calling=Calling(CallStore(runtime_root,store.protector),displays,enabled=deployment_mode=='device')
+    calling=Calling(CallStore(runtime_root,store.protector),displays,
+                    provider=LiveKit(private_origin=os.environ.get('ECHO_CALLING_PRIVATE_ORIGIN','')),
+                    enabled=deployment_mode=='device')
     install_calling(app,calling,authorize,owner)
     from .video_provider import VideoStore, VideoProvider, install as install_video
     install_video(app,VideoProvider(VideoStore(runtime_root,store.protector),displays),authorize,owner)

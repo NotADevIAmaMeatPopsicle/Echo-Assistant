@@ -18,6 +18,12 @@ physical call.
 
 ## Set up a provider
 
+An optional managed server is deployed on the existing private Docker host.
+Its [private deployment notes](PRIVATE_CALLING.md) describe the exact-origin
+binding, device restrictions and credential recovery. The deployed route passed
+a silent two-participant ICE/TCP check; real two-device sound/video is still
+unverified. Fresh installations keep calling off until explicitly configured.
+
 1. Create a LiveKit project or configure a server using the
    [official self-hosting guide](https://docs.livekit.io/home/self-hosting/deployment/).
    Use a valid HTTPS/WSS certificate, a strong API secret, and the provider's
@@ -98,7 +104,9 @@ SHA-512 integrity was verified. Bundle SHA-256:
 `7fa17e37af5e996d8a25f15a637dcc0620215bc01b394e5d209f726afe7dc04d`.
 See [third-party notices](../THIRD_PARTY_NOTICES.md).
 
-Real provider provisioning, Cloud/regional failover, two-device sound/video,
+The managed private provider is provisioned, and its deployed gateway passed
+the real ICE/TCP connection check with two synthetic browser participants. The
+owner start/end API and paired Deck access also work. Cloud/regional failover, two-device sound/video,
 camera framing, echo cancellation and mobile background behaviour still require
 acceptance. Current software deliberately ends a call when the page is hidden.
 An isolated signalling check is not a media-quality or public-internet test.

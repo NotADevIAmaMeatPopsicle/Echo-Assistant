@@ -81,7 +81,11 @@ function externalCallBusy(){return echoCallBusy;}
       r.on(LivekitClient.RoomEvent.ParticipantConnected,()=>{if(current(mark,r)){message='Connected. Your guest is here.';$('calling-code').textContent='';$('calling-invitation').hidden=true;render();}});
       r.on(LivekitClient.RoomEvent.ParticipantDisconnected,()=>{if(current(mark,r))void endCall('The other person left.');});
       r.on(LivekitClient.RoomEvent.AudioPlaybackStatusChanged,()=>{$('calling-unlock').hidden=r.canPlaybackAudio;});
-      await r.connect(result.url,result.token,{autoSubscribe:true});delete result.token;
+      const connectionOptions={autoSubscribe:true};
+      // The managed private server uses tailnet TCP media. An explicit empty
+      // list prevents the SDK from adding the provider's public STUN defaults.
+      if(result.private_transport===true)connectionOptions.rtcConfig={iceServers:[]};
+      await r.connect(result.url,result.token,connectionOptions);delete result.token;
       if(!current(mark,r)){void r.disconnect(true);return;}
       await capture('audio',mark,r);
       if(!current(mark,r))return;
