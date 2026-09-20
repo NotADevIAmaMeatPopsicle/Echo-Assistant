@@ -24,6 +24,16 @@ class GroupMusicConfig(BaseModel):
     players:list[str]=Field(default_factory=list,max_length=32)
     receivers:list[str]=Field(default_factory=list,max_length=32)
     max_volume:int=Field(default=30,ge=1,le=100)
+    round_enabled:bool=False
+    round_name:str=Field(default='Echo Mini',min_length=1,max_length=60)
+    round_volume:int=Field(default=2,ge=0,le=20)
+    round_latency_ms:int=Field(default=0,ge=-200,le=200)
+
+    @field_validator('round_name')
+    @classmethod
+    def round_label(cls,value):
+        if value!=value.strip() or any(ord(c)<32 for c in value):raise ValueError('Use a printable Mini player name without surrounding spaces')
+        return value
 
     @field_validator('url')
     @classmethod

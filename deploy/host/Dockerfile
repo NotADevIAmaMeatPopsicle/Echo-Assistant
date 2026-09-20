@@ -25,6 +25,8 @@ COPY --from=receiver /usr/local/bin/echo-librespot /usr/local/bin/echo-librespot
 COPY --from=speech /usr/local /opt/python312
 COPY config/stt-linux.lock.txt /tmp/stt-linux.lock.txt
 RUN --mount=type=cache,target=/root/.cache/pip python -m pip install --only-binary=:all: -c /tmp/host-linux.lock.txt -r /tmp/stt-linux.lock.txt
+COPY config/group-music-host.lock.txt /tmp/group-music-host.lock.txt
+RUN --mount=type=cache,target=/root/.cache/pip python -m pip install --require-hashes --only-binary=:all: -r /tmp/group-music-host.lock.txt
 WORKDIR /opt/echo
 COPY backend /opt/echo/backend
 COPY web /opt/echo/web

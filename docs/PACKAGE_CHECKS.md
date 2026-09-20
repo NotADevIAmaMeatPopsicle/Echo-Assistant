@@ -100,6 +100,26 @@ python tools/check_pi_music_pipeline.py
 The last two run on Linux with synthetic child processes in place of ALSA. They
 do not open a real input/output or download a wake model.
 
+## Mini grouped music
+
+For the Mini music adapter, install `config/group-music-host.lock.txt` with
+`--require-hashes --only-binary=:all:` in a disposable Linux AMD64/Python 3.13 or
+Windows AMD64/Python 3.14 environment. Run:
+
+```text
+python -m unittest tests.test_round_group_music tests.test_round_sendspin tests.test_timed_speaker tests.test_group_music tests.test_music_library
+```
+
+The protocol check uses the actual pinned SDK with a synthetic loopback server
+and in-memory firmware wire. It covers authentication order, PCM negotiation,
+clock conversion, gain limits, clear/disconnect and redirect rejection. No real
+Music Assistant instance, board, microphone or speaker is accessed. Without the
+optional runtime, that protocol check skips explicitly; the adapter's state and
+permission checks remain runnable. CI installs the lock for its Linux job.
+
+The grouped-music browser check also exercises Mini owner configuration:
+`python tools/check_display_suite.py --check display_group_music`.
+
 ## Galleries and private data
 
 Use `tools/preview_smart_display.py` for manual UI review. Its state is temporary.

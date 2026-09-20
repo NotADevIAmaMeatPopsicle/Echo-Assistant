@@ -16,7 +16,7 @@ from tools.fetch_native_sources import fetch
 from tools.release_guard import PRIVATE,FORBIDDEN_SUFFIXES,PATTERNS
 
 EXTRA=(
-    *('config/'+name for name in ('tts-runtime.lock.txt','tts-models.json','host-linux.lock.txt','tts-linux.lock.txt','stt-linux.lock.txt')),
+    *('config/'+name for name in ('tts-runtime.lock.txt','tts-models.json','host-linux.lock.txt','tts-linux.lock.txt','stt-linux.lock.txt','group-music-host.lock.txt')),
     *('tools/'+name for name in ('prepare_tts.py','download_tts_models.py','check_tts.py','build_receiver.py','receiver_events.rs')),
     'deploy/host/bootstrap.py','deploy/host/build_aec.py','deploy/host/Dockerfile','deploy/host/.dockerignore',
 )

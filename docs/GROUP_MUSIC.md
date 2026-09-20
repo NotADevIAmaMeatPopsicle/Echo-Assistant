@@ -139,10 +139,10 @@ pinned audio engine verified 2% attenuation, 80% ducking and mute without openin
 an audio device. These checks do not establish audible playback or timing between
 physical speakers.
 
-The round firmware is **not yet a Sendspin player**. Firmware 0.16.0 and its host
-sender add the [timestamped playback transport](ROUND_GROUP_MUSIC.md); connection
-and voice-priority integration, installation and actual multi-speaker listening
-remain in the build queue. The
-[Sendspin project](https://www.sendspin-audio.com/) supplies an ESP-IDF SDK for that
-integration. Existing Spotify Connect destinations remain separate; this change
+The Mini's [host receiver and firmware transport](ROUND_GROUP_MUSIC.md) are now
+implemented, including owner settings, metadata, shared-output music controls
+and local voice priority. The receiver stays disabled pending installation of
+firmware 0.16.0 and physical acceptance. Actual multi-speaker listening, latency
+calibration and long-session drift remain in the build queue. Existing Spotify
+Connect destinations remain separate; this change
 does not automatically share their incoming Spotify stream with Music Assistant.

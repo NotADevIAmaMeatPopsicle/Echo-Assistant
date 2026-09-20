@@ -126,3 +126,9 @@ when distributing a runtime. Dependencies retain their separate terms, including
 PyAV/FFmpeg, NumPy, sounddevice/PortAudio and the networking packages in the lock.
 The full CLI's server, desktop interface and discovery modules are not part of
 Echo's installed minimal player; running that CLI requires its other dependencies.
+
+The optional Mini host receiver also uses aiosendspin 6.0.1, with the wheel hashes
+in `config/group-music-host.lock.txt`. It uses the client protocol and raw PCM;
+it does not install a desktop player, open an audio device or advertise discovery.
+The installed distributions retain their license notices. This host lock targets
+Linux AMD64/Python 3.13 and Windows AMD64/Python 3.14.

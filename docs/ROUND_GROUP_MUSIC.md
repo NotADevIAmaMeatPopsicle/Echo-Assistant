@@ -1,14 +1,14 @@
 # Grouped music on Echo Mini
 
 The Mini needs timestamped audio to join the Deck's Music Assistant playback.
-Firmware **0.16.0** implements that transport and its playback scheduler. Its
-host sender is implemented, but the Sendspin session, owner settings and voice
-bridge integration are still being connected. This is not yet an enabled Mini
-player, and the new firmware has not been installed on the physical board.
+Firmware **0.16.0** implements that transport and its playback scheduler. The host
+now includes the Sendspin session, owner settings, music controls and voice-priority
+integration. The receiver defaults to **disabled**. The matching firmware has not
+been installed on the physical board, so real Mini playback is still unverified.
 
 The existing Mini voice, Spotify and intercom transports remain separate. No
 Music Assistant account, token or discovery service is added to the firmware.
-The intended adapter uses the existing authenticated USB or paired TLS wire.
+The adapter uses the existing identity-verified USB or paired TLS wire.
 The [grouped-music guide](GROUP_MUSIC.md) describes the working Deck connection.
 
 ## Timing and audio
@@ -37,7 +37,34 @@ The output ceiling starts at 2%; firmware applies the smaller of its physical
 volume setting and the group gain. Normal mute/heartbeat and transport-loss
 handling still stop or disarm the appropriate existing audio paths.
 
-## Adapter integration contract
+## Enable the Mini
+
+1. Verify the board identity and original backup before installing firmware
+   0.16.0, following [the hardware guide](HARDWARE.md). Older firmware receives
+   no new group-audio commands and does not register a player.
+2. Use the current Docker host image, which includes the optional SDK. For a
+   Windows AMD64 host using Python 3.14, install into Echo's existing virtual
+   environment with `python -m pip install --require-hashes --only-binary=:all:
+   -r config/group-music-host.lock.txt`. The same lock supports Linux AMD64/Python
+   3.13. Other architectures require a separately reviewed wheel lock.
+3. Connect the private Music Assistant server in **Settings → Music Assistant →
+   Connection & outputs**. Under **Echo Mini**, enable the receiver, choose its
+   name, and leave the speaker ceiling at 2% initially. Save the connection.
+4. Wait for the Mini to connect, then **Load outputs**, select its registered
+   output, and **Save shared outputs**. Also share any outputs it will join.
+5. Use **Music → Together** to select a source and compatible rooms. Playback
+   or reconnecting to an existing Music Assistant session can start sound, so
+   perform initial acceptance at a comfortable volume.
+
+The owner page reports missing firmware/runtime, connection and clock readiness.
+The host resolves Music Assistant's canonical player using its reported Sendspin
+protocol identity, rather than its display name. Mini play/skip buttons and basic
+voice music commands target that player after a group stream selects it. They
+check the shared-output permissions again before sending a control. Microphone
+mute is independent of music volume; the physical volume setting still limits
+the amplifier output. Calibration accepts ±200 ms; leave it at zero until measured.
+
+## Voice and connection behavior
 
 The owning voice bridge must negotiate `timed_audio=1` before sending any new
 commands. Older firmware receives none of them. The adapter must:
@@ -52,8 +79,19 @@ commands. Older firmware receives none of them. The adapter must:
 - Report both server-clock and device-clock health, and keep registration disabled
   when the optional runtime or firmware capability is missing.
 
-Those connection and focus hooks are **not yet installed in the voice bridge**.
-Do not enable a player or claim multi-room playback from the timing core alone.
+Those hooks are installed in the voice bridge. A separate bounded network worker
+receives raw mono PCM and metadata; only the voice thread writes to the board.
+It keeps the server clock running during local voice interruptions, discards
+held audio and resumes at fresh timestamps. Other group members are not paused
+by a local cue or reply. An explicit pause/skip command controls the shared group.
+Spotify has priority when it is playing on this Mini.
+
+Saved owner settings are checked twice per second. Disabling the receiver,
+changing the server or losing firmware capability closes its connection. Missing
+SDK dependencies leave ordinary voice/Spotify usable. Health stores counters and
+clock/focus state, with no audio, track history, account token or device identity.
+The SDK uses only player and metadata roles; no controller role, discovery
+listener or new inbound port is enabled.
 
 ## Wire additions
 
@@ -74,11 +112,15 @@ closed. Clock probes contain no microphone or track content.
 
 ## Verification and remaining acceptance
 
-The native C++ timing check exercises the firmware queue in memory. Python
-checks cover clock expiry, focus stops, gain ceilings, frame checksums, credits,
-packet boundaries and legacy sender behavior. Firmware compilation and the
-four-image bundle verification pass without accessing a device.
+The native C++ timing check exercises the firmware queue in memory. Python checks
+cover clock expiry, focus stops, gain ceilings, frame checksums, credits, packet
+boundaries, access removal, shared-output checks and legacy sender behavior. The
+actual pinned SDK also connects to a synthetic loopback server, negotiates mono
+PCM, synchronizes time, passes synthetic samples to the fake wire, handles clear
+and disconnect, and rejects redirects before forwarding credentials. These
+checks pass on Windows and isolated Linux without any audio devices or live
+services. Firmware compilation and four-image bundle verification pass separately.
 
-After the full adapter is connected, use the [identity and backup checks](HARDWARE.md)
-before installing. Real playback, drift over long sessions, Wi-Fi jitter, quiet
+Use the [identity and backup checks](HARDWARE.md) before installing. Real playback,
+drift over long sessions, Wi-Fi jitter, quiet
 volume, voice interruption and measured timing against the Deck remain unverified.

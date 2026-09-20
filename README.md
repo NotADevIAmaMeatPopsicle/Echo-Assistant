@@ -136,7 +136,9 @@ tab for library search, queue selection, shared-player controls and reviewed roo
 grouping. Browse connected providers and explicitly choose where to play. It works
 with compatible players configured in Music Assistant. The optional native Pi player connects
 through Echo’s private gateway and keeps voice attenuation local to that screen.
-The round-player adapter and physical multi-speaker timing remain in progress.
+The [Mini host receiver](docs/ROUND_GROUP_MUSIC.md) includes owner volume limits,
+track information and voice priority. It stays disabled pending installation of
+the matching firmware; physical multi-speaker playback and timing remain unverified.
 
 ### Your day, lists, and reminders
 

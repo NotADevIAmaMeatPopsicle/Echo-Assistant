@@ -35,6 +35,7 @@ from .alarms import Alarms
 from .lifecycle import Lifecycle, request_stop
 from .transport import load_wifi, WifiTransport
 from .round_intercom import RoundIntercom
+from .round_group_music import RoundGroupMusic, ForegroundWire
 
 ROOT = Path(__file__).resolve().parents[1]
 MAC = __import__('os').environ.get('ECHO_DEVICE_MAC', '').lower()
@@ -126,7 +127,7 @@ def main():
 
 
 def run_session(args, lifecycle, model, recovery, music):
-    calls=None
+    calls=None;group=None
     sample=SpeakerCheck(ROOT)
     sample_id=None
     wifi = None if args.usb else load_wifi(ROOT)
@@ -161,6 +162,8 @@ def run_session(args, lifecycle, model, recovery, music):
         port.open()
         if not wifi and hasattr(port, 'set_buffer_size'):
             port.set_buffer_size(rx_size=65536, tx_size=65536)
+        group=RoundGroupMusic(ROOT,MAC,port.write)
+        port=ForegroundWire(port,group)
         with httpx.Client(base_url="http://127.0.0.1:8768", timeout=15, trust_env=False,
                                headers={"Authorization": "Bearer " + token}) as client, ThreadPoolExecutor(max_workers=3) as worker, SpeechJobs(worker) as speech_jobs:
             def spoken_result(outcome, reply, *, cancel=None):
@@ -210,6 +213,7 @@ def run_session(args, lifecycle, model, recovery, music):
             else:
                 raise RuntimeError("Voice-capable firmware did not identify itself")
             if lifecycle.stopped(): return
+            for line in lines:group.receive(line)
             if any(re.search(r'\bintercom=1\b',line) for line in lines):port.write(b'CALL_RESET\n')
             duplex = any(re.search(r'\bduplex=1\b', line) for line in lines if line.startswith('STATUS '))
             activation = Activation(any(re.search(r'\bcue_ready=1\b', line) for line in lines if line.startswith('STATUS ')))
@@ -248,6 +252,7 @@ def run_session(args, lifecycle, model, recovery, music):
                 if (decoder.errors, decoder.gaps) != (previous_errors, previous_gaps):
                     recognition.reset()
                 for line in lines:
+                    group.receive(line)
                     calls.receive(line)
                     if phase == 'activation': activation.receive(line)
                     display.receive(line)
@@ -266,7 +271,7 @@ def run_session(args, lifecycle, model, recovery, music):
                     if line.startswith("STATUS "):
                         device = dict(re.findall(r"(\w+)=([^ ]+)", line))
                         status["device"] = {k: device.get(k) for k in
-                            ("wake", "stream", "stream_drops", "usb_drops", "audio_errors", "peak", "volume", "transport", "network", "rssi", "version", "intercom", "uptime_ms", "heartbeat_ms")}
+                            ("wake", "stream", "stream_drops", "usb_drops", "audio_errors", "peak", "volume", "transport", "network", "rssi", "version", "intercom", "timed_audio", "uptime_ms", "heartbeat_ms")}
                         status["muted"] = device.get("muted") == "1"
                     elif line.startswith('NETWORK '):
                         status['network'] = {key: int(value) for key, value in re.findall(r'(\w+)=(\d+)', line)}
@@ -317,7 +322,8 @@ def run_session(args, lifecycle, model, recovery, music):
                     elif line.startswith("EVENT music_action="):
                         action = line.partition('=')[2]
                         if action in {'toggle', 'next', 'previous'}:
-                            music.command(action)
+                            if group.selected:group.submit_control(worker,action)
+                            else:music.command(action)
                 display.pump()
                 alarms.pump()
                 calls.tick(status,phase)
@@ -385,7 +391,8 @@ def run_session(args, lifecycle, model, recovery, music):
                         speaker.start(alarm_pcm, kind='V' if alarms.is_announcement else 'A'); phase = 'alarm'
                 if now-last_music_ui >= 1:
                     safe = lambda text: re.sub(r'[^ -~]', ' ', str(text))[:28]
-                    port.write(f"MUSIC_STATE {safe(music.status)}\nMUSIC_TITLE {safe(music.title)}\nMUSIC_ARTIST {safe(music.artist)}\n".encode())
+                    music_state,music_title,music_artist=group.now_playing() if group.selected else (music.status,music.title,music.artist)
+                    port.write(f"MUSIC_STATE {safe(music_state)}\nMUSIC_TITLE {safe(music_title)}\nMUSIC_ARTIST {safe(music_artist)}\n".encode())
                     status['music'] = music.health()
                     last_music_ui = now
                 if pending and pending.done():
@@ -445,7 +452,8 @@ def run_session(args, lifecycle, model, recovery, music):
                     phase = "armed"
                     if resume_music:
                         music.command('play'); resume_music = False
-                recognition.set_mode(recognition_mode(phase, status['muted'], recognition.echo_ready))
+                group.pump(phase,speaker_busy=speaker.active,spotify_busy=music.status=='playing',calls_busy=calls.busy)
+                recognition.set_mode(recognition_mode('music' if phase=='armed' and group.active else phase, status['muted'], recognition.echo_ready))
                 for event in recognition.poll():
                     if phase in {'armed', 'music'} and event['kind'] == 'wake':
                         alarms.messages.cancel()
@@ -457,12 +465,19 @@ def run_session(args, lifecycle, model, recovery, music):
                         status['commands'] += 1; port.write(b'VOICE_THINKING\n')
                         intent = music_intent(event['value'])
                         if intent:
-                            outcome, reply, resume_music = control_music(music, intent, resume_music)
-                            pending = speech_jobs.submit(spoken_result, outcome, reply)
+                            if group.selected:
+                                def group_reply(action,*,cancel=None):
+                                    check_cancel(cancel)
+                                    outcome,reply=group.control(action)
+                                    return spoken_result(outcome,reply,cancel=cancel)
+                                pending=speech_jobs.submit(group_reply,intent)
+                            else:
+                                outcome, reply, resume_music = control_music(music, intent, resume_music)
+                                pending = speech_jobs.submit(spoken_result, outcome, reply)
                         else:
                             pending = speech_jobs.submit(answer, event['value'])
                         phase = 'thinking'
-                recognition.set_mode(recognition_mode(phase, status['muted'], recognition.echo_ready))
+                recognition.set_mode(recognition_mode('music' if phase=='armed' and group.active else phase, status['muted'], recognition.echo_ready))
                 for pcm, reference in zip(packets, decoder.references):
                     status['pcm_frames'] += 1; last_pcm = now
                     recognition.submit(pcm, reference)
@@ -476,7 +491,8 @@ def run_session(args, lifecycle, model, recovery, music):
                 status['framing'] = {'header': decoder.header_errors, 'checksum': decoder.checksum_errors,
                                      'noise': decoder.noise_errors, 'console_interference': decoder.console_frames}
                 status['speaker'] = {'active': speaker.active, 'kind': speaker.kind, 'frames': speaker.consumed, 'underruns': speaker.underruns}
-                if now-last_pcm > 4 and not status["muted"] and phase not in {"speaking", "music", "alarm", "intercom"}:
+                status['grouped_music']=group.health()
+                if now-last_pcm > 4 and not status["muted"] and not group.active and phase not in {"speaking", "music", "alarm", "intercom"}:
                     raise RuntimeError("Microphone stream stopped; disarming")
                 status['phase'] = phase
                 status['announcement'] = alarms.is_announcement
@@ -486,6 +502,7 @@ def run_session(args, lifecycle, model, recovery, music):
     except KeyboardInterrupt:
         pass
     finally:
+        if group:group.close()
         if calls:calls.close()
         if sample_id:
             try:sample.update(sample_id,'failed',reason='Speaker connection ended')

@@ -24,13 +24,27 @@ Prioritize the Pi audio path before extending round intercom. See
 
 ## Active software work
 
-**Mini music timing checkpoint:** firmware 0.16.0 and a host sender now support
+**Mini music integration checkpoint:** the private host now includes an opt-in
+Sendspin receiver, owner name/volume/calibration settings, connection/clock status,
+metadata and shared-output controls for Mini buttons and basic voice music intents.
+Cues, replies, alarms, calls and Spotify take local priority; buffered group audio
+is discarded while held. The receiver is disabled pending matching firmware and
+physical acceptance. Private settings and pairing were preserved during deployment.
+The Pi serves the updated assets, its listener remains armed at 2%, and no sound
+was played. The Mini is not registered as a grouped player yet.
+
+Forty-six focused Windows tests plus 26 existing voice/recognition checks pass;
+37 focused checks pass in an isolated Linux container. These include the actual
+pinned SDK against a synthetic server and fake firmware wire, with clock sync,
+PCM format, gain, clear/disconnect, redirects and owner revocation. The browser
+check covers owner settings, grouping, library/queue selection and Guest access.
+The optional host runtime is wheel-hash pinned; no live audio was used.
+
+Firmware 0.16.0 and a host sender support
 timestamped 48 kHz PCM over the existing board transport. The firmware timing
 core passed its silent native C++ check; eleven Python timing/legacy-sender tests
 passed, and the ESP32 build plus four-image bundle verification passed. The
-bundle is local only; no board was flashed and no audio played. Sendspin session
-management, owner settings and voice-priority hooks are still being connected,
-so the Mini is not registered as a grouped player. Physical timing and latency
+bundle is local only; no board was flashed and no audio played. Physical timing and latency
 calibration remain unverified. See [Mini grouped music](ROUND_GROUP_MUSIC.md).
 
 **Grouped-music player checkpoint:** Music Assistant 2.10.4 runs privately without
@@ -40,8 +54,8 @@ Assistant token is stored on the Pi. Its local output ceiling is 2%, voice ducki
 reduces amplitude by 80%, and voice/alerts or local Spotify can silence only this
 endpoint. An in-memory check of the pinned audio engine verified those levels;
 no audio chunks were sent during the connection check. The existing listener
-remains armed and Spotify remains available. Mini's native client and physical
-multi-speaker playback/timing remain open.
+remains armed and Spotify remains available. Mini firmware installation and
+physical multi-speaker playback/timing remain open.
 
 The Together page now also has provider browsing, track/album/playlist/radio search,
 queue pages and explicit selection to play on the chosen output. Provider setup
@@ -182,8 +196,8 @@ parity. Known gaps documented in the smart-display guide remain:
 - [ ] Synchronized grouped music across endpoints.
       Music Assistant connection, library/queue selection, shared-output permissions,
       the native Pi player, private stream transport and local voice coordination
-      are implemented. The round client, actual provider playback and physical
-      timing remain open; see [Grouped music](GROUP_MUSIC.md).
+      and the opt-in Mini host client are implemented. Mini firmware installation,
+      actual provider playback and physical timing remain open; see [Grouped music](GROUP_MUSIC.md).
 - [ ] External calling with a supported provider.
 - [ ] Household/guest profiles and per-user/per-room source policies.
       Per-display Household/Guest profiles, selected home-device and read-only

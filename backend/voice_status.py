@@ -16,7 +16,7 @@ def voice_status(root: Path, now=None):
         timestamp = data.get('updated_at')
         if type(timestamp) not in {int, float} or not math.isfinite(timestamp):
             raise ValueError('Invalid bridge timestamp')
-        for section in ('device', 'recognition', 'music', 'speaker', 'network'):
+        for section in ('device', 'recognition', 'music', 'speaker', 'network', 'grouped_music'):
             if section in data and not isinstance(data[section], dict):
                 raise ValueError('Invalid bridge health section')
         if 'transport' in data and data['transport'] not in ('usb', 'wifi'):
