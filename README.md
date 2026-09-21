@@ -71,7 +71,10 @@ rooms, music, timers, lists or the thermostat. Music sits at bottom right by
 default, with live artwork and playback control. Swipe left or right between
 pages, or jump straight to a page from the sidebar.
 
-On My day, open event details, edit a supported event or occurrence, or create a
+**Calendar** has a month grid, a selected-day agenda, calendar filtering, and an
+agenda for the whole month. Open it from the Deck sidebar or the web workspace;
+the owner can connect Google and choose shared calendars from the same page.
+On Calendar or My day, open event details, edit a supported event or occurrence, or create a
 repeating schedule. Choose explicitly which occurrences a series change affects. [Calendar permissions](docs/CALENDARS.md) separate agenda access, creation,
 and changes to existing events. Guest calendars stay read-only.
 

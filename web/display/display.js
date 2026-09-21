@@ -68,14 +68,23 @@ async function refreshVoice() {
 }
 async function refresh() {
   if (polling) return; polling = true;
+  let requestChanged = false;
   try {
     await Promise.allSettled([refreshVoice(), ...Object.entries(endpoints).map(async ([key, url]) => {
-      if (pageEndpoints[key] && $('page-'+pageEndpoints[key]).hidden) return;
-      try { data[key] = await api(url); received[key] = Date.now(); }
-      catch { delete data[key]; delete received[key]; }
+      const pages = pageEndpoints[key];
+      if (pages && !(Array.isArray(pages) ? pages : [pages]).some(name => !$('page-'+name).hidden)) return;
+      try {
+        const result = await api(url);
+        if (endpoints[key] !== url) { requestChanged = true; return; }
+        data[key] = result; received[key] = Date.now();
+      }
+      catch {
+        if (endpoints[key] !== url) { requestChanged = true; return; }
+        delete data[key]; delete received[key];
+      }
     })]);
     render();
-  } finally { polling = false; }
+  } finally { polling = false; if (requestChanged) void refresh(); }
 }
 function renderConnection() {
   // A responding voice service can still be waiting for the separate speaker.

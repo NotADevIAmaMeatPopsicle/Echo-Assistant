@@ -13,7 +13,7 @@
   function status(message){$('member-google-status').textContent=message;}
   function invalidate(){epoch++;identity='';state=null;flow=null;busy=false;$('member-google-content').replaceChildren();status('');}
   function reset(){invalidate();if(dialog.open)dialog.close();}
-  function refreshAgenda(){delete data.agenda;delete received.agenda;delete data.sources;delete received.sources;refresh();}
+  function refreshAgenda(){delete data.agenda;delete received.agenda;delete data.calendarAgenda;delete received.calendarAgenda;delete data.sources;delete received.sources;refresh();}
   async function request(path,body,method,version=epoch){
     if(!current(version))throw Error('Personal session changed. Open your calendars again.');
     const result=await api(base+path,body,method);

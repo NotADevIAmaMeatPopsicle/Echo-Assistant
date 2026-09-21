@@ -71,7 +71,7 @@
         const examples=[['Explain something','Why does the Moon have phases?'],['Find an idea','Suggest a simple vegetarian dinner'],['Explore with Echo','What can you help a guest with?']];
         welcome.querySelectorAll('[data-prompt]').forEach((button,i)=>{button.textContent=examples[i][0];button.dataset.prompt=examples[i][1];});
       }
-      window.echoAllowedPages=new Set(['home','rooms','music','timers','day','settings',...(profile.conversation?['assistant']:[])]);
+      window.echoAllowedPages=new Set(['home','rooms','music','timers','day','calendar','settings',...(profile.conversation?['assistant']:[])]);
       document.querySelectorAll('[data-page=assistant]').forEach(el=>el.hidden=!profile.conversation);
       if(!profile.conversation){$('send-chat').disabled=true;$('voice-start').disabled=true;}
       if(typeof musicReceiver!=='undefined'&&musicReceiver!=='display'){musicReceiver='display';$('music-receiver').value='display';delete data.nowPlaying;delete received.nowPlaying;}

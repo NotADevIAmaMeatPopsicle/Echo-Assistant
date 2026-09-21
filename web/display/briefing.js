@@ -26,6 +26,7 @@ let eventDraft=null;
 let editingEvent=null;
 let editingScope='single';
 let calendarDraftRequest=null;
+let calendarReturnFocus=null;
 const recurrenceFields=document.createElement('div');recurrenceFields.className='calendar-recurrence';
 recurrenceFields.innerHTML='<label>Repeat<select id="event-repeat"><option value="">Does not repeat</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label><div id="event-repeat-options" class="two-columns" hidden><label>Every<input id="event-interval" type="number" min="1" max="99" value="1"></label><label>Total occurrences<input id="event-count" type="number" min="2" max="366" value="10"></label></div><p id="event-repeat-note" class="tiny soft" hidden>Includes the first event. Monthly and yearly schedules skip dates that do not exist. Timed repeats use the Home Assistant time zone.</p>';
 $('calendar-event-fields').append(recurrenceFields);
@@ -34,8 +35,9 @@ const draftComposer=document.createElement('details');draftComposer.className='c
 draftComposer.innerHTML='<summary>Describe an event in your own words</summary><label for="calendar-draft-text">Describe the event<textarea id="calendar-draft-text" maxlength="2000" rows="2" placeholder="Lunch with Sam tomorrow at noon for an hour"></textarea></label><button class="pill" id="calendar-draft-build" type="button">Draft from words</button><p class="tiny soft">Uses your configured model. Review the fields below before creating anything.</p>';
 eventScroll.prepend(draftComposer);
 const draftNotes=document.createElement('ul');draftNotes.id='calendar-draft-notes';draftNotes.className='tiny soft';draftComposer.after(draftNotes);
-function openCalendarEvent(draft=null){
+function openCalendarEvent(draft=null,options={}){
   if(draft&&(!Number.isFinite(draft.expires_at)||draft.expires_at*1000<Date.now()))return toast('That draft expired. Describe the event again with the current date.');
+  calendarReturnFocus=document.activeElement;
   const writable=(data.sources?.items||[]).filter(i=>i.kind==='calendar'&&i.writable&&i.available);
   draftNotes.replaceChildren();draftComposer.open=false;$('calendar-draft-build').disabled=false;
   editingEvent=null;editingScope='single';draftComposer.hidden=false;recurrenceFields.hidden=false;eventDialog.querySelector('h2').textContent='New calendar event';
@@ -43,7 +45,10 @@ function openCalendarEvent(draft=null){
   $('event-start').type=$('event-end').type='datetime-local';
   $('event-calendar').innerHTML='<option value="">Choose a calendar</option>'+writable.map(i=>`<option value="${esc(i.entity_id)}">${esc(i.name)}</option>`).join('');
   if(writable.length===1)$('event-calendar').value=writable[0].entity_id;
-  const when=new Date();when.setMinutes(0,0,0);when.setHours(when.getHours()+1);const end=new Date(when.getTime()+3600000);
+  if(options.calendar&&writable.some(i=>i.entity_id===options.calendar))$('event-calendar').value=options.calendar;
+  const when=new Date();when.setMinutes(0,0,0);when.setHours(when.getHours()+1);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(options.date||'')){const day=new Date(options.date+'T12:00:00');when.setFullYear(day.getFullYear(),day.getMonth(),day.getDate());}
+  const end=new Date(when.getTime()+3600000);
   const local=value=>`${localDate(value)}T${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`;
   $('event-start').value=local(when);$('event-end').value=local(end);$('event-timezone').value=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   $('calendar-event-status').textContent=writable.length?'This creates an event in the selected calendar through its connected provider.':'You can draft an event now. Enable a writable calendar under Settings → Calendars & cameras before creating it.';
@@ -81,7 +86,7 @@ function resetDraftControls(){
   $('calendar-draft-build').disabled=false;$('calendar-event-fields').disabled=false;
   $('calendar-event-submit').disabled=!fresh('sources')||!(data.sources?.items||[]).some(i=>i.kind==='calendar'&&(editingEvent?i.entity_id===editingEvent.calendar&&i.editable:i.writable)&&i.available);
 }
-function closeEvent(){if($('calendar-event-submit').dataset.sending==='true')return;eventDialog.close();createButton.focus();}
+function closeEvent(){if($('calendar-event-submit').dataset.sending==='true')return;eventDialog.close();if(calendarReturnFocus?.getClientRects().length)calendarReturnFocus.focus();}
 eventDialog.addEventListener('close',()=>{calendarDraftRequest?.abort();calendarDraftRequest=null;resetDraftControls();});
 $('calendar-event-close').onclick=$('calendar-event-cancel').onclick=closeEvent;
 eventDialog.addEventListener('cancel',e=>{if($('calendar-event-submit').dataset.sending==='true')e.preventDefault();});

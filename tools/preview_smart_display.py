@@ -198,6 +198,8 @@ class DisplayPreview(Preview):
                   '/assets/display/doorbells.js':('display/doorbells.js','text/javascript'),
                   '/assets/display/doorbells.css':('display/doorbells.css','text/css'),
                   '/assets/display/briefing.js':('display/briefing.js','text/javascript'),
+                  '/assets/display/calendar.js':('display/calendar.js','text/javascript'),
+                  '/assets/display/calendar.css':('display/calendar.css','text/css'),
                   '/assets/display/calendar-invitations.js':('display/calendar-invitations.js','text/javascript'),
                   '/assets/display/calendar-invitations.css':('display/calendar-invitations.css','text/css'),
                   '/assets/display/member-google.js':('display/member-google.js','text/javascript'),

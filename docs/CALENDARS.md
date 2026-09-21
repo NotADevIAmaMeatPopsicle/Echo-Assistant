@@ -1,5 +1,24 @@
 # Calendars on Echo
 
+Open **Calendar** in the Deck sidebar or the browser workspace navigation.
+Both open the same responsive page at `/display#calendar`: a month grid with
+event indicators, a selected-day agenda, an all-month Agenda view, calendar
+filtering, and Previous / Today / Next navigation. Tap an event for details.
+**New event** starts on the selected date and uses the selected calendar when
+it allows creation. Existing creation, editing, recurrence and review rules apply.
+
+The owner can open **Connect Google Calendar** or **Choose shared calendars**
+directly from this page. Connecting Google still requires the installation's
+OAuth setup and the user's sign-in; an empty calendar page does not imply an
+account is connected. Guest and personal sessions retain their existing source
+grants and read-only behavior. Personal sessions have **My Google calendars**.
+Calendar events stay in memory in the browser and are not saved to local storage.
+
+The month view uses the screen's local time zone for timed events. All-day dates
+stay as calendar dates, and exclusive end dates do not add an extra day. A partial
+or unavailable provider is labeled rather than presented as an empty, fully
+synced calendar. **My day** retains its compact agenda and gains a Calendar link.
+
 Connect a calendar integration in Home Assistant or [Google Calendar directly](GOOGLE_CALENDAR.md).
 In the owner workspace,
 open **Smart display → Settings → Calendars & cameras → Load sources**. Choose
