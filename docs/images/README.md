@@ -1,6 +1,13 @@
 # Public illustrations
 
 - `echo.svg` is the original illustrative hero artwork.
+- `deck-prototype-front.jpg` and `deck-prototype-rear.jpg` are photographs supplied
+  for publication of the physical Echo Deck. The front shows the working Music
+  page in the picture-frame enclosure; the rear shows the Pi, display controller,
+  USB audio hardware and salvaged speaker. Publication copies are color-normalized
+  and re-encoded without EXIF, location or source-profile metadata. Screen and
+  hardware content have not been generated or composited. Music artwork remains
+  the property of its respective rights holders. Original files are not included.
 - `prototype-front.jpg`, `prototype-board-rear.jpg`, and
   `prototype-wiring-rear.jpg` are photographs supplied for publication of the
   physical Echo prototype. They show the live ready screen, board in its printed
@@ -26,6 +33,11 @@
 - Enclosure renders live in `enclosure/crescent-v1/preview`. They depict exported
   geometry and reference electronics. They are separate from the prototype
   photographs above.
+- `enclosure/deck-concept-v1/preview` contains Blender renders of a proposed Deck
+  enclosure, including a presentation sheet and front, rear and cover-off views.
+  Its screen texture is the synthetic `display-home.png` screenshot. These are
+  concept renders, not photographs or evidence of a finished enclosure. PNGs have
+  been re-encoded without render metadata; the editable model has relative paths.
 
 `round-calendar.png` combines the synthetic draft and confirmation scenes produced
 by `tools/preview_firmware.py`, using `tools/readme_gallery.py`. It uses the firmware's real font bitmaps and renderer;

@@ -10,7 +10,7 @@ assistant and speech models; each device has its own screen and audio. A web
 workspace puts conversations, memory, research, and configuration within reach
 from a computer or phone.
 
-**Current stage: private alpha.** Both primary builds are being completed as one
+**Current stage: alpha development.** Both primary builds are being completed as one
 package. The Pi display is running on hardware; its audio and the new intercom
 paths still need physical validation. See [current status](#current-status) for
 what is implemented, what has been exercised, and what remains.
@@ -18,7 +18,7 @@ what is implemented, what has been exercised, and what remains.
 [![CI](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/actions/workflows/ci.yml)
 ![Round speaker](https://img.shields.io/badge/ESP32--S3-AMOLED_1.75-2274c7)
 ![Smart display](https://img.shields.io/badge/Raspberry_Pi_4B-smart_display-2274c7)
-![Status](https://img.shields.io/badge/status-private_alpha-orange)
+![Status](https://img.shields.io/badge/status-alpha_development-orange)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
 **[Choose a build](#two-builds-one-echo)** · **[Smart display](#the-smart-display)** ·
@@ -28,8 +28,9 @@ what is implemented, what has been exercised, and what remains.
 
 ![Echo smart-display home with a clock, weather, room shortcuts, and next timer; sample data](docs/images/display-home.png)
 
-*Screenshots show the working software with synthetic data. The prototype photos
-below show the actual round build. [Image sources and provenance](docs/images/README.md).*
+*UI screenshots use synthetic data. Prototype photographs show the physical Deck
+and round builds; enclosure concepts are labeled separately.
+[Image sources and provenance](docs/images/README.md).*
 
 ## Two builds, one Echo
 
@@ -65,6 +66,32 @@ The [remaining task plan](docs/REMAINING_TASKS.md) assigns bounded implementatio
 tasks, dependencies and acceptance criteria for completing both builds.
 
 ## The smart display
+
+### Echo Deck, on the workbench
+
+The current Deck runs on a Raspberry Pi 4 and a landscape HDMI/USB touchscreen
+mounted in a repurposed picture frame. A Waveshare USB audio interface drives a
+salvaged speaker, with a separate USB microphone for voice input.
+
+<table>
+<tr>
+<td width="50%" valign="top"><strong>The working display</strong><br>Echo's Music page on the physical Deck.<br><a href="docs/images/deck-prototype-front.jpg"><img src="docs/images/deck-prototype-front.jpg" alt="Physical Echo Deck in a gold picture frame displaying the Music page" width="460"></a></td>
+<td width="50%" valign="top"><strong>Inside the prototype</strong><br>Pi, display controller, USB audio and the retained speaker.<br><a href="docs/images/deck-prototype-rear.jpg"><img src="docs/images/deck-prototype-rear.jpg" alt="Rear of the Echo Deck frame showing the Raspberry Pi, display connections, Waveshare USB audio board and salvaged speaker" width="460"></a></td>
+</tr>
+</table>
+
+### A proposed home for the hardware
+
+The Deck enclosure concept brings the same components into a wood-trimmed,
+navy housing with a fabric-covered speaker base, camera pod and removable back.
+The editable Blender model includes front, rear and cover-off views.
+
+![Echo Deck enclosure concept with front, rear and internal packaging views](enclosure/deck-concept-v1/preview/echo-deck-concept-board.png)
+
+**Concept, not a print kit:** panel dimensions, mounting fit, cooling and acoustics
+still need physical validation. [Explore the model and source](enclosure/deck-concept-v1).
+
+### Your home at a glance
 
 Make the home screen your own: choose four tiles for time and Echo, weather,
 rooms, music, timers, lists or the thermostat. Music sits at bottom right by
@@ -505,11 +532,12 @@ The demonstrated build uses a salvaged Google Home Mini speaker in its acoustic
 housing. The battery holder's dimensions do not establish electrical compatibility.
 The assembly guide includes quantities, print volumes, and close-up photographs.
 Repeatable fit, durability, thermal behavior, and acoustic performance still need
-broader physical validation. A matching Pi enclosure is not included.
+broader physical validation. An editable [Deck enclosure concept](enclosure/deck-concept-v1)
+is also included; printable Deck parts remain future work.
 
 ## Current status
 
-**Private alpha; the complete two-build package has not been released.** Older
+**Alpha development; the complete two-build package has not been released.** Older
 release assets predate the Pi expansion and new room-audio work. The current
 checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
 [release history](docs/RELEASE.md) identifies the earlier source package.
@@ -542,6 +570,7 @@ does not claim complete Nest Hub or Echo Show feature parity.
 | [Music](docs/MUSIC_DISPLAY.md) · [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) | Playback, destinations, announcements, and calls |
 | [Deployment](docs/DEPLOYMENT.md) · [Private access](docs/TAILNET_ACCESS.md) | Docker, Hermes UIs, storage, recovery, and selected-device access |
 | [Crescent assembly](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md) · [Web gallery](docs/WEB_UI.md) | Printable parts, build photographs, and UI examples |
+| [Deck enclosure concept](enclosure/deck-concept-v1) | Blender model, concept renders, hardware assumptions and editable geometry |
 | [Build queue](docs/BUILD_QUEUE.md) · [Release history](docs/RELEASE.md) · [Package checks](docs/PACKAGE_CHECKS.md) | Current acceptance, historical releases, and reproducible checks |
 
 <details>
