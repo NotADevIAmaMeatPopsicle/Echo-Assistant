@@ -50,12 +50,12 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Talk or type** | “Hey Echo” / “Okay Echo,” a warm activation cue, push-to-talk, visible listening/thinking/replying states, software mute, and request cancellation. |
 | **Ask, research, remember** | A configured model or Hermes agent, supported web lookup with citations, longer research tasks, and explicitly saved facts you can review, edit, export, or delete. |
 | **Control your home** | Home Assistant room lights, individual brightness/colour controls, thermostat modes and temperatures, speaker selection, and saved routines with device permissions. |
-| **Play music** | Spotify Connect with artwork, track details, seeking, shuffle/repeat, and volume controls; HTTPS radio presets and supported local media on the display. |
+| **Play music** | Spotify Connect with artwork, track details, seeking, shuffle/repeat, and volume controls; searchable internet radio and favorites, an SD-card music library, and optional Spotify playlist browsing through Music Assistant. |
 | **Plan the day** | A daily briefing, selected calendars, reviewed event creation, repeating schedules, reviewed event/occurrence changes, shopping lists, tasks, and notes. |
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
 | **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, answered two-way intercom, and optional [browser voice/video calls](docs/CALLING.md). A private LiveKit server is deployed with verified TCP connectivity; physical calling acceptance remains open. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
-| **Share deliberately** | Owner-assigned Household or Guest profiles for Deck and Mini, selected devices and sources, and optional local guest home voice. Personal sign-in adds separate memory, personality and conversation on Deck and Mini. Mini firmware awaits installation. |
+| **Share deliberately** | Owner-assigned Household or Guest profiles for Deck and Mini, selected devices and sources, and optional local guest home voice. Personal sign-in adds separate memory, personality and conversation on Deck and Mini. Mini firmware is installed; physical sign-in acceptance remains open. |
 
 Home Assistant, Spotify, and Hermes are optional integrations. Features that need
 an account, a selected source, or an audio device report their availability. The
@@ -93,6 +93,12 @@ turn off the HDMI signal while music and the microphone keep running. Optional
 Home Assistant motion/occupancy sensors can wake a selected display; source
 sharing and per-screen setup are covered in [Screen comfort](docs/SMART_DISPLAY.md#screen-comfort).
 
+With a supported Pi camera, **My day → Your camera** adds a local preview,
+one-shot focus and orientation controls, and an explicit **Send this frame**
+action for image questions. Optional camera motion wake stays off until enabled.
+See [Deck camera](docs/DECK_CAMERA.md) for setup, privacy controls and the remaining
+video-call and Google Meet compatibility checks.
+
 ### A conversation with room to breathe
 
 Echo's status panel and settings sit beside the conversation. Type a message,
@@ -128,21 +134,19 @@ Home Assistant integrations; Echo does not import Google Home's device graph.
 
 The Pi has a separately named **Spotify Connect receiver** that plays through its
 selected output. The round speaker is another explicit destination. Spotify
-Premium is required. **Connect with phone** shows a QR link to Spotify so you
-can choose Echo from the phone's device picker; it is not an account-linking code.
-Playlists, search, and queue browsing stay in Spotify. Chromecast and AirPlay
-receivers are not included.
+Premium is required. Open Spotify on your phone and choose the named Echo
+receiver from its device picker.
+For browsing directly on Echo, the [music library](docs/MUSIC_LIBRARY.md) adds
+persistent Spotify sign-in through Music Assistant, playlists, search and queue
+selection. Radio includes station discovery and favorites; Files automatically
+indexes music and M3U playlists in the Pi’s `~/Music/Echo` folder. Chromecast and
+AirPlay receivers are not included.
+The Now Playing panel follows library playback as well as Spotify Connect, with
+cover art, position and controls for the selected output. Pausing a library queue
+retains the song and resume position.
 Deck also has an optional, default-off [Bluetooth A2DP adapter](docs/PI_BLUETOOTH.md)
 for an owner-selected bonded phone. Its adapter software is included; actual package,
 profile and playback acceptance remain pending.
-
-An optional [YouTube player](docs/PI_BROWSER_VIDEO.md) lets the owner select an
-ordinary embeddable video and choose which Household displays may load it.
-Deck opens it in a dedicated player with a 2% native audio ceiling and returns
-to Echo when stopped. It starts muted, uses YouTube's own controls, and loads
-only on request. Host and Deck integration is deployed and remains off by default;
-actual Pi playback verification is still open. Paid catalogs and Netflix/Prime support are
-separate provider work.
 
 Pi wake words remain active during Spotify. Choose pause mode, or lower music by
 80% through the cue and conversation with a shared audio output. Ducking restores
@@ -286,13 +290,14 @@ Home/Echo, the upper button toggles software microphone mute.
 
 The new [Mini calendar review](docs/ROUND_CALENDAR.md) presents spoken event drafts
 page by page, then requires a separate Create confirmation. It shares the Deck's
-calendar permissions and duplicate protection. Current firmware installation and
-physical touch acceptance are pending.
+calendar permissions and duplicate protection. Firmware 0.19.0 is installed;
+physical touch acceptance is pending.
 
 [Mini access profiles](docs/ROUND_ACCESS.md) add a Guest mode for a shared room.
 Choose which lights, thermostat and speakers it can control, and whether it can
 answer questions. Household memory and Hermes tools stay private. The host support
-is deployed; firmware 0.18.0 is built and awaits installation.
+is deployed, and firmware 0.19.0 is installed; physical access-profile acceptance
+remains open.
 
 <table>
 <tr>
@@ -303,8 +308,8 @@ is deployed; firmware 0.18.0 is built and awaits installation.
 
 These are photographs of the assembled prototype, including temporary cable
 restraints. The screen galleries below use the firmware's shared renderer with
-sample data. The newer intercom firmware is built but still awaits installation
-and physical acceptance.
+sample data. Intercom-capable firmware 0.19.0 is installed and has reconnected
+over Wi-Fi; physical call acceptance remains open.
 
 ![Round display states for ready, listening, thinking, replying, software mute, and lost connection](docs/images/voice-states.png)
 

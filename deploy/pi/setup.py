@@ -12,7 +12,7 @@ import sys
 from kiosk import inventory
 
 CORE_FILES=('bridge.py','connect.py','kiosk.py','audio_once.py')
-FILES=(*CORE_FILES,'spotify.py','alerts.py','listener.py','screen.py','grouped.py','sendspin_player.py','bluetooth_receiver.py','bluetooth_backend.py','bluetooth_session.py','browser_video.py','browser_video_backend.py','video_session.py')
+FILES=(*CORE_FILES,'spotify.py','alerts.py','listener.py','screen.py','grouped.py','sendspin_player.py','bluetooth_receiver.py','bluetooth_backend.py','bluetooth_session.py','browser_video.py','browser_video_backend.py','video_session.py','local_library.py','local_camera.py','camera_worker.py')
 MARKER='# Managed by Echo display setup'
 
 

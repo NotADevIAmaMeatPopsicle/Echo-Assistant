@@ -6,7 +6,13 @@ It does not establish Netflix, Prime, paid YouTube, DRM or actual Pi playback
 support. The owner grant remains off by default; constructing this adapter does
 not enable it or contact a provider.
 
-## Owner setup and use
+## Prototype status
+
+The main display no longer loads the YouTube card or its setup extension. The
+backend and native player remain available for development, but the steps below
+refer to the retained prototype, not the current user navigation.
+
+## Prototype setup and use
 
 In owner `/display`, open **Settings → YouTube**, enter the selected ordinary
 YouTube video's 11-character ID, enable it, and choose the permitted Household

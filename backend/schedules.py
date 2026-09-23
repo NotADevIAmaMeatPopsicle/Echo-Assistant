@@ -176,6 +176,12 @@ class ScheduleStore:
                 draft['events']=(history[-max(0,128-len(active)):] if len(active)<128 else [])+active[-128:]
             if draft!=self.state: self.commit(draft)
 
+    def time_zone(self):
+        """Read the home zone without ticking schedules or producing events."""
+        with self.lock:
+            self.require()
+            return self.state['quiet']['timezone']
+
     def quiet_now(self,now=None):
         quiet=self.state['quiet']
         if not quiet['enabled']: return False

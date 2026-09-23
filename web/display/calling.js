@@ -34,10 +34,14 @@ function externalCallBusy(){return echoCallBusy;}
   }
   function version(){return (data.session?.receiver_id||'owner')+':'+(data.session?.profile_revision||0);}
   function current(mark,r){return epoch===mark&&room===r&&echoCallBusy&&!document.hidden&&access===version();}
-  function stopLocal(track){track.stop();local.delete(track);for(const el of track.detach())el.remove();}
+  function stopLocal(track){track.stop();void track.echoCameraRelease?.();local.delete(track);for(const el of track.detach())el.remove();}
   async function capture(kind,mark,r){
-    const t=kind==='audio'?await LivekitClient.createLocalAudioTrack({echoCancellation:true,noiseSuppression:true,autoGainControl:true}):await LivekitClient.createLocalVideoTrack({resolution:{width:640,height:360,frameRate:20}});
-    if(!current(mark,r)){t.stop();return;}
+    let camera,t;
+    try{if(kind==='video')camera=await window.EchoCamera?.openCall();
+      t=kind==='audio'?await LivekitClient.createLocalAudioTrack({echoCancellation:true,noiseSuppression:true,autoGainControl:true}):camera?.track?new LivekitClient.LocalVideoTrack(camera.track):await LivekitClient.createLocalVideoTrack({resolution:{width:640,height:360,frameRate:10},...camera?.options});
+      if(camera)t.echoCameraRelease=camera.release;
+    }catch(error){await camera?.release();throw error;}
+    if(!current(mark,r)){t.stop();await camera?.release();return;}
     local.add(t);
     try{await r.localParticipant.publishTrack(t);if(!current(mark,r)){stopLocal(t);return;}if(kind==='video'){const el=t.attach();el.muted=true;el.playsInline=true;$('calling-local').append(el);}}
     catch(error){stopLocal(t);throw error;}
@@ -101,6 +105,7 @@ function externalCallBusy(){return echoCallBusy;}
     else await capture(kind,mark,r);
   }catch{message='Could not open that device. Check its permission and connection.';}finally{if(mark===epoch){operation=false;changed();}}}
   $('calling-mute').onclick=()=>void toggle('audio');$('calling-camera').onclick=()=>void toggle('video');
+  document.addEventListener('echo:camera-off',()=>{for(const track of [...local])if(track.kind==='video'){stopLocal(track);void room?.localParticipant.unpublishTrack(track).catch(()=>{});}changed();});
   $('calling-volume').oninput=()=>{const v=Number($('calling-volume').value)/100;$('calling-level').textContent=Math.round(v*100)+'%';for(const t of remote)if(t.kind==='audio')t.setVolume(v);};
   $('calling-copy').onclick=async()=>{try{await navigator.clipboard.writeText($('calling-code').textContent);toast('Invitation code copied.');}catch{toast('Select the invitation code to copy it.');}};
   $('calling-unlock').onclick=()=>{if(room)void room.startAudio().catch(()=>toast('Browser audio is still blocked.'));};

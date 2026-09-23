@@ -1,5 +1,6 @@
 """Selection boundaries with a synthetic library; never stream or play sound."""
 from copy import deepcopy
+from concurrent.futures import Future
 import json
 import os
 from pathlib import Path
@@ -40,6 +41,68 @@ class MusicLibraryTests(unittest.TestCase):
         self.config={'enabled':True,'url':'http://echo-music:8095','players':['deck','mini']}
         self.music.configure(self.config,'synthetic',0)
         self.library=MusicLibrary(self.music,clock=lambda:self.now)
+        self.addCleanup(self.library.episode_pool.shutdown, wait=True)
+
+    def shelves(self):
+        playlists=[{'media_type':'playlist','name':name,'uri':'spotify://playlist/'+str(i)} for i,name in enumerate(
+            ['Weekend','3. Focus','1. Favorites','2. Quiet','Walking'])]
+        shows=[{'media_type':'podcast','item_id':str(i),'provider':'spotify-test','uri':'spotify-test://podcast/'+str(i),'name':name}
+               for i,name in enumerate(['Alpha show','Beta show'])]
+        browse={'root':[{'provider':'spotify','path':'spotify-test://'}],
+                'spotify-test://':[{'item_id':key,'path':'spotify-test://'+key} for key in ['playlists','podcasts']],
+                'spotify-test://playlists':playlists,'spotify-test://podcasts':shows}
+        original=self.music.request
+        def request(command,**args):
+            if command=='music/browse':return deepcopy(browse[args['path']])
+            return original(command,**args)
+        self.music.request=request
+        return shows
+
+    def cached_episodes(self,show,episodes):
+        future=Future();future.set_result(episodes)
+        self.library.episode_jobs[(self.music.revision,show['provider'],show['item_id'])]=(self.now+300,future)
+
+    def test_numbered_playlist_shelf_and_on_demand_rest(self):
+        self.shelves()
+        body=LibraryRequest(player='deck',source='spotify',collection='playlists')
+        first=self.library.listing(body,'owner')
+        self.assertEqual([r['name'] for r in first['items']],['1. Favorites','2. Quiet','3. Focus'])
+        self.assertTrue(first['more']);self.assertEqual(first['next_offset'],3)
+        rest=self.library.listing(body.model_copy(update={'offset':3}),'owner')
+        self.assertEqual([r['name'] for r in rest['items']],['Walking','Weekend'])
+        self.assertFalse(rest['more']);self.assertEqual(self.mutations(),[])
+
+    def test_podcast_latest_order_new_feed_and_scoped_episode_play(self):
+        shows=self.shelves()
+        def episode(title,date,done=False):
+            return {'media_type':'podcast_episode','name':title,'uri':'spotify://podcast_episode/'+title,
+                    'metadata':{'release_date':date},'fully_played':done,'podcast':{'name':'Sample show'}}
+        self.cached_episodes(shows[0],[episode('older','2026-08-01T00:00:00+00:00')])
+        self.cached_episodes(shows[1],[episode('newest','2026-09-22T00:00:00+00:00'),episode('completed','2026-09-20',True)])
+        body=LibraryRequest(player='deck',source='spotify',collection='podcasts',sort='latest')
+        shows_result=self.library.listing(body,'owner')
+        self.assertEqual([r['name'] for r in shows_result['items']],['Beta show','Alpha show'])
+        self.assertEqual(shows_result['items'][0]['latest_episode'],'newest')
+        selection=shows_result['items'][0]['selection']
+        with self.assertRaises(HTTPException):self.library.listing(body.model_copy(update={'selection':selection}),'other')
+        episodes=self.library.listing(body.model_copy(update={'selection':selection}),'owner')
+        self.assertEqual(len(episodes['items']),2)
+        feed=self.library.listing(body.model_copy(update={'collection':'new_episodes'}),'owner')
+        self.assertEqual([r['name'] for r in feed['items']],['newest','older'])
+        self.assertNotIn('spotify://',json.dumps(feed));self.assertEqual(self.mutations(),[])
+        self.library.play(LibraryPlay(player='deck',selection=feed['items'][0]['selection']),'owner')
+        self.assertEqual(self.mutations()[0]['args']['media'],'spotify://podcast_episode/newest')
+
+    def test_episode_loading_failure_and_unknown_dates_remain_explicit(self):
+        shows=self.shelves();pending=Future();failed=Future();failed.set_exception(RuntimeError('provider secret'))
+        for show,future in zip(shows,[pending,failed]):
+            self.library.episode_jobs[(self.music.revision,show['provider'],show['item_id'])]=(self.now+300,future)
+        body=LibraryRequest(player='deck',source='spotify',collection='podcasts',sort='latest')
+        result=self.library.listing(body,'owner')
+        self.assertTrue(result['pending']);self.assertEqual(result['unavailable_shows'],1)
+        self.assertEqual(len(result['items']),2);self.assertNotIn('secret',json.dumps(result))
+        pending.set_result([])
+        self.assertFalse(self.library.listing(body,'owner')['pending'])
 
     def select(self):
         return self.library.listing(LibraryRequest(player='deck',view='search',query='sample'),'owner')['items'][0]['selection']
@@ -53,6 +116,11 @@ class MusicLibraryTests(unittest.TestCase):
         self.assertNotIn('library://',serialized);self.assertNotIn('secret',serialized)
         self.assertEqual(result['items'][0]['artist'],'Sample artist');self.assertEqual(self.mutations(),[])
         self.assertEqual(self.calls[-1]['args']['media_types'],['track','album','playlist','radio'])
+
+    def test_spotify_search_filters_provider(self):
+        self.library.listing(LibraryRequest(player='deck',view='search',query='sample',source='spotify'),'owner')
+        self.assertEqual(self.calls[-1]['args']['providers'],['spotify'])
+        self.assertEqual(self.mutations(),[])
 
     def test_selection_is_bound_to_principal_destination_and_expiry(self):
         choice=self.select()

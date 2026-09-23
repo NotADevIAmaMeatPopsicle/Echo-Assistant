@@ -30,18 +30,18 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     });
     await page.goto(base+'/display#music');await page.locator('#track-cover:visible').waitFor();
     assert.equal(await page.locator('#music-receiver').inputValue(),'display');
-    assert.equal(await page.locator('#music-output-name').textContent(),'Kitchen Echo');assert.ok(await page.locator('#play-track').isEnabled());assert.match(await page.locator('#music-output-note').textContent(),/this Pi/);
+    assert.equal(await page.locator('#music-output-name').textContent(),'Kitchen Echo');assert.ok(await page.locator('#play-track').isEnabled());assert.equal(await page.locator('#music-output-note').count(),0);
     await page.locator('#play-track').click();assert.equal(commands[0][0],'/v1/display/music/control');
-    await page.locator('#spotify-phone-open').click();assert.equal(await page.locator('#spotify-picker-title').textContent(),'Choose Kitchen Echo.');await page.locator('#spotify-phone-close').click();
+    assert.equal(await page.locator('#spotify-phone-open').count(),0);
     await page.locator('#music-receiver').selectOption('round');await page.waitForFunction(()=>document.getElementById('music-status').textContent==='Round speaker offline');assert.ok(await page.locator('#play-track').isDisabled());
     await page.locator('#music-receiver').selectOption('display');await page.waitForFunction(()=>!document.getElementById('play-track').disabled);
     fs.mkdirSync('output/playwright',{recursive:true});await page.screenshot({path:'output/playwright/pi-spotify.png',animations:'disabled'});
-    await page.locator('[data-page="settings"]').first().click();await page.locator('#pi-audio-form').waitFor();await page.locator('#pi-receiver-name').fill('Desk Echo');await page.locator('#pi-audio-form button[type="submit"]').click();
+    await page.locator('[data-page="settings"]').first().click();await page.getByRole('tab',{name:'Music',exact:true}).click();await page.locator('#pi-audio-form').waitFor();await page.locator('#pi-receiver-name').fill('Desk Echo');await page.locator('#pi-audio-form button[type="submit"]').click();
     await page.waitForFunction(()=>!busy);assert.equal(settings.name,'Desk Echo');assert.equal(settings.volume,2);
     await page.locator('[data-page="assistant"]').first().click();await page.locator('#voice-start:not([disabled])').click();await page.waitForFunction(()=>window.captureOrder.includes('mic'));
     const order=await page.evaluate(()=>window.captureOrder);assert.ok(order.indexOf('focus')<order.indexOf('mic'));
     await page.locator('[data-page="music"]').first().click();localReady=false;await page.evaluate(()=>refreshVoice());await page.waitForFunction(()=>document.getElementById('play-track').disabled);
     assert.equal(commands.length,1);await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);
-    console.log('Pi receiver selection, output settings, independent controls, phone QR naming and pause-before-mic passed. Synthetic audio only.');
+    console.log('Pi receiver selection, output settings, independent controls, cleaned-up controls and pause-before-mic passed. Synthetic audio only.');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

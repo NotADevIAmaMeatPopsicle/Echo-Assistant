@@ -161,8 +161,8 @@
     renderCalendar();
   });
   $('calendar-page-new').onclick = () => openCalendarEvent(null, {date:selected, calendar:filter});
-  $('calendar-connect').onclick = () => {page('settings'); $('google-load').click(); $('google-calendar-card').scrollIntoView({block:'start'});};
-  $('calendar-sources').onclick = () => {page('settings'); $('source-load').click(); sourceCard.scrollIntoView({block:'start'});};
+  $('calendar-connect').onclick = () => {if(window.EchoSettings.open('home','google-calendar-card'))$('google-load').click();};
+  $('calendar-sources').onclick = () => {if(window.EchoSettings.open('home',sourceCard))$('source-load').click();};
   $('calendar-personal').onclick = () => $('member-google-button').click();
   document.addEventListener('echo:page', event => {if (event.detail === 'calendar') renderCalendar();});
 })();

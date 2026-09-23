@@ -36,6 +36,44 @@ async def run(config,connection,status_path):
     trace.on_request_redirect.append(no_redirect)
     device=AudioDevice(index=None,name=config['output'],output_channels=2,sample_rate=48000,is_default=False,alsa_device_name=config['output'])
     state={'phase':'connecting','volume':config['volume'],'clock_synchronized':False,'chunks':0}
+    # Observe the pinned player's output state rather than equating network
+    # packets with audible playback. These counters contain no audio or titles.
+    import sendspin.audio_connector as connector
+    base_player=connector.AudioPlayer
+    class ObservedPlayer(base_player):
+        def set_format(self,audio_format,device):
+            import sounddevice
+            from sendspin.audio import SOUNDDEVICE_DTYPE_MAP
+            fmt=audio_format.pcm_format
+            self._format=fmt;self._close_stream()
+            self._stream_started=False;self._first_real_chunk=True
+            self._stream=sounddevice.RawOutputStream(samplerate=fmt.sample_rate,
+                channels=fmt.channels,dtype=SOUNDDEVICE_DTYPE_MAP[fmt.bit_depth],
+                blocksize=4800,callback=self._audio_callback,latency=.5,device=device.device_id)
+            self._output_latency_us=int(self._stream.latency*1_000_000)
+            state['output_latency_ms']=round(self._stream.latency*1000)
+        def _audio_callback(self,outdata,frames,timing,status):
+            if status.output_underflow:
+                # PortAudio/Pulse may report an underrun while starting. The
+                # SDK clears all future audio on that flag, repeatedly moving
+                # a mid-stream join back to the server's prebuffer horizon.
+                # Keep timestamped PCM: normal late-frame gating and clock
+                # correction already catch up without restarting the stream.
+                state['output_underruns']=state.get('output_underruns',0)+1
+                status=type(status)()
+            return super()._audio_callback(outdata,frames,timing,status)
+        def submit(self,timestamp,payload):
+            super().submit(timestamp,payload)
+            state['decoded_chunks']=state.get('decoded_chunks',0)+1
+            state['output_active']=bool(self._stream and self._stream.active)
+            state['buffered_chunks']=self._queue.qsize()
+            state['scheduled_ahead_ms']=round((self._compute_client_time(timestamp)-self._now_us())/1000)
+            state['pcm_peak']=max((abs(x) for x in memoryview(payload).cast('h')[::16]),default=0)
+            state['playout_state']=str(self._playback_state)
+            state['start_ahead_ms']=round(((self._scheduled_start_loop_time_us or self._now_us())-self._now_us())/1000)
+            state['output_gain']=self.volume
+            state['output_muted']=self.muted
+    connector.AudioPlayer=ObservedPlayer
     class EchoAudio(AudioStreamHandler):
         factor=0.;target=0.;focus_muted=True
         def effective(self):
@@ -80,6 +118,7 @@ async def run(config,connection,status_path):
                             handler.factor+=max(-.417,min(.417,handler.target-handler.factor));handler.effective()
                             await asyncio.sleep(.05)
                         if time.monotonic()-last_save>1:
+                            state['worker_alive']=bool(handler._audio_worker and handler._audio_worker.is_running())
                             state.update(volume=handler.volume,clock_synchronized=client.is_time_synchronized(),muted_for_focus=handler.focus_muted,ducking=handler.target==.2)
                             atomic(status_path,{**state,'at':time.time()});last_save=time.monotonic()
                 tasks=[asyncio.create_task(focus()),asyncio.create_task(disconnected.wait()),asyncio.create_task(stopped.wait())]

@@ -64,6 +64,7 @@
     else if(mode==='awake'&&priorFocus){priorFocus.focus({preventScroll:true});priorFocus=null;}
   }
   function wake(){manualSleep=false;presenceSuppressed=false;lastActivity=Date.now();lastInput=lastActivity;display('awake');pulse();}
+  document.addEventListener('echo:camera-motion',()=>{if(!manualSleep||Date.now()-lastInput>15000)wake();});
   function consume(event){event.preventDefault();event.stopImmediatePropagation();}
   // Capture before page controls, glide typing, and swipe navigation. A wake tap
   // cannot also toggle a light or send a message when the display comes back.

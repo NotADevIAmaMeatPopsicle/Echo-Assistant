@@ -25,8 +25,9 @@
   <script src="/assets/display/pi-audio.js" defer></script>
   <script src="/assets/display/alerts.js" defer></script>
   <script src="/assets/display/media.js" defer></script>
-  <link rel="stylesheet" href="/assets/display/video-provider.css">
-  <script src="/assets/display/video-provider.js" defer></script>
+  <script src="/assets/display/radio.js" defer></script>
+  <script src="/assets/display/device-library.js" defer></script>
+  <script src="/assets/display/spotify-library.js" defer></script>
   <script src="/assets/display/voice.js" defer></script>
   <script src="/assets/display/pi-voice.js" defer></script>
   <link rel="stylesheet" href="/assets/display/announcements.css">
@@ -36,6 +37,8 @@
   <link rel="stylesheet" href="/assets/display/calling.css">
   <script src="/assets/vendor/livekit-client-2.22.3.umd.js" defer></script>
   <script src="/assets/display/calling.js" defer></script>
+  <link rel="stylesheet" href="/assets/display/camera.css">
+  <script src="/assets/display/camera.js" defer></script>
   <link rel="stylesheet" href="/assets/display/alerts.css">
   <link rel="stylesheet" href="/assets/display/polish.css">
   <link rel="stylesheet" href="/assets/display/keyboard.css">
@@ -52,6 +55,8 @@
   <script src="/assets/display/members.js" defer></script>
   <link rel="stylesheet" href="/assets/display/member-google.css">
   <script src="/assets/display/member-google.js" defer></script>
+  <link rel="stylesheet" href="/assets/display/settings.css">
+  <script src="/assets/display/settings.js" defer></script>
   <link rel="preload" href="/assets/fonts/Manrope-Variable.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
@@ -89,7 +94,7 @@
   <button data-page="settings" class="rail-settings"><svg><use href="#i-settings"/></svg><span>Settings</span></button>
 </aside>
 <div class="workspace">
-  <header><div><span class="eyebrow">ECHO / AT HOME</span><h1 id="page-title">Your day, a little easier.</h1></div><div class="header-right"><span id="connection" class="status-pill">Connecting</span><button id="ambient-button" class="icon-button" aria-label="Show ambient clock"><svg><use href="#i-moon"/></svg></button></div></header>
+  <header><div><span class="eyebrow">ECHO / AT HOME</span><h1 id="page-title">Your day, a little easier.</h1></div><div class="header-right"><span id="connection" class="status-pill" role="status" hidden></span><button id="ambient-button" class="icon-button" aria-label="Show ambient clock"><svg><use href="#i-moon"/></svg></button></div></header>
   <div id="notice" role="status" hidden></div>
   <main>
     <section id="page-home" class="page">
@@ -104,7 +109,8 @@
     <section id="page-music" class="page" hidden>
       <div class="music-tabs segmented" role="tablist" aria-label="Music source">
         <button id="tab-spotify" role="tab" aria-selected="true" aria-controls="spotify-panel" class="selected" data-music-tab="spotify">Spotify</button>
-        <button id="tab-local" role="tab" aria-selected="false" aria-controls="local-panel" tabindex="-1" data-music-tab="local">Radio & files</button>
+        <button id="tab-local" role="tab" aria-selected="false" aria-controls="local-panel" tabindex="-1" data-music-tab="local">Radio</button>
+        <button id="tab-files" role="tab" aria-selected="false" aria-controls="files-panel" tabindex="-1" data-music-tab="files">Files</button>
         <button id="tab-speakers" role="tab" aria-selected="false" aria-controls="speakers-panel" tabindex="-1" data-music-tab="speakers">Speakers & casting</button>
       </div>
       <div id="spotify-panel" role="tabpanel" aria-labelledby="tab-spotify">
@@ -126,22 +132,11 @@
               <button id="repeat-track" class="icon-button repeat-control" aria-label="Repeat: off" aria-pressed="false"><svg><use href="#i-repeat"/></svg><small id="repeat-one" hidden>1</small></button>
             </div>
             <div class="spotify-volume"><svg><use href="#i-speaker"/></svg><label for="spotify-volume">Spotify level</label><input id="spotify-volume" type="range" min="0" max="100" value="0" disabled><output id="spotify-volume-label" for="spotify-volume">—</output></div>
-            <p id="music-output-note" class="tiny soft">Choose a receiver to see where audio will play.</p>
           </div>
-          <div class="music-library row spread"><span class="soft">Your music. One scan away.<br><small id="spotify-picker-hint">Sign in on your phone, then choose this receiver in Spotify.</small></span><button id="spotify-phone-open" class="pill" type="button" aria-haspopup="dialog">Connect with phone</button></div>
         </article>
-        <dialog id="spotify-phone-dialog" aria-labelledby="spotify-phone-title" aria-describedby="spotify-phone-description">
-          <div class="row spread"><span class="eyebrow">SPOTIFY CONNECT</span><button id="spotify-phone-close" class="pill" type="button" autofocus>Close</button></div>
-          <h2 id="spotify-phone-title">Bring your music over.</h2>
-          <p id="spotify-phone-description">Scan with your phone’s camera. No keyboard needed here.</p>
-          <div class="spotify-phone-body">
-            <figure><img src="/assets/display/spotify-phone.png" width="248" height="248" alt="QR code opening https://open.spotify.com/ on your phone"><figcaption>open.spotify.com</figcaption></figure>
-            <div><ol><li><strong>Open Spotify on your phone.</strong><span>Scan the code, or open the Spotify app. Sign in there if needed.</span></li><li><strong>Play something you love.</strong><span>Use your Premium account and keep your phone on the same home Wi-Fi as Echo for first connection.</span></li><li><strong id="spotify-picker-title">Choose Echo Display.</strong><span>Tap Spotify’s device picker and select the receiver named above. Cover art and controls appear here when a track starts.</span></li></ol><p class="tiny soft">The code opens Spotify. It doesn’t link your account or sign this display in. <span id="spotify-phone-destination">Audio uses the selected receiver.</span></p></div>
-          </div>
-          <div class="spotify-phone-footer"><a id="open-spotify" class="text-button" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open Spotify on this device ↗</a><span class="tiny soft">Use this option if you have a keyboard.</span></div>
-        </dialog>
       </div>
       <div id="local-panel" role="tabpanel" aria-labelledby="tab-local" hidden></div>
+      <div id="files-panel" role="tabpanel" aria-labelledby="tab-files" hidden></div>
       <div id="speakers-panel" role="tabpanel" aria-labelledby="tab-speakers" hidden>
         <div class="two-columns"><article class="card"><span class="eyebrow">AROUND THE HOME</span><h2>Pick your speaker.</h2><div id="music-speakers"></div><button class="text-button" data-page="rooms">More room controls →</button></article>
         <article class="card cast-info"><span class="eyebrow">SEND SOMETHING GOOD</span><h2>From your favourite app.</h2><div class="capability-row"><strong>Spotify Connect</strong><span>Echo receiver</span></div><div class="capability-row"><strong>Chromecast / AirPlay</strong><span>Not installed on Echo</span></div><p class="soft">Use a Cast-enabled speaker’s own app picker to start a stream. Its available Home Assistant controls appear here once it is assigned.</p><p class="tiny soft">This display can also play saved radio stations and local audio or video files.</p></article></div>
@@ -192,7 +187,31 @@
         </article>
       </div>
     </section>
-    <section id="page-settings" class="page" hidden><div class="two-columns"><article class="card"><h2>Make yourself at home.</h2><label class="check-label"><input type="checkbox" id="clock24">24-hour clock</label><label>Ambient clock after<select id="idle-time"><option value="0">Never automatically</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select></label><label class="check-label"><input type="checkbox" id="night-dim">Dim the ambient view</label><label class="file-button pill">Choose ambient photos<input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden></label><p class="tiny soft">Optional photos stay in this browser session. No upload, account, or cloud library.</p><button class="pill" id="clear-photos">Clear photos</button><div class="divider"></div><a class="pill primary" href="/settings">Open Echo settings ↗</a></article><article class="card"><h2>Your home. Your choices.</h2><p class="soft">Provider, model, personality, speech, saved memory, and device permissions stay in Echo’s existing workspace.</p><div id="capability-notes"></div><div class="divider"></div><h3>Still to connect</h3><p class="soft">Choose calendar and camera sources below. Pi wake words use the microphone and speaker selected below. Grouped playback across devices is not yet available. Answered calls between paired displays are in Planner → Room audio.</p><a class="text-button" href="/devices">Manage connected devices ↗</a></article></div></section>
+    <section id="page-settings" class="page" hidden>
+      <div class="two-columns">
+        <article class="card" id="settings-appearance">
+          <span class="eyebrow">THIS SCREEN</span><h2>Clock & home screen</h2>
+          <label class="check-label"><input type="checkbox" id="clock24">24-hour clock</label>
+          <label>Ambient clock after<select id="idle-time"><option value="0">Never automatically</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select></label>
+          <label class="check-label"><input type="checkbox" id="night-dim">Dim the ambient view</label>
+          <label class="file-button pill">Choose ambient photos<input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden></label>
+          <p class="tiny soft">These photos stay in this browser session. For a saved album, use Ambient photo album in this section.</p>
+          <button class="pill" id="clear-photos">Clear photos</button>
+        </article>
+        <article class="card" id="settings-overview">
+          <span class="eyebrow">CONNECTIONS</span><h2>At a glance</h2>
+          <p class="soft">Check what is connected to this display and your Echo host.</p>
+          <div id="capability-notes"></div>
+          <div class="settings-workspace-links"><a class="text-button" href="/devices">Manage connected devices ↗</a></div>
+        </article>
+        <article class="card" id="settings-workspace">
+          <span class="eyebrow">YOUR ASSISTANT</span><h2>Models, personality & memory</h2>
+          <p class="soft">Choose Echo’s model and voice, edit its personality, and manage saved memory in the full workspace.</p>
+          <div class="settings-workspace-links"><a class="pill primary" href="/settings">Assistant settings ↗</a><a class="pill" href="/memory">Saved memory ↗</a></div>
+          <p class="tiny soft">Account keys and advanced connection settings are managed there too.</p>
+        </article>
+      </div>
+    </section>
   </main>
   <template id="planner-template">
     <section id="page-planner" class="page" hidden>
@@ -215,7 +234,6 @@
       <article class="card planner-quiet"><h2>Quiet hours</h2><form id="quiet-form"><label class="check-label"><input id="quiet-enabled" type="checkbox">Hold spoken reminders during quiet hours</label><div class="two-columns"><label>From<input id="quiet-start" type="time" value="22:00" required></label><label>Until<input id="quiet-end" type="time" value="07:00" required></label></div><label>Time zone<input id="quiet-zone" list="timezones" required maxlength="80"></label><label class="check-label"><input id="quiet-alarms" type="checkbox" checked>Let alarms sound during quiet hours</label><button class="pill" type="submit" data-requires="schedules">Save quiet hours</button><span class="tiny soft" id="quiet-status"></span></form><p class="tiny soft">Applies to scheduled reminders and alarms. Physical microphone mute and music playback are separate controls. Reminders more than 15 minutes late stay in Notifications without sounding.</p></article>
     </section>
   </template>
-  <footer><span id="privacy-status">Local speech · Your choice of assistant</span><span id="last-update">Waiting for connection</span></footer>
 </div>
 <div id="ambient" hidden role="dialog" aria-modal="true" aria-label="Ambient clock"><img id="ambient-photo" alt="Selected ambient photo" hidden><div class="ambient-shade"></div><div class="ambient-content"><span class="eyebrow">ECHO / A MOMENT TO YOURSELF</span><div id="ambient-clock" class="big-clock"></div><p id="ambient-date"></p><span id="ambient-weather"></span><button class="pill" id="wake-screen">Back to Echo</button></div></div>
 <dialog id="confirm-routine"><form method="dialog"><span class="eyebrow">HOME ACTIONS</span><h2 id="confirm-title">Run this routine?</h2><p id="confirm-description"></p><div class="row"><button class="pill" value="cancel">Cancel</button><button class="pill primary" value="run">Run routine</button></div></form></dialog>

@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -7,6 +8,23 @@ from backend.app import create_app
 from backend.core import Assistant
 
 class CoreTests(unittest.TestCase):
+    def test_clock_uses_home_zone_and_daylight_saving(self):
+        for instant, expected in [
+            ('2026-07-15T17:15:00+00:00', "It's 1:15 PM."),
+            ('2026-01-15T17:15:00+00:00', "It's 12:15 PM."),
+            ('2026-03-08T06:59:00+00:00', "It's 1:59 AM."),
+            ('2026-03-08T07:00:00+00:00', "It's 3:00 AM."),
+        ]:
+            with self.subTest(instant=instant):
+                assistant = Assistant(wall_clock=lambda: datetime.fromisoformat(instant).timestamp(),
+                                      time_zone='America/New_York')
+                self.assertEqual(assistant.respond('What time is it?')['text'], expected)
+
+    def test_date_uses_home_day_across_utc_midnight(self):
+        assistant = Assistant(wall_clock=lambda: datetime.fromisoformat('2026-09-22T02:15:00+00:00').timestamp(),
+                              time_zone='America/New_York')
+        self.assertEqual(assistant.respond("What's the date?")['text'], 'Today is Monday, September 21.')
+
     def test_timer_finishes_and_can_be_dismissed(self):
         now = [100.0]
         assistant = Assistant(lambda: now[0])
@@ -41,6 +59,20 @@ class ApiTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(create_app("a"*32))
         self.headers = {"Authorization": "Bearer " + "a"*32}
+
+    def test_time_follows_saved_zone_even_when_quiet_hours_disabled(self):
+        stamp = datetime.fromisoformat('2026-07-15T17:15:00+00:00').timestamp()
+        with patch('backend.core.datetime') as dates:
+            dates.fromtimestamp.side_effect = lambda _, zone: datetime.fromtimestamp(stamp, zone)
+            for zone, expected in [('America/New_York', "It's 1:15 PM."), ('Europe/London', "It's 6:15 PM.")]:
+                current = self.client.get('/v1/schedules', headers=self.headers).json()
+                quiet = {**current['quiet'], 'timezone': zone, 'enabled': False}
+                saved = self.client.put('/v1/schedule-preferences', headers=self.headers,
+                                        json={'revision': current['revision'], 'quiet': quiet})
+                self.assertEqual(saved.status_code, 200)
+                reply = self.client.post('/v1/text', headers=self.headers, json={'text': 'What time is it?'})
+                self.assertEqual(reply.status_code, 200)
+                self.assertEqual(reply.json()['text'], expected)
 
     def test_auth_blocks_read_and_mutation(self):
         self.assertEqual(self.client.get("/v1/state").status_code, 401)

@@ -1,10 +1,32 @@
 # Echo complete-package build queue
 
-Both builds stay private until explicitly approved for release. The Pi power/video connections
-are working; continue the remaining software and hardware acceptance. The verified original
+Both builds stay private until explicitly approved for release. The Pi video connection
+is working; the latest check still reports undervoltage. Continue the remaining
+software and hardware acceptance. The verified original
 card backup is separate from Git; reuse of that card is authorized.
 
 ## Build direction
+
+**Deck connection and UI checkpoint (2026-09-23):** Settings now groups controls
+into top-level tabs. The normal connection/footer labels, generic Spotify phone
+launcher and YouTube card were removed from the main display. Slow Mini home
+reads no longer hold the shared authentication lock; results are rechecked for
+access changes before returning. Deck state requests measured 0.11–0.35 seconds
+after deployment, compared with earlier 12-second timeouts. Active Pi undervoltage
+remains a separate hardware issue.
+
+**Deck camera and playlist checkpoint (2026-09-23):** local IMX519 preview,
+one-shot focus, orientation, opt-in motion wake and explicit one-frame image
+questions are implemented. Chromium received a live 640 × 360 local video track
+for private calling; capture releases on close. Real call quality remains open.
+The Meet launcher is experimental: its virtual CSI camera passed FFmpeg checks
+but timed out in Chromium. See [Deck camera](DECK_CAMERA.md).
+
+Music Assistant playback now uses a larger Pi output buffer and retains queued
+PCM through startup underruns; listening quality improved in the physical test.
+Now Playing follows the library output and retains artwork, title and position
+while paused. That paused state was visually verified on the Deck. Multi-room
+timing remains a separate acceptance item.
 
 **Private calling checkpoint:** a pinned LiveKit server now runs on the private
 host behind the existing device-restricted Tailscale gateway. The deployed route
@@ -171,8 +193,9 @@ firmware 0.19.0 builds with a verified four-image bundle. Silent browser checks
 cover the owner capability gate and assignment, plus existing Deck personal flows.
 The host update is deployed privately, with pairing, grants and saved data preserved.
 Deck's unchanged client remains armed at 2%, with Spotify discoverable and grouped
-music ready. No sound or real home action was used. Mini firmware remains unflashed;
-physical account/voice acceptance is open. See [Personal accounts](PERSONAL_ACCOUNTS.md).
+music ready. No sound or real home action was used. Mini firmware 0.19.0 was installed
+on 2026-09-22 and reconnected over Wi-Fi; physical account/voice acceptance is open.
+See [Personal accounts](PERSONAL_ACCOUNTS.md).
 
 **Personal account checkpoint:** the private host and current Pi bundle now support
 owner-created accounts, explicit per-display assignment, an eight-digit touch
@@ -376,7 +399,7 @@ or human-speech pickup. The next test needs someone speaking near the microphone
 - [x] Rich Spotify now-playing display: artwork, metadata, seeking, shuffle/repeat, input level and home-speaker controls (software; live listening acceptance pending).
 - [x] Persistent notification inbox and opt-in announcements on the existing audio endpoint.
 - [x] Per-room announcement routing, opt-in display/round receivers and delivery receipts (software; physical listening pending).
-- [x] Answered two-way intercom for paired displays and the round speaker (software; round firmware installation and physical audio acceptance pending).
+- [x] Answered two-way intercom for paired displays and the round speaker (software; round firmware installed, physical audio acceptance pending).
 - [x] Pi push-to-talk/ALSA adapter and request-specific reply routing (software; simulated audio only).
 - [x] Pi local wake, cue/capture/replies, software mute and request interruption (software; USB headset listener configured).
 - [x] Optional Pi WebRTC echo cancellation and a shared playback reference for music, voice and kiosk audio (installed; acoustic performance unverified).
@@ -392,7 +415,7 @@ or human-speech pickup. The next test needs someone speaking near the microphone
 - [x] Deck configurable idle dim/sleep and wake-only first touch; native HDMI Off/On reported by X11. Physical backlight/touch acceptance pending.
 - [x] Opt-in Deck presence wake, owner source permissions, per-display sensor selection, stale/offline fallback and manual-sleep behavior (software; no physical sensor configured).
 - [x] Pi input meter and bounded, volatile wake/capture/reply diagnostics; no recordings or ambient transcripts saved.
-- [x] Mini OLED idle dim/dark settings, touch wake and audio-preserving screen state (compiled and rendered; firmware installation pending).
+- [x] Mini OLED idle dim/dark settings, touch wake and audio-preserving screen state (compiled and rendered; firmware installed, physical acceptance pending).
 - [x] Integrated software verification, fresh Docker build, repeatable browser suite, and refreshed screenshots/documentation. Physical and external-service acceptance below remains open.
 
 ## Hardware acceptance when the owner returns
@@ -422,7 +445,7 @@ parity. Known gaps documented in the smart-display guide remain:
 
 - [x] Supported single-event editing/deletion and bounded recurring creation, with separate owner permissions and explicit review (software; external calendar writes untested).
 - [x] Explicit occurrence/following edits and occurrence/following/whole-series deletion, preserving repeat patterns (software; live provider writes untested).
-- [x] Mini calendar draft review, explicit creation, cancellation and expiry (host deployed; firmware built, installation and physical acceptance pending).
+- [x] Mini calendar draft review, explicit creation, cancellation and expiry (host deployed; firmware installed, physical acceptance pending).
 - [x] Direct Google master-event editing and whole-series rescheduling with the existing COUNT preserved (software; real calendar acceptance pending).
 - [x] Following-only changes for simple finite Google COUNT series and separate invitation review (software; real Google changes and delivery unverified).
 - [x] Private per-person Google linking and explicit calendar selection without household grant inheritance (software deployed; actual account approval unverified).

@@ -65,6 +65,7 @@ from .doorbells import Doorbells
 from .announcements import Announcements, AnnouncementUnavailable
 from .announcement_api import install as install_announcements
 from .group_music import GroupMusic,install as install_group_music
+from .vision import install as install_vision
 from .intercom import Intercom
 from .intercom_api import install as install_intercom
 from .calling import Calling, CallStore, LiveKit, install as install_calling
@@ -72,6 +73,7 @@ from .google_calendar import GoogleCalendars, install as install_google_calendar
 from .photos import Photos
 from .photo_api import install as install_photos
 from .media_presets import MediaPresets, install as install_media
+from .radio_directory import install as install_radio
 from .display_voice import DisplayVoice, install as install_display_voice
 from . import __version__
 
@@ -120,11 +122,12 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             close()
     app = FastAPI(title="Round Voice", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.speech_stop = Event()
-    assistant = Assistant(storage=runtime_root/'local/timers.json' if runtime_root else None)
     home = home or HomeBridge(HomeConfig())
     store = settings_store or SettingsStore(runtime_root)
     household = HouseholdStore(runtime_root, store.protector)
     schedules = ScheduleStore(runtime_root,store.protector)
+    assistant = Assistant(storage=runtime_root/'local/timers.json' if runtime_root else None,
+                          time_zone=schedules.time_zone)
     memory = MemoryStore(runtime_root, store.protector)
     echo = EchoAgent(store, provider, memory)
     echo.household = household
@@ -198,6 +201,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
         principal=authorize(request)
         if isinstance(principal,PersonalPrincipal) or principal=='round' or principal.startswith('display:'): raise HTTPException(403,'Open the owner workspace to manage displays')
     install_group_music(app,GroupMusic(runtime_root,store.protector,enabled=deployment_mode=='device'),authorize,owner,displays)
+    install_vision(app,store,authorize,displays)
     install_schedules(app,schedules,authorize)
     install_display_alerts(app,DisplayAlerts(assistant,schedules),authorize)
     announcements=Announcements(runtime_root,store.protector,displays,schedules,
@@ -228,6 +232,12 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     calendar_invitations=install_calendar_invitations(app,calendar_writer,authorize,displays,briefing)
     install_photos(app, Photos(runtime_root, store.protector), authorize, owner)
     install_media(app, MediaPresets(runtime_root, store.protector), authorize, owner)
+    install_radio(app, authorize)
+
+    @app.get('/v1/display/library', dependencies=[Depends(authorize)])
+    def local_music_library():
+        return {'supported': False, 'tracks': [], 'playlists': [],
+                'message': 'The SD-card library is available on the Pi display. You can also choose files from this browser.'}
     display_voice=DisplayVoice(runtime_root,store,profiled_echo)
     install_display_voice(app,display_voice,authorize,conversations,app.state.speech_stop,enable_home=deployment_mode=='device',profile_state=displays.profile_for)
     hosts = ['127.0.0.1', 'localhost', 'testserver'] if runtime_root is None else ['127.0.0.1', 'localhost']
@@ -588,7 +598,7 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     @app.get("/v1/home", dependencies=[Depends(authorize)])
     def home_state(connection:Request,session=Depends(authorize)):
         if session=='round':
-            return mini_control(connection,round_home.snapshot,household_home)
+            return mini_read(connection,round_home.snapshot,household_home)
         profile=displays.profile_for(session)['profile']
         if profile['mode']=='guest':
             # Legacy room/speaker shortcuts have global bindings. Guests use the
@@ -616,6 +626,21 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
             result['speakers']={'status':'unavailable','choices':[]}
             result['devices']['soundbar']={'status':'unavailable'}
         return result
+
+    def mini_read(connection,guest,household):
+        # Home Assistant I/O must not hold the members lock: every display's
+        # authentication uses it. Discard a read if access changed in flight.
+        with round_profile.lock:
+            principal=authorize(connection)
+            before=displays.profile_for(principal)
+        try:result=(guest if before['profile']['mode']=='guest' else household)()
+        except ValueError as error:raise HTTPException(409,str(error)) from None
+        except HomeUnavailable as error:raise HTTPException(503,str(error)) from None
+        with round_profile.lock:
+            current=authorize(connection)
+            if current!=principal or displays.profile_for(current)!=before:
+                raise HTTPException(409,'Mini access changed. Refresh the controls.')
+            return result
 
     def mini_control(connection,guest,household):
         # Recheck inside the same lock as profile writes. A queued request cannot

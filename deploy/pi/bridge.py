@@ -21,6 +21,8 @@ from screen import Screen
 from grouped import GroupReceiver
 from bluetooth_session import BluetoothSession
 from video_session import VideoSession
+from local_library import LocalLibrary, byte_range
+from local_camera import LocalCamera
 
 
 class Bridge(BaseHTTPRequestHandler):
@@ -33,6 +35,78 @@ class Bridge(BaseHTTPRequestHandler):
     group_music=None
     bluetooth=None
     video=None
+    library=None
+    camera=None
+
+    def local_camera(self,path,body,base,headers):
+        try:
+            profile,revision=self.access_profile(base,headers)
+            if profile.get('mode')!='household':return self.error_reply(403,'Camera access requires Household mode')
+            if self.headers.get('X-Echo-Profile-Revision') not in (None,str(revision)):
+                return self.error_reply(409,'Display access changed. Reload this page.')
+            if self.command=='GET' and path=='/v1/display/camera':result=self.camera.snapshot()
+            elif self.command in {'POST','PUT'} and body and len(body)<=2048:
+                value=json.loads(body)
+                if not isinstance(value,dict):raise ValueError('Use a camera request object')
+                if self.command=='PUT' and path!='/v1/display/camera':return self.error_reply(405,'Unsupported camera method')
+                if self.command=='PUT' and path=='/v1/display/camera':result=self.camera.configure(value)
+                elif path.endswith('/start'):result=self.camera.start_capture(value.get('client'),value.get('purpose'))
+                elif path.endswith('/pulse'):result=self.camera.pulse(value)
+                elif path.endswith('/stop'):result=self.camera.release(value)
+                elif path.endswith('/off'):result=self.camera.disable()
+                elif path.endswith('/focus'):result=self.camera.focus(value)
+                elif path.endswith('/meet'):result=self.camera.launch_meet(value.get('client'),value.get('code'))
+                elif path.endswith('/frame'):
+                    raw=self.camera.frame(value);self.send_response(200)
+                    for key,val in {'Content-Type':'image/jpeg','Content-Length':str(len(raw)),'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}.items():self.send_header(key,val)
+                    self.end_headers();self.wfile.write(raw);return
+                else:return self.error_reply(404,'Unknown camera action')
+            else:return self.error_reply(405,'Unsupported camera method')
+            raw=json.dumps(result).encode();self.send_response(200)
+            for key,val in {'Content-Type':'application/json','Content-Length':str(len(raw)),'Cache-Control':'no-store','X-Echo-Display-Bridge':'1'}.items():self.send_header(key,val)
+            self.end_headers();self.wfile.write(raw)
+        except (ValueError,TypeError):return self.error_reply(422,'Choose valid camera settings')
+        except Unavailable as error:return self.error_reply(409,str(error))
+        except (OSError,urllib.error.URLError):return self.error_reply(503,'Camera access is unavailable')
+
+    def local_library(self,path,base,headers):
+        try:
+            profile,_=self.access_profile(base,headers)
+            if profile.get('mode')!='household':return self.error_reply(403,'On-device music is available in Household mode')
+        except urllib.error.HTTPError as error:return self.error_reply(error.code,'Pair this display before opening its music library')
+        except (OSError,urllib.error.URLError):return self.error_reply(503,'Display access is unavailable')
+        if self.command not in {'GET','HEAD'}:return self.error_reply(405,'The music library is read only')
+        try:
+            if path=='/v1/display/library':
+                raw=json.dumps(self.library.scan(force=urlsplit(self.path).query=='rescan=1')).encode()
+                self.send_response(200)
+                for key,value in {'Content-Type':'application/json','Content-Length':str(len(raw)),
+                                  'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}.items():self.send_header(key,value)
+                self.end_headers()
+                if self.command!='HEAD':self.wfile.write(raw)
+                return
+            match=re.fullmatch(r'/v1/display/library/stream/([a-f0-9]{32})',path)
+            if not match:return self.error_reply(404,'Unknown music library route')
+            stream,size,kind=self.library.open_track(match[1])
+            with stream:
+                try:start,end,partial=byte_range(self.headers.get('Range'),size)
+                except ValueError:
+                    self.send_response(416);self.send_header('Content-Range',f'bytes */{size}');self.send_header('Content-Length','0');self.end_headers();return
+                self.send_response(206 if partial else 200)
+                for key,value in {'Content-Type':kind,'Content-Length':str(end-start+1),'Accept-Ranges':'bytes',
+                                  'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}.items():self.send_header(key,value)
+                if partial:self.send_header('Content-Range',f'bytes {start}-{end}/{size}')
+                self.end_headers()
+                if self.command=='HEAD':return
+                stream.seek(start);remaining=end-start+1
+                try:
+                    while remaining:
+                        block=stream.read(min(65536,remaining))
+                        if not block:break
+                        self.wfile.write(block);remaining-=len(block)
+                except (BrokenPipeError,ConnectionResetError):pass
+        except FileNotFoundError:return self.error_reply(404,'Track is unavailable. Rescan your music folder.')
+        except OSError:return self.error_reply(503,'The music folder is unavailable')
 
     def access_profile(self,base,headers):
         request=urllib.request.Request(base+'/v1/display/session',headers=headers)
@@ -235,6 +309,10 @@ a{color:#96eadc}span{font-size:15px;letter-spacing:.2em;color:#96eadc}</style>
         path='/display' if self.path=='/' else self.path
         display_page=requested.path in {'/','/display'} and self.command in {'GET','HEAD'}
         headers={'Authorization':'Display '+self.configuration['credential'],'X-Echo-Request':'1','Origin':base}
+        if self.camera is not None and re.fullmatch(r'/v1/display/camera(?:/(?:start|pulse|stop|off|focus|frame|meet))?',requested.path):
+            return self.local_camera(requested.path,body,base,headers)
+        if self.library is not None and requested.path.startswith('/v1/display/library'):
+            return self.local_library(requested.path,base,headers)
         if self.video is not None and requested.path in {'/v1/display/video/output','/v1/display/video/player'}:
             return self.local_video(requested.path,body)
         if self.bluetooth is not None and requested.path=='/v1/display/bluetooth':
@@ -292,6 +370,7 @@ def main():
     if os.name=='posix' and (stat.S_IMODE(info.st_mode)&0o077 or info.st_uid!=os.geteuid()): raise SystemExit('Connection file must belong to this user with mode 600')
     config=json.loads(args.config.read_text()); validate_url(config['url'])
     Bridge.configuration=config
+    Bridge.library=LocalLibrary()
     Bridge.opener=urllib.request.build_opener(NoRedirect,urllib.request.HTTPSHandler(context=ssl.create_default_context()),urllib.request.ProxyHandler({}))
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Bridge)
     Bridge.music=Spotify();Bridge.music.start()
@@ -312,10 +391,11 @@ def main():
     Bridge.video=VideoSession(native_request,Bridge.music,Bridge.group_music,Bridge.screen);Bridge.video.start()
     Bridge.alerts=Alerts(native_request,Bridge.music);Bridge.alerts.start()
     Bridge.voice=Listener(native_request,Bridge.music,wake_screen=Bridge.screen.wake);Bridge.voice.start()
+    Bridge.camera=LocalCamera(native_request,Bridge.music,Bridge.screen,Bridge.voice)
     print(f'Echo display bridge listening on loopback port {args.port}. Credentials stay outside the browser.',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass
-    finally:server.server_close();Bridge.video.close();Bridge.bluetooth.close();Bridge.group_music.close();Bridge.voice.close();Bridge.alerts.close();Bridge.music.close()
+    finally:server.server_close();Bridge.camera.close();Bridge.video.close();Bridge.bluetooth.close();Bridge.group_music.close();Bridge.voice.close();Bridge.alerts.close();Bridge.music.close()
 
 
 if __name__=='__main__':

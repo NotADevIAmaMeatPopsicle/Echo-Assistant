@@ -50,6 +50,21 @@ pages clears its active field. The keyboard saves no drafts or keystroke history
 Focused synthetic browser checks cover list entry, note editing, calendar
 drafts, explicit saving, field visibility at 1024 × 600 and phone fallback.
 
+## Settings by section
+
+Settings uses seven tabs: Display, Voice, Music, Calls & camera, Home, Access,
+and System. The tab bar stays visible while cards scroll; on narrow screens
+the tabs scroll horizontally and the cards form one column. Complex forms use
+the full available width on the Deck.
+
+Switching tabs preserves unsaved form values. Calendar, radio and video setup
+shortcuts open the relevant section directly. The touchscreen keyboard closes
+when changing tabs, and arrow keys, Home and End navigate the tab bar. Guest
+and owner permissions still determine which cards and tabs are visible.
+
+The section grouping and layout live in `web/display/settings.js` and
+`web/display/settings.css`. Existing forms retain their controls and handlers.
+
 ## Avoiding unnecessary scaling
 
 Use the panel's preferred mode rather than a larger accepted HDMI input mode.

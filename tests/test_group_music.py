@@ -100,6 +100,34 @@ class GroupMusicTests(unittest.TestCase):
         with self.assertRaises(GroupMusicUnavailable) as cm:self.music.request('players/cmd/play',player_id='deck')
         self.assertNotIn('private upstream',str(cm.exception));self.assertEqual(count,1)
 
+    def test_library_pause_preserves_track_when_transport_becomes_idle(self):
+        player=self.rows[0]
+        player.update(active_source='deck',playback_state='playing',supported_features=['volume_set'],
+            current_media={'source_id':'deck','queue_item_id':'track-one','title':'Sample song',
+                'artist':'Sample artist','duration':180,'elapsed_time':43})
+        self.assertIn('pause',self.music.snapshot()['items'][0]['features'])
+        self.music.control('pause','deck',None,1)
+        self.assertEqual(self.writes()[-1]['command'],'player_queues/pause')
+        self.assertEqual(self.writes()[-1]['args'],{'queue_id':'deck'})
+        # Sendspin stops its transport for pause; the saved queue position remains.
+        player['playback_state']='idle'
+        item=self.music.snapshot()['items'][0]
+        self.assertEqual((item['state'],item['title'],item['position_ms']),('paused','Sample song',43000))
+        self.music.control('play','deck',None,1)
+        self.assertEqual(self.writes()[-1]['command'],'player_queues/play')
+        self.assertEqual(self.music.snapshot()['items'][0]['state'],'idle')
+        self.assertEqual(self.music.snapshot()['items'][0]['title'],'Sample song')
+
+    def test_pause_marker_does_not_follow_a_different_queue_item_or_source(self):
+        player=self.rows[0]
+        player.update(active_source='deck',playback_state='playing',supported_features=[],
+            current_media={'source_id':'deck','queue_item_id':'track-one'})
+        self.music.control('pause','deck',None,1)
+        player['playback_state']='idle';player['current_media']['queue_item_id']='track-two'
+        self.assertEqual(self.music.snapshot()['items'][0]['state'],'idle')
+        player['active_source']='external'
+        with self.assertRaises(ValueError):self.music.control('pause','deck',None,1)
+
     def test_redirects_and_malformed_inventory_fail_closed(self):
         calls=[]
         def redirect(request):calls.append(str(request.url));return httpx.Response(302,headers={'location':'https://example.com/'})

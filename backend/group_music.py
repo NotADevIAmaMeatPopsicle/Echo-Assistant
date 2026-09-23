@@ -5,6 +5,7 @@ from ipaddress import ip_address,ip_network
 import json
 from pathlib import Path
 import re
+import time
 from threading import RLock
 from typing import Literal
 from urllib.parse import urlsplit
@@ -66,7 +67,8 @@ class GroupMusic:
     def __init__(self,root,protector,*,transport=None,enabled=True):
         self.path=Path(root)/'local/echo-group-music.json' if root else None
         self.protector,self.transport,self.actions_enabled=protector,transport,enabled
-        self.lock=RLock();self.config=GroupMusicConfig();self.token='';self.revision=0;self.error=False
+        self.lock=RLock();self.config=GroupMusicConfig();self.token='';self.setup_token='';self.revision=0;self.error=False
+        self.paused_queues={}
         if self.path and self.path.exists():
             try:
                 if self.path.stat().st_size>100_000:raise ValueError()
@@ -74,44 +76,51 @@ class GroupMusic:
                 if envelope['version']!=1:raise ValueError()
                 saved=json.loads(protector.decrypt(base64.b64decode(envelope['protected'],validate=True)))
                 self.config=GroupMusicConfig.model_validate(saved['config']);self.token=saved['token'];self.revision=saved['revision']
+                self.setup_token=saved.get('setup_token','')
+                if not isinstance(self.setup_token,str) or len(self.setup_token)>4096:raise ValueError()
                 if not isinstance(self.token,str) or len(self.token)>4096 or type(self.revision) is not int or self.revision<0:raise ValueError()
             except (OSError,ValueError,KeyError,TypeError,RuntimeError):self.error=True
 
     def settings(self):
         with self.lock:
             if self.error:raise GroupMusicUnavailable('Saved grouped-music settings are unreadable; the original file was preserved')
-            return {'config':self.config.model_dump(),'revision':self.revision,'token_saved':bool(self.token)}
+            return {'config':self.config.model_dump(),'revision':self.revision,'token_saved':bool(self.token),'setup_token_saved':bool(self.setup_token)}
 
-    def configure(self,config,token,revision):
+    def configure(self,config,token,revision,setup_token=None):
         config=GroupMusicConfig.model_validate(config)
         with self.lock:
             self.settings()
             if revision!=self.revision:raise HTTPException(409,'Grouped-music settings changed. Reload before saving.')
             secret=self.token if token is None else token
+            setup_secret=(self.setup_token if config.url==self.config.url else '') if setup_token is None else setup_token
             if config.enabled and (not config.url or not secret):raise ValueError('Set the private server URL and an access token before enabling grouped music')
             if config.url!=self.config.url and self.token and token is None:raise ValueError('Enter the token for the new server; saved credentials are not forwarded to a different origin')
             if self.path:
-                raw=self.protector.encrypt(json.dumps({'config':config.model_dump(),'token':secret,'revision':self.revision+1}).encode())
+                raw=self.protector.encrypt(json.dumps({'config':config.model_dump(),'token':secret,'setup_token':setup_secret,'revision':self.revision+1}).encode())
                 self.path.parent.mkdir(parents=True,exist_ok=True)
                 temporary=self.path.with_suffix('.new')
                 try:
                     temporary.write_text(json.dumps({'version':1,'protected':base64.b64encode(raw).decode()}),encoding='utf-8');temporary.replace(self.path)
                 except OSError:raise GroupMusicUnavailable('Grouped-music settings could not be saved') from None
-            self.config,self.token=config,secret;self.revision+=1
+            self.config,self.token,self.setup_token=config,secret,setup_secret;self.revision+=1
             return self.settings()
 
-    def request(self,command,**args):
+    def request(self,command,*,_timeout=15,_setup=False,**args):
         if not self.config.enabled:raise GroupMusicUnavailable('Connect Music Assistant in Settings to use grouped music')
+        if _setup and command not in {'config/providers/setup','config/providers/reconfigure','config/flows/get','config/flows/submit','config/flows/abort'}:raise ValueError('This command cannot use provider setup credentials')
+        if _setup and not self.setup_token:raise GroupMusicUnavailable('Add a Music Assistant provider-setup token in Settings → Music Assistant to connect Spotify')
         try:
-            with httpx.Client(transport=self.transport,trust_env=False,follow_redirects=False,timeout=httpx.Timeout(15,connect=4)) as client:
-                with client.stream('POST',self.config.url+'/api',headers={'Authorization':'Bearer '+self.token},
+            with httpx.Client(transport=self.transport,trust_env=False,follow_redirects=False,timeout=httpx.Timeout(_timeout,connect=4)) as client:
+                with client.stream('POST',self.config.url+'/api',headers={'Authorization':'Bearer '+(self.setup_token if _setup else self.token)},
                     json={'message_id':'echo','command':command,'args':args}) as response:
                     if response.status_code in {401,403}:raise GroupMusicUnavailable('Music Assistant rejected this token or its player permissions')
                     if response.status_code==503:raise GroupMusicUnavailable('Music Assistant is unavailable or needs its first-run setup')
                     response.raise_for_status();content=bytearray()
                     for chunk in response.iter_bytes():
                         content.extend(chunk)
-                        if len(content)>2_000_000:raise ValueError()
+                        # Episode APIs return full show archives with descriptions in one response.
+                        limit=16_000_000 if command=='music/podcasts/podcast_episodes' else 2_000_000
+                        if len(content)>limit:raise ValueError()
                     return json.loads(content)
         except (httpx.HTTPError,ValueError):raise GroupMusicUnavailable('Music Assistant could not confirm the request. Check its current state before trying again.') from None
 
@@ -157,6 +166,15 @@ class GroupMusic:
     def binding(self,rows,allowed):
         return hashlib.sha256(json.dumps({k:{field:v.get(field) for field in ('provider','available','synced_to','active_group','group_members','can_group_with','supported_features')} for k,v in rows.items() if k in allowed},sort_keys=True).encode()).hexdigest()
 
+    @staticmethod
+    def queue_item(identifier,row):
+        """Only control this player's own active library queue, never another source."""
+        media=row.get('current_media') or {}
+        if (isinstance(media,dict) and row.get('active_source')==identifier
+                and media.get('source_id')==identifier and isinstance(media.get('queue_item_id'),str)):
+            return media['queue_item_id']
+        return None
+
     def snapshot(self,discovery=False):
         with self.lock:
             settings=self.settings()
@@ -166,17 +184,37 @@ class GroupMusic:
                 if identifier not in allowed:continue
                 media=row.get('current_media') or {}
                 if not isinstance(media,dict):media={}
+                art=re.fullmatch(r'/imageproxy/([a-f0-9]{64})',urlsplit(str(media.get('image_url') or '')).path)
+                duration=media.get('duration') or 0
+                elapsed=media.get('elapsed_time') or 0
+                updated=media.get('elapsed_time_last_updated') or time.time()
+                state=str(row.get('playback_state',row.get('state','unknown')))[:30]
+                queue_item=self.queue_item(identifier,row)
+                paused=self.paused_queues.get(identifier)
+                if paused and (paused[0]!=queue_item or (state=='playing' and time.monotonic()-paused[1]>3)):
+                    self.paused_queues.pop(identifier,None);paused=None
+                if paused and state in {'idle','stopped'}:state='paused'
+                playing=state=='playing'
+                features=list(row.get('supported_features',[]))
+                if queue_item and 'pause' not in features:features.append('pause')
+                if not isinstance(duration,(int,float)):duration=0
+                if not isinstance(elapsed,(int,float)):elapsed=0
+                if not isinstance(updated,(int,float)):updated=time.time()
                 items.append({'id':identifier,'name':str(row.get('display_name') or row.get('name') or identifier)[:120],
                     'provider':str(row.get('provider') or '')[:120],'available':row.get('available') is True,
-                    'state':str(row.get('playback_state',row.get('state','unknown')))[:30],
+                    'state':state,'queue_playback':bool(queue_item),
                     'volume':row.get('volume_level') if type(row.get('volume_level')) is int else None,'muted':row.get('volume_muted') is True,
-                    'features':row.get('supported_features',[]),'members':[x for x in row.get('group_members',[]) if x in allowed and x!=identifier],
+                    'features':features,'members':[x for x in row.get('group_members',[]) if x in allowed and x!=identifier],
                     'leader':row.get('synced_to') if row.get('synced_to') in allowed else None,
                     'in_group':bool(row.get('synced_to') or row.get('active_group')),
                     'blocked':not self.related(identifier,rows)<=allowed,
                     'compatible':[key for key,child in rows.items() if key!=identifier and key in allowed and
                         (key in row.get('can_group_with',[]) or child.get('provider') in row.get('can_group_with',[]))],
-                    'title':str(media.get('title') or '')[:200],'artist':str(media.get('artist') or '')[:200]})
+                    'title':str(media.get('title') or '')[:200],'artist':str(media.get('artist') or '')[:200],
+                    'album':str(media.get('album') or '')[:200],
+                    'artwork':f'/v1/music/groups/artwork/{identifier}/{art[1]}' if art else '',
+                    'duration_ms':max(0,int(duration*1000)),
+                    'position_ms':max(0,int((elapsed+(max(0,time.time()-updated) if playing else 0))*1000))})
             binding=self.binding(rows,allowed)
             return {'status':'available','items':items,'revision':settings['revision'],'binding':binding,'max_volume':self.config.max_volume}
 
@@ -187,9 +225,14 @@ class GroupMusic:
             if revision!=self.revision:raise HTTPException(409,'Music permissions changed. Reload before controlling a player.')
             rows=self.inventory();player=self.allowed(identifier,rows)
             features=player.get('supported_features',[])
+            queue_item=self.queue_item(identifier,player)
             if action in {'play','pause','stop','next','previous'} and value is None:
-                if action=='pause' and 'pause' not in features:raise ValueError('This player does not support pause')
-                args={'player_id':identifier};command='players/cmd/'+action
+                if action=='pause' and 'pause' not in features and not queue_item:raise ValueError('This player does not support pause')
+                # Queue pause saves resume_pos even when Sendspin closes its audio stream.
+                if queue_item:
+                    args={'queue_id':identifier};command='player_queues/'+action
+                else:
+                    args={'player_id':identifier};command='players/cmd/'+action
             elif action=='volume' and type(value) is int and 0<=value<=self.config.max_volume:
                 if 'volume_set' not in features:raise ValueError('This player does not support volume control')
                 command='players/cmd/volume_set';args={'player_id':identifier,'volume_level':value}
@@ -198,6 +241,8 @@ class GroupMusic:
                 command='players/cmd/volume_mute';args={'player_id':identifier,'muted':value}
             else:raise ValueError('Unsupported music command or volume above the owner limit')
             self.request(command,**args)
+            if action=='pause' and queue_item:self.paused_queues[identifier]=(queue_item,time.monotonic())
+            elif action in {'play','stop','next','previous'}:self.paused_queues.pop(identifier,None)
             return {'status':'accepted','text':'Music Assistant accepted the command. The displayed state refreshes shortly.'}
 
     def members(self,leader,members,revision,binding):
@@ -227,8 +272,9 @@ class ConfigureGroupMusic(BaseModel):
     revision:int=Field(ge=0)
     config:GroupMusicConfig
     token:str|None=Field(default=None,max_length=4096)
+    setup_token:str|None=Field(default=None,max_length=4096)
 
-    @field_validator('token')
+    @field_validator('token','setup_token')
     @classmethod
     def token_format(cls,value):
         if value is not None and any(ord(c)<33 or ord(c)>126 for c in value):raise ValueError('Paste a token without whitespace')
@@ -264,11 +310,34 @@ def install(app,music,authorize,owner,displays=None):
     def configure(body:ConfigureGroupMusic):
         if displays is not None and not set(body.config.receivers)<={d['id'] for d in displays.snapshot() if d['profile']['mode']=='household'}:
             raise HTTPException(422,'Choose currently paired Household displays as native receivers')
-        return call(lambda:music.configure(body.config.model_dump(),body.token,body.revision))
+        return call(lambda:music.configure(body.config.model_dump(),body.token,body.revision,body.setup_token))
     @app.get('/v1/music/groups/discovery',dependencies=[Depends(owner)])
     def discover():return call(lambda:music.snapshot(discovery=True))
     @app.get('/v1/music/groups',dependencies=[Depends(authorize)])
     def groups():return call(music.snapshot)
+    @app.get('/v1/music/groups/artwork/{identifier}/{digest}',dependencies=[Depends(authorize)])
+    def artwork(identifier:str,digest:str):
+        from fastapi import Response
+        if not re.fullmatch(r'[A-Za-z0-9_:.-]{1,160}',identifier) or not re.fullmatch(r'[a-f0-9]{64}',digest):raise HTTPException(404,'Artwork unavailable')
+        def load():
+            with music.lock:
+                music.settings();row=music.allowed(identifier,music.inventory());revision=music.revision
+                path='/imageproxy/'+digest
+                if urlsplit(str((row.get('current_media') or {}).get('image_url') or '')).path!=path:raise HTTPException(404,'Artwork changed')
+                origin,token=music.config.url,music.token
+            try:
+                with httpx.Client(timeout=5,trust_env=False,follow_redirects=False,transport=music.transport) as client:
+                    with client.stream('GET',origin+path+'?size=512&fmt=jpg',headers={'Authorization':'Bearer '+token}) as response:
+                        response.raise_for_status();raw=bytearray()
+                        for chunk in response.iter_bytes():
+                            raw.extend(chunk)
+                            if len(raw)>2_000_000:raise ValueError()
+                if not raw.startswith(b'\xff\xd8'):raise ValueError()
+            except (httpx.HTTPError,ValueError):raise HTTPException(502,'Artwork unavailable') from None
+            with music.lock:
+                if music.revision!=revision or identifier not in music.config.players:raise HTTPException(403,'Output access changed')
+            return Response(bytes(raw),media_type='image/jpeg',headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
+        return call(load)
     @app.post('/v1/music/groups/control',dependencies=[Depends(authorize)])
     def control(body:MusicControl):return call(lambda:music.control(body.action,body.player,body.value,body.revision))
     @app.post('/v1/music/groups/members',dependencies=[Depends(authorize)])
@@ -277,3 +346,5 @@ def install(app,music,authorize,owner,displays=None):
     install_stream(app,music,authorize)
     from .music_library import install as install_library
     install_library(app,music,authorize,call)
+    from .spotify_account import install as install_spotify
+    install_spotify(app,music,authorize,owner,call)

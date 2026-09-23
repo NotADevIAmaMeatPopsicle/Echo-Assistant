@@ -9,6 +9,7 @@ import re
 from threading import RLock
 import time
 import uuid
+from zoneinfo import ZoneInfo
 from .audio_destination import validate_destination
 
 
@@ -44,9 +45,10 @@ def locked(method):
     return call
 
 class Assistant:
-    def __init__(self, clock=time.monotonic, storage: Path | None = None, wall_clock=time.time):
+    def __init__(self, clock=time.monotonic, storage: Path | None = None, wall_clock=time.time, *, time_zone=None):
         self.clock = clock
         self.wall_clock = wall_clock
+        self.time_zone = time_zone
         self.lock = RLock()
         self.storage = storage
         self.timers: dict[str, Timer] = {}
@@ -198,12 +200,19 @@ class Assistant:
             return self.timer_reply('dismissed',timer_id,destination=destination)
         if text in {'cancel that timer','stop that timer','dismiss that timer'}:
             return {'status':'unavailable','capability':'timer','text':'Which timer? Choose it on the display.'}
-        if text in {"what time is it", "what's the time", "time"}:
+        clock_requests = {"what time is it", "what's the time", "time"}
+        date_requests = {"what is today's date", "what's the date", "date"}
+        if text in clock_requests | date_requests:
+            # The API supplies the saved home zone, independent of Docker's TZ.
+            # Resolve it per request so preference changes require no restart.
+            zone = self.time_zone() if callable(self.time_zone) else self.time_zone
+            now = datetime.fromtimestamp(self.wall_clock(), ZoneInfo(zone) if zone else None)
+        if text in clock_requests:
             return {"status": "complete", "capability": "clock",
-                    "text": datetime.now().strftime("It's %I:%M %p.").replace(" 0", " ")}
-        if text in {"what is today's date", "what's the date", "date"}:
+                    "text": now.strftime("It's %I:%M %p.").replace(" 0", " ")}
+        if text in date_requests:
             return {"status": "complete", "capability": "clock",
-                    "text": datetime.now().strftime("Today is %A, %B %d.")}
+                    "text": now.strftime("Today is %A, %B %d.")}
         match = re.fullmatch(r"(?:set |start )?(?:a )?timer (?:for )?([a-z0-9]+(?: [a-z]+)?) (seconds?|minutes?|hours?)", text)
         if match:
             amount = spoken_number(match[1])

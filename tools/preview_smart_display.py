@@ -42,6 +42,8 @@ def fixtures():
     data['/v1/calling']={'enabled':False,'allowed':True,'provider':'LiveKit','max_minutes':15,'invite_seconds':120}
     data['/v1/calling/settings']={'revision':0,'enabled':False,'url':'','credentials_saved':False,'allowed_displays':[],'displays':[]}
     data['/v1/display/local-voice']={'supported':False,'phase':'unavailable'}
+    data['/v1/display/camera']={'supported':False,'capturing':False,'ready':False}
+    data['/v1/display/vision']={'available':False,'provider':'disabled','model':''}
     data['/v1/display/alert-settings']={'supported':False,'status':'Silent preview'}
     data['/v1/displays']={'items':[]}
     data['/v1/members']={'items':[],'limit':16}
@@ -119,7 +121,7 @@ class DisplayPreview(Preview):
         self.send_response(status)
         for key, value in {'Content-Type':content_type,'Content-Length':str(len(body)),
             'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
-            'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}.items(): self.send_header(key,value)
+            'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: https:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"}.items(): self.send_header(key,value)
         self.end_headers(); self.wfile.write(body)
 
     def json_reply(self, body, status=200): self.reply(status, json.dumps(body).encode())
@@ -207,6 +209,13 @@ class DisplayPreview(Preview):
                   '/assets/display/briefing.css':('display/briefing.css','text/css'),
                   '/assets/display/photos.js':('display/photos.js','text/javascript'),
                   '/assets/display/media.js':('display/media.js','text/javascript'),
+                  '/assets/display/radio.js':('display/radio.js','text/javascript'),
+                  '/assets/display/device-library.js':('display/device-library.js','text/javascript'),
+                  '/assets/display/spotify-library.js':('display/spotify-library.js','text/javascript'),
+                  '/assets/display/camera.js':('display/camera.js','text/javascript'),
+                  '/assets/display/camera.css':('display/camera.css','text/css'),
+                  '/assets/display/settings.css':('display/settings.css','text/css'),
+                  '/assets/display/settings.js':('display/settings.js','text/javascript'),
                   '/assets/display/music.js':('display/music.js','text/javascript'),
                   '/assets/display/pi-audio.js':('display/pi-audio.js','text/javascript'),
                   '/assets/display/music.css':('display/music.css','text/css'),

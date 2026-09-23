@@ -2,9 +2,9 @@
 
 The round speaker can call a paired Echo display or answer an incoming room call.
 It uses the same private host relay as [display intercom](ROOM_AUDIO.md).
-This addition requires **round firmware 0.14.0** and the matching host adapter.
-Software checks and firmware builds pass; installation on the physical round
-board and a real call remain pending.
+This addition requires **round firmware 0.14.0 or later** and the matching host adapter.
+Firmware **0.19.0** was installed on the prototype on 2026-09-22 and reconnected
+over Wi-Fi with intercom capability reported. A real call remains unverified.
 
 ![Round call controls, rendered from the firmware with synthetic room names](images/round-intercom.png)
 

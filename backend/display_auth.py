@@ -18,6 +18,10 @@ class DisplayStorageUnavailable(RuntimeError): pass
 
 
 def allowed(method,path):
+    if method=='GET' and re.fullmatch(r'/v1/music/groups/artwork/[A-Za-z0-9_:.-]{1,160}/[a-f0-9]{64}',path):return True
+    if method=='GET' and path in {'/v1/display/camera','/v1/display/vision'}:return True
+    if method=='POST' and path=='/v1/display/vision':return True
+    if method=='GET' and path in {'/v1/radio/stations','/v1/display/library','/v1/music/spotify'}:return True
     if method=='GET' and path=='/v1/display/video':return True
     if personal_google_allowed(method,path):return True
     if method=='POST' and path in {'/v1/display/calendar/master','/v1/display/calendar/following',

@@ -5,6 +5,9 @@ Echo Deck and browser displays can make two-person calls through an optional
 The feature is off by default and keeps Echo's own interface, microphone controls,
 and quiet starting volume. It is separate from [household intercom](ROOM_AUDIO.md).
 
+When adding hardware, use the [audio, camera and calling bring-up checklist](AV_BRINGUP.md)
+before the first physical call. It also describes the separate Google Meet browser trial.
+
 This first integration connects people who **already have access to the private
 Echo UI**. It does not expose Echo or Hermes to the internet, invite new Tailscale
 members, provide a public guest page, or call telephone numbers. A phone can join
@@ -46,6 +49,11 @@ Each device needs its own connected microphone and playback hardware. The camera
 starts off; turn it on explicitly after joining. There is no automatic answer or
 background incoming-call listener. This flow uses invitation codes rather than
 ringing another person's phone.
+
+The [Deck camera](DECK_CAMERA.md) connects an IMX519 local preview feed to the
+private call's video track. It avoids raw CSI browser-device compatibility;
+camera-off and hang-up release capture. This does not establish Google Meet
+compatibility, and a real two-device call remains an acceptance item.
 
 Call volume starts at **2%** on each page load and can be set from 0–30%. A browser
 that blocks automatic sound shows **Enable call sound**. Pi music focus pauses

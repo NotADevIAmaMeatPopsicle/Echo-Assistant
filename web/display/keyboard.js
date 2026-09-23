@@ -208,6 +208,7 @@
   document.getElementById('voice-start').addEventListener('click',close);
   document.addEventListener('submit',event=>{if(input.form===event.target)close();});
   document.addEventListener('echo:page',close);
+  document.addEventListener('echo:settings-tab',close);
   document.addEventListener('close',event=>{if(event.target===keyboardDialog)close();},true);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)close();});
   document.addEventListener('click',event=>{

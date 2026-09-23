@@ -1,11 +1,11 @@
 # Music on the smart display
 
-Open **Music** in the display sidebar. The page separates three destinations:
+Open **Music** in the display sidebar. The page separates playback sources and destinations:
 
 - **Spotify:** current cover art, title, artist and album; progress and seeking;
   previous/play/pause/next; shuffle; repeat off, context or one track; Spotify input level.
-- **Radio & files:** saved direct HTTPS stations and supported audio/video files
-  played by this display. Files remain in its browser session.
+- **Radio:** search stations by name, country or genre, save favorites, or use shared HTTPS presets.
+- **Files:** automatically browse the Pi’s `~/Music/Echo` folder, songs and M3U playlists; queue or shuffle music, or choose files from the browser.
 - **Speakers & casting:** select an assigned Home Assistant speaker, see its
   playback state and available metadata, and use play/pause, mute and volume steps.
 
@@ -21,22 +21,16 @@ round Echo speaker**. Select **This display** for the Pi or **Round speaker** fo
 Spotify level attenuates its incoming stream, independently of the round speaker's
 hardware volume. The page displays both when the hardware reports its volume.
 
-On a touchscreen without a keyboard, tap **Connect with phone**. Scan the QR code
-with your phone's camera, sign in to Spotify there if needed, start music, and
-choose the name shown on the screen in Spotify's device picker: **Echo Display**
-by default for the Pi, or **Round Voice** for the optional round receiver. For the first connection, keep the phone
-and Echo on the same home network. The code is a static link to
-`https://open.spotify.com/`; it is generated locally, contains no credentials,
-and does not perform device authorization or sign the display into an account.
-You can also open the Spotify app directly without scanning.
+To send music from your phone, open Spotify and choose the output name shown
+in Echo from Spotify's device picker. Keep both devices on the same home
+network for the first connection. The generic Spotify QR launcher has been
+removed because it did not authorize or pair the device.
 
-![Phone handoff with a locally generated Spotify QR code](images/display-spotify-phone.png)
-
-**Open Spotify on this device** remains available inside that dialog for browsers
-with a keyboard. It opens the current track or episode, or Spotify itself if
-nothing is selected. Playlists,
-search, saved tracks and queue browsing remain in Spotify. Echo has no Spotify
-library OAuth integration and does not pretend to show a library or queue.
+For browsing inside Echo, **Your Spotify** connects an account
+through Music Assistant and offers playlists, albums, search and queue selection.
+The connection is saved in Music Assistant’s persistent data volume. Complete
+the owner-only **Connect account** steps once, then choose a shared output.
+See [Radio, SD music and Spotify account setup](MUSIC_LIBRARY.md).
 
 Chromecast and AirPlay receivers are not included. Existing Cast speakers can
 still receive audio from their normal apps; Echo can control the assigned Home
@@ -64,6 +58,22 @@ Album art is not written into logs, browser storage or the repository. The examp
 album shown here is synthetic.
 
 ## Validation
+
+### Music Assistant library playback
+
+The main player follows the selected library output, including artwork and
+elapsed time. On a Pi it also follows an active or resumable queue matching the
+local receiver. Queue pause preserves its resume position even when Sendspin
+closes the stream. The track remains visible while paused or ready to resume.
+
+The Pi Sendspin adapter uses a 100 ms PortAudio block and a 500 ms requested
+output buffer. Startup underruns preserve queued timestamped PCM, avoiding a
+repeated reset to Music Assistant's future prebuffer window. Actual latency is
+reported by the device. This is a playback buffer, not a voice-latency setting.
+Live Deck listening improved, and the paused track and cover art were verified
+on its display. These results do not establish multi-room synchronization.
+
+### Spotify Connect
 
 The native receiver compiled and its metadata escaping test passed. Focused Python
 tests cover metadata expiry, playback position, URL restrictions, cover decoding,

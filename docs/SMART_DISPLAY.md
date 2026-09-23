@@ -42,7 +42,8 @@ preview server clears its data. Workspace links explain their live counterpart.
 ![Music player with cover art, track progress, shuffle, repeat and volume; synthetic album](images/display-music.png)
 
 See [Music on the smart display](MUSIC_DISPLAY.md) for controls, audio destinations,
-receiver upgrades and the limits of Spotify library browsing and casting.
+receiver upgrades and casting limits. [Radio and music libraries](MUSIC_LIBRARY.md)
+covers station discovery, SD-card folders and persistent Spotify account setup.
 
 ![Daily briefing, agenda and camera view with synthetic data](images/display-daily.png)
 
@@ -167,7 +168,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | --- | --- | --- |
 | Home | Four configurable tile positions: clock/voice status, weather, rooms, music artwork/playback, next timer, lists or thermostat | Layout saves in this browser; music uses the explicitly selected receiver |
 | Rooms | Room lights, individual brightness/colour/white temperature, thermostat mode and temperature range, speaker selection and supported playback actions | Existing Home Assistant permission grants and fresh state are required; choosing a device does not act on it |
-| Music | Spotify cover art, title/artist/album, seek bar, previous/play/pause/next, shuffle, repeat and input level; home-speaker selection; saved HTTPS radio presets and local files | Spotify can use the separately configured Pi receiver or the explicitly selected round speaker; physical Pi playback acceptance remains open. Library, playlists and queue browsing open Spotify. Chromecast/AirPlay receivers are not installed. Radio and local files play through the display's output |
+| Music | Spotify cover art, title/artist/album, seek bar, previous/play/pause/next, shuffle, repeat and input level; separate Pi speaker level; capability-aware home-speaker controls and volume; radio discovery, favorites and HTTPS presets; automatic SD folder/M3U library and file queue; Spotify library browsing through Music Assistant | Spotify can use the separately configured Pi receiver or the explicitly selected round speaker; physical Pi playback acceptance remains open. Spotify account setup is owner-only; playlists and queue browsing use the selected Music Assistant output. Chromecast/AirPlay receivers are not installed. Radio and local files play through the display's output |
 | My day | Local daily briefing; selected calendars; timed/all-day event creation with separate write grants; selected camera streams/snapshots; silent doorbell cards | Creation requires a compatible calendar and owner permission. Live MJPEG depends on the camera integration. No recording or camera audio |
 | Timers | Multiple persisted timers and a quick one-off alarm | Delivery still needs a connected audio endpoint |
 | Planner | Recurring alarms/reminders, daily/weekday/custom repeat, IANA zones, snooze, dismiss, missed events, quiet hours | Spring gaps use the first valid minute; autumn duplicates ring once. Events over 15 minutes late remain visible without sounding |
@@ -178,6 +179,12 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | Settings | Display preferences, encrypted shared photo album, camera/calendar selection, radio presets, display pairing and revocation | Only the owner can change sources, upload/remove shared photos, manage radios or pair displays |
 
 ![Recurring reminders and notification inbox, using synthetic data](images/display-planner.png)
+
+Spoken time and date use the saved **Time zone** under Planner's quiet-hours
+preferences, including when quiet hours are disabled. Choose your home IANA zone
+there; replies follow daylight-saving changes and update without an API restart.
+The Home tile uses the display's local clock, so configure the Pi/browser timezone
+to match. Docker can keep its normal UTC system clock.
 
 ![Selected agenda and camera page, using synthetic data](images/display-agenda.png)
 
@@ -295,6 +302,15 @@ no built-in microphone, and HDMI/headphone outputs do not provide one.
    The round speaker has its own connection: **Round speaker offline** on the
    music page does not mean the Pi is offline. **This display** selects the Pi's
    own Spotify receiver; **Round speaker** selects the optional round receiver.
+   **Device speaker level** adjusts the Pi receiver’s saved music output (0–30%),
+   including while Spotify is paused. It does not change voice or call volume.
+   **Radio** searches public stations by name, country and genre and saves favorites.
+   **Files** automatically loads `~/Music/Echo` on the Pi, with folders, M3U playlists,
+   search, queue and shuffle. Browser file selection remains available. Queueing
+   does not autoplay. See [music library setup](MUSIC_LIBRARY.md).
+   The YouTube card sits below each tab. In the owner UI, choose **Choose video**,
+   paste a YouTube URL and share it with the Deck. **Load selected video** needs
+   that permission and the Pi player; **Watch on YouTube** opens the actual link.
    Check the selected receiver's output and connection. Text chat and home controls remain
    available on a connected display. **Host unreachable · retrying** reports a
    server connection failure; **Pairing / sign-in needed** reports expired or

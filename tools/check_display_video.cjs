@@ -34,14 +34,18 @@ const eventually=async check=>{for(let n=0;n<80;n++){if(await check())return;awa
       return route.continue();
     });
     await page.goto(base+'/display#music');
-    assert.equal(await page.locator('script[src="/assets/display/video-provider.js"]').count(),1,'Main page registers the video extension');
+    assert.equal(await page.locator('script[src="/assets/display/video-provider.js"]').count(),0,'Main page no longer registers the video extension');
+    assert.equal(await page.locator('#video-provider-card').count(),0);
+    // Exercise the retained prototype in this synthetic harness only.
+    await page.addStyleTag({url:base+'/assets/display/video-provider.css'});
+    await page.addScriptTag({url:base+'/assets/display/video-provider.js'});
     await page.locator('#video-provider-card').waitFor({state:'visible'});
     assert.ok(await page.locator('#video-provider-start').isDisabled());assert.equal(writes.length,0);
     preview=false;await page.evaluate(()=>{data.health.display_demo=false;return EchoVideo.refresh();});
     await page.locator('#video-provider-start:not(:disabled)').waitFor();
     assert.equal(await page.locator('iframe[src*="youtube"]').count(),0);assert.equal(external.filter(x=>/youtube|ytimg|googlevideo/.test(x)).length,0);
     await page.screenshot({path:ensureOutput('display-video.png'),animations:'disabled'});
-    await page.locator('#video-provider-handoff').tap();await page.locator('#video-provider-phone[open]').waitFor();
+    await page.locator('#video-provider-share').tap();await page.locator('#video-provider-phone[open]').waitFor();
     assert.equal(await page.locator('#video-provider-url').inputValue(),'https://www.youtube.com/watch?v='+video);
     assert.equal(await page.locator('#video-provider-phone a').count(),0);await page.locator('#video-provider-close').tap();assert.equal(writes.length,0);
     await page.locator('#video-provider-start').tap();await eventually(()=>writes.length===1);assert.deepEqual(writes[0],{action:'start',revision:0});
@@ -54,7 +58,7 @@ const eventually=async check=>{for(let n=0;n<80;n++){if(await check())return;awa
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     assert.equal(await page.locator('#video-provider-card').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
     await page.screenshot({path:ensureOutput('display-video-phone.png'),animations:'disabled'});
-    await page.evaluate(()=>page('settings'));await page.locator('#video-provider-configure').tap();await page.locator('#video-provider-form').waitFor({state:'visible'});
+    await page.evaluate(()=>EchoSettings.open('system','video-provider-settings'));await page.locator('#video-provider-configure').tap();await page.locator('#video-provider-form').waitFor({state:'visible'});
     assert.equal(await page.locator('#video-provider-displays input').count(),1);assert.match(await page.locator('#video-provider-displays').innerText(),/Kitchen display/);
     await page.locator('#video-provider-save').tap();await page.locator('#video-provider-settings-status').getByText('Saved.',{exact:false}).waitFor();assert.equal(writes.length,3);assert.equal(writes[2].enabled,true);
     // A delayed command from the prior configuration cannot restore old state.
@@ -62,7 +66,7 @@ const eventually=async check=>{for(let n=0;n<80;n++){if(await check())return;awa
     revision++;await page.evaluate(()=>EchoVideo.refresh());await lateStart();lateStart=null;delayStart=false;await page.waitForTimeout(100);
     assert.match(await page.locator('#video-provider-status').innerText(),/Ready when/);
     // Account changes discard pending owner settings, including the private ID.
-    await page.evaluate(()=>page('settings'));delayConfig=true;await page.locator('#video-provider-configure').tap();await eventually(()=>!!lateConfig);
+    await page.evaluate(()=>EchoSettings.open('system','video-provider-settings'));delayConfig=true;await page.locator('#video-provider-configure').tap();await eventually(()=>!!lateConfig);
     mode='guest';await page.evaluate(value=>{data.session=value;EchoVideo.reset();extensions.forEach(fn=>fn());},session());await lateConfig();lateConfig=null;delayConfig=false;
     assert.ok(await page.locator('#video-provider-settings').isHidden());assert.ok(await page.locator('#video-provider-card').isHidden());assert.equal(await page.locator('#video-provider-id').inputValue(),'');
     mode='personal';await page.evaluate(value=>{data.session=value;extensions.forEach(fn=>fn());},session());assert.ok(await page.locator('#video-provider-card').isHidden());

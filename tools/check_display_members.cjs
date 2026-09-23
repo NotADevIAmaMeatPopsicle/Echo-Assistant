@@ -31,7 +31,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.reload();await page.locator('#member-button').tap();await page.locator('#member-keypad').waitFor();
     for(const digit of '11111111')await page.locator('#member-keypad button').getByText(digit,{exact:true}).tap();
     await page.locator('#member-unlock').tap();await page.getByText('Passcode was not accepted',{exact:true}).waitFor();
-    assert.equal(await page.locator('#member-code').inputValue(),'');assert.equal(await page.locator('#connection').textContent(),'Demo · sample home');
+    assert.equal(await page.locator('#member-code').inputValue(),'');assert.ok(await page.locator('#connection').isHidden());
     fs.mkdirSync('output/playwright',{recursive:true});await page.screenshot({path:'output/playwright/member-sign-in.png'});
     for(const digit of '12345678')await page.locator('#member-keypad button').getByText(digit,{exact:true}).tap();
     await page.locator('#member-unlock').tap();await page.locator('#member-button').filter({hasText:'Alex'}).waitFor();

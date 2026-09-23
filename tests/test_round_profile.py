@@ -26,6 +26,36 @@ class RoundProfileTests(TestCase):
 
     def headers(self,revision=1):return {**self.owner,'X-Echo-Endpoint':'round','X-Echo-Access-Revision':str(revision)}
 
+    def test_slow_mini_home_read_does_not_block_display_state(self):
+        entered,release=Event(),Event()
+        def slow_home():
+            entered.set();release.wait(5)
+            return {'status':'available','devices':{}}
+        with patch.object(self.home,'snapshot',side_effect=slow_home),ThreadPoolExecutor(2) as pool:
+            home=pool.submit(self.client.get,'/v1/home',headers=self.headers(0))
+            try:
+                self.assertTrue(entered.wait(2))
+                state=pool.submit(self.client.get,'/v1/state',headers=self.guest)
+                self.assertEqual(state.result(timeout=2).status_code,200)
+            finally:release.set()
+            self.assertEqual(home.result(timeout=2).status_code,200)
+
+    def test_inflight_mini_home_read_discards_result_after_profile_change(self):
+        entered,release=Event(),Event()
+        def slow_home():
+            entered.set();release.wait(5)
+            return {'status':'available','devices':{'private':'must not escape'}}
+        with patch.object(self.home,'snapshot',side_effect=slow_home),ThreadPoolExecutor(2) as pool:
+            home=pool.submit(self.client.get,'/v1/home',headers=self.headers(0))
+            try:
+                self.assertTrue(entered.wait(2))
+                changed=pool.submit(self.save)
+                self.assertEqual(changed.result(timeout=2).status_code,200)
+            finally:release.set()
+            result=home.result(timeout=2)
+            self.assertEqual(result.status_code,409)
+            self.assertNotIn('must not escape',result.text)
+
     def enable(self,grant='control',conversation=True):
         self.assertEqual(self.save(self.profile(home_devices={'light.guest':grant},home_voice=True,conversation=conversation)).status_code,200)
         self.device={'entity_id':'light.guest','state':'off','attributes':{'supported_color_modes':['brightness'],'brightness':0}}

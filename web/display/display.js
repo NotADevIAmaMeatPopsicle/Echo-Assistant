@@ -89,20 +89,18 @@ async function refresh() {
 function renderConnection() {
   // A responding voice service can still be waiting for the separate speaker.
   // Use an authenticated core request to describe this display's connection.
-  const online = fresh('timers') && !signInRequired, demo = data.health?.display_demo;
-  $('connection').textContent = demo ? 'Demo · sample home' : signInRequired ? 'Pairing / sign-in needed' : online ? 'Display connected' : 'Host unreachable · retrying';
-  $('connection').classList.toggle('live', !!online);
-  $('connection').title = online ? 'This display can reach your Echo server.' : 'Checking this display’s connection to your Echo server.';
-  if (online) { $('notice').hidden = true; $('last-update').textContent = demo ? 'Synthetic data · no devices connected' : 'Live state just refreshed'; }
-  else { $('last-update').textContent = 'Live state unavailable · controls paused'; }
-  $('privacy-status').textContent = demo ? 'Local preview · no sound or home actions' : 'Your Echo host · Your choice of assistant';
+  const online = fresh('timers') && !signInRequired;
+  const connection = $('connection');
+  connection.hidden = !!online;
+  connection.textContent = online ? '' : signInRequired ? 'Pairing / sign-in needed' : 'Host unreachable · retrying';
+  if (online) $('notice').hidden = true;
 }
 function render() {
   const demo = data.health?.display_demo;
   renderConnection();
   renderVoice(); renderHome(); renderMusic(); renderTimers(); renderLists(); renderRoutines(); guardButtons();
   extensions.forEach(renderExtension => renderExtension()); guardButtons();
-  $('capability-notes').innerHTML = [['Echo server', fresh('timers') && !signInRequired ? 'connected' : 'unavailable'], ['Optional round speaker', roundSpeakerConnected() ? human(data.voice.status) : 'not connected'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Voice and audio', 'This device’s microphone and speakers'], ['Spotify on this display', 'Configure the Pi receiver below; other receivers are optional']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
+  $('capability-notes').innerHTML = [['Echo server', fresh('timers') && !signInRequired ? 'connected' : 'unavailable'], ['Optional round speaker', roundSpeakerConnected() ? human(data.voice.status) : 'not connected'], ['Home Assistant', human(data.home?.status)], ['Lists', data.household?.storage === 'encrypted' ? 'encrypted on host' : demo ? 'demo session only' : 'session only'], ['Voice and audio', 'This device’s microphone and speakers'], ['Spotify on this display', 'Configure the receiver in Music settings']].map(([name,value]) => `<div class="capability-row"><span>${esc(name)}</span><strong>${esc(value)}</strong></div>`).join('');
 }
 function roundSpeakerConnected() { return fresh('voice') && ['armed','activation','listening','thinking','speaking','music','alarm','cooldown','muted','intercom'].includes(data.voice.status); }
 function renderVoice() {

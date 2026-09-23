@@ -22,11 +22,11 @@ or hardware acceptance. Coordinator ownership includes integration and deploymen
 | ECHO-06 | Grouped music | Provider and physical acceptance; coordinator |
 | ECHO-07 | Voice/video calls | Private provider deployed and TCP verified; physical two-device acceptance open; coordinator |
 | ECHO-08 | Phone music receiver | Adapter and distribution packages installed; disabled; module/phone/audio setup and playback open; media lane |
-| ECHO-09 | Commercial video | Ordinary YouTube deployed; installed ARM64 Widevine loads successfully; provider choice/sign-in and real playback open; media lane |
+| ECHO-09 | Commercial video | Prototype backend retained; YouTube card removed from main UI; provider choice/sign-in and real playback open; media lane |
 | ECHO-10 | Replacement-host provisioning | Tooling implemented; recovery lane |
 | ECHO-11 | Real Google account and calendar acceptance | Owner account configuration required; coordinator |
-| ECHO-12 | Install prepared Mini firmware | Original backup and 0.19.0 bundle verified; connected board identity and installation pending; coordinator |
-| ECHO-13 | Pi audio acceptance | Diagnostic fix deployed; selected USB audio hardware absent; coordinator |
+| ECHO-12 | Install prepared Mini firmware | Installed 0.19.0 on 2026-09-22 after identity and backup verification; Wi-Fi reconnection and intercom capability confirmed; physical feature acceptance remains in the relevant tasks |
+| ECHO-13 | Pi audio acceptance | Selected USB audio connected; quiet speaker/microphone checks passed; sustained duplex, wake accuracy and power stability acceptance open; coordinator |
 | ECHO-14 | Mini audio acceptance | Depends on ECHO-12 and physical testing; coordinator |
 | ECHO-15 | Panel and touch acceptance | Physical panel identification/calibration open; coordinator |
 | ECHO-16 | Dim, off, touch and presence acceptance | Physical checks and selected presence sensor open; coordinator |
@@ -281,7 +281,7 @@ whole calling acceptance task or claim telephone/public guest support.
 
 ### Hardware and provider preparation
 
-The latest hardware preparation verified the retained 16 MiB Mini backup against
+The earlier hardware preparation verified the retained 16 MiB Mini backup against
 its saved SHA-256 and validated the four-image 0.19.0 firmware bundle. The Mini
 is not connected over USB, so its current identity and state remain unverified
 and no flash was attempted. The Pi's matching Bluetooth module and SBC library
@@ -290,11 +290,21 @@ The Bluetooth module-ID compatibility correction passed 30 synthetic checks on
 both Windows and the Pi, plus a read-only check of actual Pi module IDs. The
 original hardware inventory does not identify the attached HDMI panel model.
 
-A fresh connection inventory still finds no Mini USB device on the laptop and
+A connection inventory at that checkpoint found no Mini USB device on the laptop and
 no USB capture device on the Pi. The owner has been asked to reconnect both.
 The Pi's browser inventory and actual Widevine module-loading check succeeded;
 no media, account login or audio was used. A provider selection is pending before
 the paid-video acceptance path is chosen. See [video findings](VIDEO_PROVIDER_OPTIONS.md).
+
+**2026-09-22 update:** Mini USB identity matched the retained record. The original
+16 MiB backup was hash-verified, a separate full backup was saved, and the verified
+0.19.0 bundle was installed with flash hash verification. The existing host API
+was restored and Mini reconnected over Wi-Fi, reporting intercom and timed-audio
+support while retaining mute and 2% volume. ECHO-12 installation is complete;
+physical calls, touch flows and acoustic acceptance remain open. The Deck is
+online with USB touch detected, but active undervoltage/throttling recurred after
+a power-supply change. Its display uses HDMI for video and USB for power/touch.
+No USB capture hardware or CSI camera was detected at this checkpoint.
 
 The private Windows host has Hyper-V available but no registered spare VM and
 about 0.7 GiB of free memory at inspection. Starting a fresh Windows recovery VM
