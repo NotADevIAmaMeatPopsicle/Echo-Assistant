@@ -433,6 +433,13 @@ the supported configurations and future adapter ideas.
 
 ### Parts and tools
 
+The [complete Amazon shopping list](docs/SHOPPING_LIST.md) covers both builds,
+including quantities, cables, power, connectors, enclosure fasteners, and tools.
+These are plausible hardware choices: the exact development parts are identified
+below, while alternatives still need their electrical requirements and physical
+fit checked. Reuse parts you already have, and check bundle contents before
+ordering duplicates. Links are non-affiliate; prices and availability can change.
+
 | Part | Round speaker | Pi smart display |
 | --- | --- | --- |
 | **Core board** | Waveshare ESP32-S3-Touch-AMOLED-1.75; 16 MB flash and 8 MB PSRAM. This is the exact supported ESP32 target. | Raspberry Pi 4B, preferably 4 GB RAM or more, with a 64-bit Linux OS and Chromium. |
@@ -441,6 +448,27 @@ the supported configurations and future adapter ideas.
 | **Power and storage** | USB-C data cable; optional compatible battery and microSD. | Reliable 5.1 V / 3 A Pi supply, panel supply when required, cooling, and preferably a 32 GB or larger microSD. |
 | **Host and tools** | Windows host, 64-bit Python 3.13, Git, and PlatformIO. | Shared Windows host with Python 3.13 and Git; PlatformIO is unnecessary for a Pi-only build. |
 | **Network** | USB first; optional paired 2.4 GHz Wi-Fi. | Wi-Fi or Ethernet with access to the Echo host. |
+
+#### Where to buy
+
+| Build | Hardware choice | Match to the project |
+| --- | --- | --- |
+| Mini | [Waveshare ESP32-S3-Touch-AMOLED-1.75](https://www.amazon.com/dp/B0F7XTJ1ZL) | Exact supported board. Includes display, touch, microphones, and speaker amplifier. |
+| Deck | [CanaKit Raspberry Pi 4, 4 GB kit](https://www.amazon.com/dp/B07V5JTMV9) | Same Pi model; convenient bundle with power, storage, cooling, and display cable. A bare board works too. |
+| Deck | [Waveshare 7-inch HDMI touchscreen](https://www.amazon.com/dp/B07P8P3X6M) | Alternative 1024 × 600 panel. The prototype's exact screen model remains unidentified; dimensions and power arrangement may differ. |
+| Deck | [Waveshare USB TO AUDIO](https://www.amazon.com/dp/B08R38TXXL) | Exact audio-board model, including amplified speaker outputs. |
+| Deck | [USB mini microphone two-pack](https://www.amazon.com/dp/B0CYM618H7) | Exact purchased listing. One microphone is sufficient; the second is a spare. |
+| Deck, optional camera | [Arducam IMX519 with case](https://www.amazon.com/dp/B09STL7S88) | Exact camera model. Requires the Pi camera stack; browser calling has separate compatibility checks. |
+| Either | [CQRobot enclosed 8-ohm, 3 W speaker pair](https://www.amazon.com/dp/B0738NLFTG) | Retail alternative to the salvaged Google Home Mini speakers. Requires different mounting and an MX1.25 adapter for Mini; the Deck board uses PH2.0. |
+| Mini enclosure | [M2/M3 screw, nut, and washer assortment](https://www.amazon.com/dp/B0D6R67GHD) | Contains the sizes and quantities in the Crescent assembly guide. |
+| Deck, optional storage upgrade | [SanDisk High Endurance 128 GB microSD](https://www.amazon.com/dp/B07NY23WBG) | More room for local music; do not also buy a separate boot card if using this one. |
+| Deck, optional USB expansion | [Sabrent powered USB hub](https://www.amazon.com/dp/B00TPMEOYM) | Candidate for peripheral power/port expansion, not hardware tested in this build. Check power limits and upstream back-powering. |
+
+The [full list](docs/SHOPPING_LIST.md) also covers donor speakers, optional batteries,
+USB/HDMI/CSI cables, resin, gaskets, mounting supplies, and shared tools. The
+[Mini enclosure](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md) includes printable
+files and an assembly walkthrough; the [Deck enclosure](enclosure/deck-concept-v1/README.md)
+is currently an editable concept rather than a print-ready housing.
 
 The [Docker guide](docs/DEPLOYMENT.md) covers advanced hosting. Home Assistant and
 Spotify Premium are optional; set them up after the basic device works.
