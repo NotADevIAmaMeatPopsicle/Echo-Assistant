@@ -4,10 +4,10 @@
   const key = 'echo-ui-theme';
   const themes = [
     {id: 'echo', name: 'Echo Midnight', note: 'The original calm blue-green look.'},
-    {id: 'forest', name: 'Totoro Forest', note: 'A soft woodland-inspired mood.'},
-    {id: 'pixel', name: 'Super Mario World', note: 'Bouncy sky, meadow and pixel edges.'},
+    {id: 'forest', name: 'Umbrella Grove', note: 'Rainy-day warmth in a gentle woodland.'},
+    {id: 'pixel', name: 'Mushroom Meadow', note: 'Bright platformer skies, pipes and pixel edges.'},
     {id: 'jaunty', name: 'Jaunty Light', note: 'Sunny, clear and full of bounce.'},
-    {id: 'fruit', name: 'Fruit Ninja Arcade', note: 'Juicy colors and bold arcade energy.'}
+    {id: 'fruit', name: 'Slice Dojo', note: 'Juicy colors and quick-slice arcade energy.'}
   ];
   const valid = new Set(themes.map(theme => theme.id));
   let current = 'echo';

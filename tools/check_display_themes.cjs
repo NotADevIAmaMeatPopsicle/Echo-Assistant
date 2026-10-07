@@ -9,6 +9,9 @@ const assert=require('node:assert/strict');
     const context=await browser.newContext({viewport:{width:1024,height:600}}),page=await context.newPage();
     await page.goto(base+'/display#settings');
     await page.locator('#settings-theme').waitFor();
+    for(const name of ['Umbrella Grove','Mushroom Meadow','Slice Dojo']){
+      assert.equal(await page.getByRole('button',{name:new RegExp(name)}).count(),1);
+    }
     for(const theme of ['forest','pixel','jaunty','fruit','echo']){
       await page.locator(`[data-theme-choice="${theme}"]`).click();
       assert.equal(await page.locator('html').getAttribute('data-echo-theme'),theme);
