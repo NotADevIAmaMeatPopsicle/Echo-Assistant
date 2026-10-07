@@ -419,8 +419,10 @@ py -3 tools/preview_web.py
 
 Once the server starts, open **[http://127.0.0.1:8778/](http://127.0.0.1:8778/)**
 on the same computer. This local preview address is available while the command
-is running. On macOS or Linux, use
-`python3 tools/preview_web.py` for the last command. Press **Ctrl+C** to stop it.
+is running. Its Calendar and smart-display links open the separate Deck preview
+at port 8788, so start that preview too before following those links. On macOS
+or Linux, use `python3 tools/preview_web.py` for the last command. Press
+**Ctrl+C** to stop it.
 
 <details>
 <summary><strong>Try the interactive smart-display preview</strong></summary>

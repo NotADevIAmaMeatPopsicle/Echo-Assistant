@@ -116,6 +116,14 @@ class Preview(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path in DATA:
             return self.reply(200, json.dumps(DATA[path]).encode())
+        if path == '/display':
+            # The Deck has its own synthetic preview server. Browsers retain
+            # the requested #calendar fragment across this redirect.
+            self.send_response(302)
+            self.send_header('Location', 'http://127.0.0.1:8788/display')
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            return
         if path in {'/', '/settings', '/memory', '/devices', '/routines', '/tasks'}:
             html = (WEB/'index.html').read_text(encoding='utf-8')
             banner = '<div style="text-align:center;padding:7px;background:#152a2c;color:#a0f5d5;font:10px Segoe UI,sans-serif;letter-spacing:2px">PRODUCT PREVIEW · SAMPLE DATA</div>'
