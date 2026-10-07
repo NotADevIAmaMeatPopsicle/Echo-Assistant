@@ -1,14 +1,18 @@
 # Package and release status
 
-The repository is currently **private** while the round speaker and Pi smart
-display are completed together. Current firmware source is **0.15.0**; it has
-not been published as a new release. [Build queue](BUILD_QUEUE.md) records open
-hardware and integration acceptance, and [package checks](PACKAGE_CHECKS.md)
-describes the reproducible software checks. The release notes below are historical.
+The repository is **public**, with Echo Mini and Echo Deck in alpha development.
+As of September 25, 2026, the default branch `codex/public-release` contains host
+source **0.27.0.dev1** and Mini firmware **0.19.0**, including the Deck expansion.
+These changes are newer than the published **v0.1.0-alpha.1** prerelease; a complete,
+validated two-build package has not yet been released. Clone the default branch
+for the current build. [Build queue](BUILD_QUEUE.md) records hardware and integration
+acceptance, and [package checks](PACKAGE_CHECKS.md) describes reproducible software
+checks. The release notes and check counts below describe the earlier package.
 
 ## Previous source release
 
-Previously published package: **0.1.0-alpha.1**. Included host implementation: **0.26.0**;
+Published source prerelease: [**v0.1.0-alpha.1**, September 18, 2026](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/releases/tag/v0.1.0-alpha.1).
+Included host implementation: **0.26.0**;
 firmware implementation: **0.13.0**. Wire-protocol identifiers retain `round-voice`
 for compatibility; the project and repository are Echo Assistant.
 

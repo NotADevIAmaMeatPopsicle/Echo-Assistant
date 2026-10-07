@@ -1,8 +1,11 @@
 # Echo complete-package build queue
 
-Both builds stay private until explicitly approved for release. The Pi video connection
-is working; the latest check still reports undervoltage. Continue the remaining
-software and hardware acceptance. The verified original
+The source repository is public; the complete Mini and Deck package remains in alpha
+development. This queue records prototype observations and outstanding acceptance,
+not a fresh health check of an installation. Later checkpoints supersede earlier
+conditions; use the [current task index](REMAINING_TASKS.md#current-task-index) for
+the consolidated state. The last recorded Pi power check reported undervoltage.
+Continue the remaining software and hardware acceptance. The verified original
 card backup is separate from Git; reuse of that card is authorized.
 
 ## Build direction

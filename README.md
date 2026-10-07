@@ -10,10 +10,11 @@ assistant and speech models; each device has its own screen and audio. A web
 workspace puts conversations, memory, research, and configuration within reach
 from a computer or phone.
 
-**Current stage: alpha development.** Both primary builds are being completed as one
-package. The Pi display is running on hardware; its audio and the new intercom
-paths still need physical validation. See [current status](#current-status) for
-what is implemented, what has been exercised, and what remains.
+**Public source · alpha development.** Echo Mini and Echo Deck are both running on
+physical hardware, with voice and music exercised on the prototypes. The current
+source includes the Deck expansion beyond the earlier alpha release. Room-distance
+wake reliability, two-device calls, and broader build validation remain in progress.
+See [current status](#current-status) before choosing a build.
 
 [![CI](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/actions/workflows/ci.yml)
 ![Round speaker](https://img.shields.io/badge/ESP32--S3-AMOLED_1.75-2274c7)
@@ -36,8 +37,8 @@ and round builds; enclosure concepts are labeled separately.
 
 | Build | Hardware and experience | Start here |
 | --- | --- | --- |
-| **Round smart speaker** | Waveshare ESP32-S3-Touch-AMOLED-1.75, 466 × 466 touch display, onboard microphones, attached speaker, swipe navigation, and contextual physical buttons. Printable Crescent stand included. | [Board and firmware](docs/HARDWARE.md) · [Enclosure](#the-crescent-enclosure) |
-| **Pi smart display** | Raspberry Pi 4B, touchscreen, and its own attached microphone and speaker. A larger view of conversation, rooms, music, calendars, and household tasks. Current display layout targets 1024 × 600. | [Pi bring-up and pairing](docs/SMART_DISPLAY.md#pi-hardware-and-bring-up) · [Pi voice](docs/PI_VOICE.md) |
+| **Echo Mini · round smart speaker** | Waveshare ESP32-S3-Touch-AMOLED-1.75, 466 × 466 touch display, onboard microphones, attached speaker, swipe navigation, and contextual physical buttons. Printable Crescent stand included. | [Board and firmware](docs/HARDWARE.md) · [Enclosure](#the-crescent-enclosure) |
+| **Echo Deck · Pi smart display** | Raspberry Pi 4B, touchscreen, and its own attached microphone and speaker. A larger view of conversation, rooms, music, calendars, and household tasks. Current display layout targets 1024 × 600. | [Pi bring-up and pairing](docs/SMART_DISPLAY.md#pi-hardware-and-bring-up) · [Pi voice](docs/PI_VOICE.md) |
 | **Browser companion** | Open the workspace on a computer or phone. A paired browser can also use push-to-talk and room calls with microphone permission. Mobile background listening is not verified. | [Build options](docs/BUILD_OPTIONS.md) · [Private remote access](docs/TAILNET_ACCESS.md) |
 
 The Pi **does not require the round speaker** for voice, music, or alarms. Choose
@@ -54,7 +55,7 @@ boards and pairing a separate screen with a spare audio device remain future wor
 | **Play music** | Spotify Connect with artwork, track details, seeking, shuffle/repeat, and volume controls; searchable internet radio and favorites, an SD-card music library, and optional Spotify playlist browsing through Music Assistant. |
 | **Plan the day** | A daily briefing, selected calendars, reviewed event creation, repeating schedules, reviewed event/occurrence changes, shopping lists, tasks, and notes. |
 | **Keep track of time** | Multiple timers, recurring alarms and reminders, snooze/dismiss, quiet hours, time zones, and daylight-saving handling. |
-| **See and share** | Selected camera views, silent doorbell cards, photo albums, household notifications, room announcements, answered two-way intercom, and optional [browser voice/video calls](docs/CALLING.md). A private LiveKit server is deployed with verified TCP connectivity; physical calling acceptance remains open. |
+| **See and share** | Local Deck camera preview and image questions, selected Home Assistant camera views, silent doorbell cards, photo albums, household notifications, room announcements, and answered intercom. Optional [browser voice/video calls](docs/CALLING.md) use a self-hosted LiveKit server; real two-device call quality still needs validation. |
 | **Make it yours** | Provider/model selection, editable personality, local voice choices, device names, room assignments, display preferences, and a printable enclosure. |
 | **Share deliberately** | Owner-assigned Household or Guest profiles for Deck and Mini, selected devices and sources, and optional local guest home voice. Personal sign-in adds separate memory, personality and conversation on Deck and Mini. Mini firmware is installed; physical sign-in acceptance remains open. |
 
@@ -165,15 +166,18 @@ Premium is required. Open Spotify on your phone and choose the named Echo
 receiver from its device picker.
 For browsing directly on Echo, the [music library](docs/MUSIC_LIBRARY.md) adds
 persistent Spotify sign-in through Music Assistant, playlists, search and queue
-selection. Radio includes station discovery and favorites; Files automatically
+selection. The playlist shelf starts with three favorites, prioritizing names
+prefixed with `1.`, `2.` and `3.`, with **More playlists** underneath. **Podcasts**
+includes followed shows, **New episodes**, and ordering by latest aired episode.
+Radio includes station discovery and favorites; Files automatically
 indexes music and M3U playlists in the Pi’s `~/Music/Echo` folder. Chromecast and
 AirPlay receivers are not included.
 The Now Playing panel follows library playback as well as Spotify Connect, with
 cover art, position and controls for the selected output. Pausing a library queue
 retains the song and resume position.
 Deck also has an optional, default-off [Bluetooth A2DP adapter](docs/PI_BLUETOOTH.md)
-for an owner-selected bonded phone. Its adapter software is included; actual package,
-profile and playback acceptance remain pending.
+for an owner-selected bonded phone. Its adapter software is included; Bluetooth
+profile setup and real phone-to-Deck playback still need validation.
 
 Pi wake words remain active during Spotify. Choose pause mode, or lower music by
 80% through the cue and conversation with a shared audio output. Ducking restores
@@ -189,8 +193,9 @@ grouping. Browse connected providers and explicitly choose where to play. It wor
 with compatible players configured in Music Assistant. The optional native Pi player connects
 through Echo’s private gateway and keeps voice attenuation local to that screen.
 The [Mini host receiver](docs/ROUND_GROUP_MUSIC.md) includes owner volume limits,
-track information and voice priority. It stays disabled pending installation of
-the matching firmware; physical multi-speaker playback and timing remain unverified.
+track information and voice priority. It defaults to disabled and requires compatible
+firmware and explicit setup. Firmware 0.19.0 is installed on the prototype;
+physical Mini group playback and multi-speaker timing remain unverified.
 
 ### Your day, lists, and reminders
 
@@ -220,7 +225,8 @@ deletion. Direct Google series editing loads the original schedule and preserves
 its repeat pattern and event count. Simple counted Google series also support
 reviewed [following-only rescheduling](docs/GOOGLE_CALENDAR_SERIES.md). A separate
 [guest review](docs/CALENDAR_INVITATIONS.md) shows attendees and the notification
-choice before confirmation. Real Google account acceptance remains pending.
+choice before confirmation. Live validation of calendar writes, series changes,
+and invitations remains pending.
 [Calendar guide](docs/CALENDARS.md) · [Daily briefing](docs/DAILY_BRIEFING.md).
 
 Signed-in Personal accounts can [connect their own Google calendars](docs/PERSONAL_GOOGLE.md)
@@ -248,8 +254,9 @@ mute, cancellation, and connection loss are handled explicitly.
 
 See [cameras and doorbells](docs/CAMERAS_AND_DOORBELLS.md),
 [room audio](docs/ROOM_AUDIO.md), and [round intercom](docs/ROUND_INTERCOM.md).
-Camera/calendar acceptance needs configured integrations; Pi and round intercom
-still need physical listening and feedback checks.
+Home Assistant camera/doorbell behavior and advanced calendar changes need live
+integration checks; Deck and Mini intercom still need physical listening and
+feedback checks. Local Deck camera verification is described in [Deck camera](docs/DECK_CAMERA.md).
 
 <details>
 <summary><strong>The quiet screen: clock and photos</strong></summary>
@@ -395,8 +402,9 @@ not electrically disconnect the microphone.
 
 ## Try the UI
 
-The read-only web preview needs Python 3 and uses the standard library. From a
-checkout you can browse the actual UI without a board, account, model, or home connection:
+The repository is public; anyone can clone it. The read-only web preview needs
+Python 3 and uses the standard library. Browse the actual web workspace with sample
+data, without a board, account, model, or home connection. On Windows:
 
 ```powershell
 git clone https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant.git
@@ -404,8 +412,10 @@ cd Echo-Assistant
 py -3 tools/preview_web.py
 ```
 
-Open **[http://127.0.0.1:8778/](http://127.0.0.1:8778/)**. Repository access is
-required while the project is private. Press **Ctrl+C** to stop the preview.
+Once the server starts, open **[http://127.0.0.1:8778/](http://127.0.0.1:8778/)**
+on the same computer. This local preview address is available while the command
+is running. On macOS or Linux, use
+`python3 tools/preview_web.py` for the last command. Press **Ctrl+C** to stop it.
 
 <details>
 <summary><strong>Try the interactive smart-display preview</strong></summary>
@@ -419,9 +429,12 @@ py -3.13 -m venv .venv
 ./.venv/Scripts/python.exe tools/preview_smart_display.py
 ```
 
-Open **[http://127.0.0.1:8788/display](http://127.0.0.1:8788/display)**. Timers,
-lists, forms, and simulated controls use in-memory sample data; closing the server
+Once the server starts, open **[http://127.0.0.1:8788/display](http://127.0.0.1:8788/display)**
+on the same computer. Timers, lists, forms, and simulated controls use in-memory
+sample data; closing the server
 clears it. No real devices, microphone, speaker, or accounts are connected.
+Press **Ctrl+C** to stop it. For a working installation, continue with the build
+guide below; its authenticated host uses port **8768** by default.
 
 </details>
 
@@ -529,7 +542,7 @@ displays**, then complete its client installation. Start audible tests at **2%**
 | Lights, climate, speakers, and routines | [Home Assistant and permissions](docs/HOME_CONTROL.md) |
 | Music from the Spotify app | [Round receiver](docs/MUSIC.md) · [Pi receiver](docs/PI_SPOTIFY.md) |
 | Calendar agenda, repeats and event changes | [Calendar permissions and forms](docs/CALENDARS.md) · [Google Calendar](docs/GOOGLE_CALENDAR.md) · [Daily briefing](docs/DAILY_BRIEFING.md) |
-| Camera views and doorbell cards | [Cameras and doorbells](docs/CAMERAS_AND_DOORBELLS.md) |
+| Local camera preview, image questions, and doorbell cards | [Deck camera](docs/DECK_CAMERA.md) · [Home Assistant cameras and doorbells](docs/CAMERAS_AND_DOORBELLS.md) |
 | Announcements and answered calls | [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) · [Browser voice/video calls](docs/CALLING.md) |
 | An always-on host and Hermes | [Docker deployment and UIs](docs/DEPLOYMENT.md) |
 | Access from selected phones/computers | [Private Tailscale access](docs/TAILNET_ACCESS.md) |
@@ -565,26 +578,28 @@ is also included; printable Deck parts remain future work.
 
 ## Current status
 
-**Alpha development; the complete two-build package has not been released.** Older
-release assets predate the Pi expansion and new room-audio work. The current
-checkout and [build queue](docs/BUILD_QUEUE.md) describe this development state;
-[release history](docs/RELEASE.md) identifies the earlier source package.
+**Public alpha source, reviewed September 25, 2026.** The published
+[v0.1.0-alpha.1 prerelease](https://github.com/NotADevIAmaMeatPopsicle/Echo-Assistant/releases/tag/v0.1.0-alpha.1)
+is the earlier source package. The default branch, `codex/public-release`, contains
+the newer Mini and Deck work described here. Clone that branch for the current
+build; the older release archive does not include the Deck expansion. A complete,
+validated two-build release is still ahead. See [release history](docs/RELEASE.md)
+and the [remaining task plan](docs/REMAINING_TASKS.md) for the detailed boundaries.
 
 | Area | Evidence and remaining work |
 | --- | --- |
-| **Round speaker** | Physical prototype, existing voice/music path, and touch navigation exercised. New intercom and OLED screen-protection firmware compiled; installation and physical checks remain. Sustained playback, distant wake, battery operation, and repeatable enclosure fit need broader acceptance. |
-| **Pi display** | Installed and running at 1024 × 600. Pairing, OS restart, live revocation/re-enrollment, and recovery after a 90-second Echo connection outage verified. Exact panel identification, complete touch calibration, cold power-on, and Wi-Fi/router restart checks remain. |
-| **Pi audio and room calls** | Native wake, push-to-talk, reply routing, Spotify, alarms, announcements, and intercom implemented. Provisional USB-headset Spotify playback is owner-confirmed; wake/cue/reply audibility, feedback, interruption, and final microphone/speaker assembly remain open. |
-| **Browser calling** | Private LiveKit server and restricted Tailscale gateway deployed. Two synthetic browser participants established selected TCP connections on the deployed route, with no capture or playback. Deck is authorized and its interface refreshed; real two-device sound/video remains unverified. |
-| **Home and daily tools** | Controls, lists, reminders, briefing, calendar forms, camera relay, and doorbell UI implemented. Live calendar writes and camera/doorbell behavior need configured integrations and acceptance. |
+| **Echo Mini** | Physical prototype, voice/music path, and touch navigation exercised. Firmware 0.19.0 is installed and reconnects over Wi-Fi, including intercom capability. New calendar/profile flows, screen protection, sustained playback, distant wake, battery operation, and repeatable enclosure fit need broader physical validation. |
+| **Echo Deck display** | Installed and running at 1024 × 600. Pairing, OS restart, live revocation/re-enrollment, and recovery after a 90-second Echo connection outage verified. Settings tabs and connection-delay fixes are deployed. Exact panel identification, complete touch calibration, stable power, cold power-on, and router recovery remain open. |
+| **Deck audio and music** | USB audio interface and microphone connected; quiet speaker/microphone checks passed, with audible cues, spoken replies, and Spotify/library playback exercised. Buffering changes improved listening quality; Now Playing retains the paused track on the Deck. Sustained duplex, room-distance wake, feedback, and interruption/resume need broader checks. |
+| **Local camera and calls** | IMX519 preview, focus response, and a live browser video track verified. Image questions and opt-in motion wake are implemented. Two synthetic participants verified the self-hosted LiveKit TCP route; real two-device intercom/video quality remains unverified. Google Meet is experimental and its CSI-camera path is not yet working in Chromium. |
+| **Home and daily tools** | Controls, lists, reminders, briefing, calendar forms, Home Assistant camera relay, and doorbell UI implemented. Calendar writes, series changes, invitations, personal Google accounts, and live Home Assistant camera/doorbell behavior still need integration acceptance. |
 | **Packaging** | Host tests, firmware build, Windows recovery-task execution, fresh-container API/Hermes archive restore, Linux Pi checks, browser flows, and privacy guards exercised. Portable passphrase backups support recovery without the original Windows account. Broader fresh-install/provider coverage remains open. |
 
-Further work includes generic audio-endpoint adapters, synchronized grouped playback,
-real Google account acceptance, provisioning the separate personal
-Hermes instances supported by the account connector, and physical acceptance
-of voice/video calls. Proprietary
-casting and commercial streaming-video services are not implemented. The project
-does not claim complete Nest Hub or Echo Show feature parity.
+Further work includes generic audio-endpoint adapters, physical validation of
+synchronized grouped playback, live Google workflow checks, separate personal
+Hermes instances, and voice/video call acceptance. Chromecast and AirPlay receivers
+are not included; commercial streaming-video playback remains experimental and
+unverified. Echo does not claim complete Nest Hub or Echo Show feature parity.
 
 ## Documentation
 
@@ -595,6 +610,7 @@ does not claim complete Nest Hub or Echo Show feature parity.
 | [Pi voice](docs/PI_VOICE.md) · [Spotify](docs/PI_SPOTIFY.md) · [Alerts](docs/PI_ALERTS.md) | Independent Pi microphone and speaker paths |
 | [Hardware](docs/HARDWARE.md) · [Wireless](docs/WIRELESS.md) | Round-board identity, original backup, build, flash, and pairing |
 | [Home control](docs/HOME_CONTROL.md) · [Calendars](docs/CALENDARS.md) · [Cameras](docs/CAMERAS_AND_DOORBELLS.md) | Sources, permissions, actions, and integration limits |
+| [Deck camera](docs/DECK_CAMERA.md) · [Browser calling](docs/CALLING.md) | Local preview, image questions, motion wake, self-hosted calls, and experimental Meet support |
 | [Music](docs/MUSIC_DISPLAY.md) · [Room audio](docs/ROOM_AUDIO.md) · [Round intercom](docs/ROUND_INTERCOM.md) | Playback, destinations, announcements, and calls |
 | [Deployment](docs/DEPLOYMENT.md) · [Private access](docs/TAILNET_ACCESS.md) | Docker, Hermes UIs, storage, recovery, and selected-device access |
 | [Crescent assembly](enclosure/crescent-v1/PRINT_AND_ASSEMBLY.md) · [Web gallery](docs/WEB_UI.md) | Printable parts, build photographs, and UI examples |

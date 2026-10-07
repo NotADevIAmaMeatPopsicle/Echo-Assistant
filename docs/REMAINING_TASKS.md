@@ -2,15 +2,18 @@
 
 This is the execution plan for the remaining items in [the build queue](BUILD_QUEUE.md).
 Each task has a concrete deliverable and acceptance gate. Software completion does
-not close an external-service or physical acceptance task. The repository remains
-private. No release, push, firmware flash, sound playback or home-device action is
+not close an external-service or physical acceptance task. The source repository is
+public; runtime configuration and deployment data stay private. No release, push,
+firmware flash, sound playback or home-device action is
 part of an agent's automated checks.
 
 ## Current task index
 
 Each ID below has its own completion boundary in the dispatch or acceptance
-tables. Software marked deployed still requires the separately listed provider
-or hardware acceptance. Coordinator ownership includes integration and deployment.
+tables. This index summarizes the recorded development state; the dispatch waves
+below retain historical results, including conditions resolved in later waves.
+Software marked deployed still requires the separately listed provider or hardware
+acceptance. Coordinator ownership includes integration and deployment.
 
 | ID | Work item | Current state / owner |
 | --- | --- | --- |

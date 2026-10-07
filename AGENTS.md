@@ -1,9 +1,9 @@
 # Echo Assistant
 
 Read README.md and the relevant setup guide before editing hardware or deployment.
-This repository is private while the round speaker and Pi smart-display builds
-are completed together. Do not make it public or publish a new release without
-an explicit request. Preserve its readiness for a sanitized public distribution.
+This repository is public. The Echo Mini and Echo Deck builds are in alpha
+development. Do not change repository visibility or publish a new release without
+an explicit request. Keep every change suitable for public distribution.
 Keep user settings, credentials, hostnames,
 device identities, recordings, session data, build outputs and backups out of Git.
 Use environment variables, ignored local configuration and synthetic test fixtures.

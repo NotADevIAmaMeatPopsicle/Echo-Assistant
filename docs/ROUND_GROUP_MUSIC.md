@@ -1,10 +1,11 @@
 # Grouped music on Echo Mini
 
 The Mini needs timestamped audio to join the Deck's Music Assistant playback.
-Firmware **0.16.0** implements that transport and its playback scheduler. The host
-now includes the Sendspin session, owner settings, music controls and voice-priority
-integration. The receiver defaults to **disabled**. The matching firmware has not
-been installed on the physical board, so real Mini playback is still unverified.
+Firmware **0.16.0 and later** implements that transport and its playback scheduler.
+The host includes the Sendspin session, owner settings, music controls and voice-priority
+integration. The receiver defaults to **disabled**. Firmware **0.19.0** was installed
+on the prototype on September 22, 2026; real Mini group playback and acoustic
+timing remain unverified.
 
 The existing Mini voice, Spotify and intercom transports remain separate. No
 Music Assistant account, token or discovery service is added to the firmware.
@@ -39,9 +40,9 @@ handling still stop or disarm the appropriate existing audio paths.
 
 ## Enable the Mini
 
-1. Verify the board identity and original backup before installing firmware
-   0.16.0, following [the hardware guide](HARDWARE.md). Older firmware receives
-   no new group-audio commands and does not register a player.
+1. Verify the board identity and original backup before installing the current
+   firmware, following [the hardware guide](HARDWARE.md). On versions before
+   0.16.0, the host sends no group-audio commands and does not register a player.
 2. Use the current Docker host image, which includes the optional SDK. For a
    Windows AMD64 host using Python 3.14, install into Echo's existing virtual
    environment with `python -m pip install --require-hashes --only-binary=:all:
