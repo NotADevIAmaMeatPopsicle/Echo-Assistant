@@ -13,6 +13,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await owner.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
     await owner.addInitScript(()=>{window.AudioContext=class{constructor(){throw Error('Owner must not open audio');}};HTMLMediaElement.prototype.play=()=>{throw Error('Audio forbidden');};});
     await owner.goto(base+'/display#settings');
+    await owner.locator('#settings-tab-calling').click();
     await owner.locator('.audio-room-setting').first().waitFor();
     await owner.locator('.audio-room-setting').first().locator('[data-audio-room]').fill('Living room');
     await owner.locator('#audio-room-form button').click();
@@ -59,7 +60,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
       if(url.pathname.endsWith('/receipt')){receipts.push(r.postDataJSON());delivered=true;return route.fulfill({json:{status:r.postDataJSON().status}});}
       return route.continue();
     });
-    await display.goto(base+'/display#settings');await display.locator('#announcement-listen').waitFor();
+    await display.goto(base+'/display#settings');await display.locator('#settings-tab-calling').click();await display.locator('#announcement-listen').waitFor();
     await display.evaluate(()=>pollAnnouncements());assert.equal(await display.evaluate(()=>window.audioStarts),0);
     await display.locator('#announcement-listen').click();await display.waitForFunction(()=>window.audioStarts===1);
     await display.evaluate(()=>window.audioNodes[0].onended());

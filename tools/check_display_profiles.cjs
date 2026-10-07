@@ -16,7 +16,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     });
     await page.route('**/v1/displays',r=>r.fulfill({json:{items:[display]}}));
     await page.route('**/v1/displays/*/profile',r=>{saved=r.request().postDataJSON();display.profile=saved.profile;display.profile_revision++;return r.fulfill({json:{profile:display.profile,profile_revision:display.profile_revision}});});
-    await page.goto(base+'/display#settings');await page.locator('[data-profile-display]').tap();
+    await page.goto(base+'/display#settings');await page.locator('#settings-tab-access').tap();await page.locator('[data-profile-display]').tap();
     try{await page.locator('#display-access-save:not(:disabled)').waitFor({timeout:5000});}catch(error){console.error(await page.evaluate(()=>({url:location.href,status:document.getElementById('display-access-status')?.textContent,body:document.body.innerText.slice(-1000)})));throw error;}
     await page.locator('#display-access-mode').selectOption('guest');
     await page.locator('#display-access-name').fill('Visiting friends');await page.locator('#display-access-room').fill('Guest room');
@@ -32,11 +32,11 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     assert.equal(saved.profile.home_voice,false);
     assert.deepEqual(saved.profile.calendars,['calendar.household_demo']);
     assert.deepEqual(saved.profile.cameras,['camera.porch_demo']);
-    await page.locator('#mini-access-edit:not(:disabled)').tap();await page.locator('#display-access-save:not(:disabled)').waitFor();
+    await page.locator('#settings-tab-access').tap();await page.locator('#mini-access-edit:not(:disabled)').click();await page.locator('#display-access-save:not(:disabled)').waitFor();
     assert.equal(await page.locator('#display-access-mode option[value=guest]').evaluate(el=>el.disabled),true);
     assert.equal(await page.locator('[data-profile-member]').isDisabled(),true);
     await page.locator('#display-access-cancel').tap();assert.equal(miniSaved,null);
-    mini.firmware_ready=true;mini.members_ready=true;await page.reload();await page.locator('#mini-access-edit:not(:disabled)').tap();
+    mini.firmware_ready=true;mini.members_ready=true;await page.reload();await page.locator('#settings-tab-access').tap();await page.locator('#mini-access-edit:not(:disabled)').tap();
     await page.locator('#display-access-save:not(:disabled)').waitFor();await page.locator('#display-access-mode').selectOption('guest');
     await page.locator('#display-access-name').fill('Guest speaker');await page.locator('#display-access-mode').selectOption('guest');
     assert.equal(await page.locator('[data-profile-source]').count(),0);
@@ -54,12 +54,12 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
       await guest.route('**'+path,r=>r.fulfill({status:403,json:{detail:'Not shared with this guest display'}}));
     await guest.goto(base+'/display#lists');await guest.locator('body.guest-display').waitFor();
     assert.equal(await guest.locator('#mini-access-card').isVisible(),false);
-    await guest.waitForURL('**#home');assert.equal(await guest.locator('nav [data-page=lists]').isVisible(),false);
+    await guest.waitForURL('**#home');await guest.locator('#nav-pull').tap();assert.equal(await guest.locator('nav [data-page=lists]').isVisible(),false);
     await guest.locator('nav [data-page=rooms]').tap();assert.equal(await guest.locator('#room-cards').isVisible(),false);
     assert.equal(await guest.locator('#guest-display-note').isVisible(),true);
-    await guest.locator('nav [data-page=day]').tap();assert.equal(await guest.locator('#calendar-create').isVisible(),false);
+    await guest.locator('#nav-pull').tap();await guest.locator('nav [data-page=day]').tap();assert.equal(await guest.locator('#calendar-create').isVisible(),false);
     assert.equal(await guest.locator('.daily-briefing').isVisible(),false);
-    await guest.locator('nav [data-page=assistant]').tap();assert.equal(await guest.locator('#allow-home').isVisible(),false);
+    await guest.locator('#nav-pull').tap();await guest.locator('nav [data-page=assistant]').tap();assert.equal(await guest.locator('#allow-home').isVisible(),false);
     assert.equal(await guest.locator('#send-chat').isEnabled(),true);
     await guest.screenshot({path:'output/playwright/display-guest-conversation.png',animations:'disabled'});
     let chat=null;

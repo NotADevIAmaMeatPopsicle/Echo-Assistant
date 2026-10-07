@@ -10,10 +10,14 @@ from backend.app import create_app
 from backend.household import HouseholdStore, HouseholdConflict, HouseholdUnavailable
 from backend.linux_protection import LinuxProtector
 from backend.settings import SettingsStore
-from deploy.pi.kiosk import validate_url, x11_geometry, dedicated_x11_flags
+from deploy.pi.kiosk import KIOSK_FLAGS, validate_url, x11_geometry, dedicated_x11_flags
 
 
 class SmartDisplayTests(unittest.TestCase):
+    def test_pi_kiosk_disables_pinch_zoom_without_changing_browser_preview(self):
+        self.assertIn('--disable-pinch', KIOSK_FLAGS)
+        self.assertIn('--kiosk', KIOSK_FLAGS)
+
     def test_dedicated_kiosk_uses_active_primary_bounds(self):
         listing = ('Screen 0: current 2944 x 1080\n'
                    'HDMI-1 connected primary 1024x600+1920+0 (normal)\n'

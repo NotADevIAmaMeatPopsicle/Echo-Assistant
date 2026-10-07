@@ -33,7 +33,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.locator('#group-library-items').getByRole('button',{name:'Play this',exact:true}).waitFor();
     assert.equal(plays.length,1);assert.equal(plays[0].player,'demo-deck');
     await page.locator('#group-library-close').click();
-    await page.locator('.rail-settings').click();await page.locator('#group-music-load').click();
+    await page.locator('#nav-pull').click();await page.locator('.rail-settings').click();await page.locator('#settings-tab-music').click();await page.locator('#group-music-load').click();
     assert.ok(await page.locator('#group-music-share').isDisabled());assert.equal(await page.locator('#group-music-token').inputValue(),'');
     assert.equal(await page.locator('#group-mini-enabled').isChecked(),false);
     assert.equal(await page.locator('#group-mini-volume').inputValue(),'2');

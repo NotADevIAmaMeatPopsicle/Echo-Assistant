@@ -34,7 +34,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict');
     await page.locator('#calendar-event-submit').click();
     await page.locator('#calendar-event-status').getByText('Demo event created. No real calendar was changed.').waitFor();
     assert.deepEqual(created.event.recurrence,{frequency:'weekly',interval:2,count:12});
-    await page.locator('#calendar-event-cancel').click();await page.locator('.rail-settings').click();await page.locator('#source-load').click();
+    await page.locator('#calendar-event-cancel').click();await page.locator('#nav-pull').click();await page.locator('.rail-settings').click();await page.locator('#settings-tab-home').click();await page.locator('#source-load').click();
     const manage=page.locator('[data-source-manage]'),read=page.locator('[data-source-read][value="calendar.household_demo"]');
     assert.ok(await manage.isChecked());await read.uncheck();assert.equal(await manage.isChecked(),false);await manage.check();assert.ok(await read.isChecked());
     await page.setViewportSize({width:390,height:844});await page.goto(base+'/display?phone-check=1#day');

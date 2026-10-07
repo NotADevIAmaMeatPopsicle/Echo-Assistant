@@ -20,7 +20,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.route('**/v1/member/preferences',r=>r.fulfill({json:{personality:'Keep it friendly.',memory_enabled:true}}));
     await page.route('**/v1/memory',r=>{if(r.request().method()==='POST')memory.push({id:'c'.repeat(32),text:r.request().postDataJSON().text});return r.fulfill({json:{items:memory,scope:'personal'}});});
     await page.route('**/v1/memory/*',r=>{memory=[];return r.fulfill({json:{status:'deleted'}});});
-    await page.goto(base+'/display#settings');await page.locator('#manage-members').tap();
+    await page.goto(base+'/display#settings');await page.locator('#settings-tab-access').tap();await page.locator('#manage-members').tap();
     await page.locator('#member-name').fill('Alex');await page.locator('#member-create button').tap();
     await page.locator('#member-new-code').waitFor();assert.equal(await page.locator('#member-new-code').textContent(),'12345678');
     await page.locator('#member-code-done').tap();assert.equal(await page.locator('#member-new-code').count(),0);

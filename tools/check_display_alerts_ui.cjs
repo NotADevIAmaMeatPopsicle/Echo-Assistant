@@ -22,12 +22,12 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
       }
       return route.continue();
     });
-    await page.goto(base+'/display#settings');await page.locator('#pi-alert-form').waitFor({timeout:10000}).catch(async error=>{console.log(JSON.stringify({errors,state:await page.evaluate(()=>({ready:document.readyState,data:typeof data==='undefined'?null:data.alertSettings,display:document.getElementById('page-settings').hidden,notice:document.getElementById('pi-alert-status')?.textContent}))}));throw error;});
+    await page.goto(base+'/display#settings');await page.locator('#settings-tab-voice').click();await page.locator('#pi-alert-form').waitFor({timeout:10000}).catch(async error=>{console.log(JSON.stringify({errors,state:await page.evaluate(()=>({ready:document.readyState,data:typeof data==='undefined'?null:data.alertSettings,display:document.getElementById('page-settings').hidden,notice:document.getElementById('pi-alert-status')?.textContent}))}));throw error;});
     assert.equal(await page.locator('#pi-alert-volume').inputValue(),'2');assert.equal(await page.locator('#pi-alert-enabled').isChecked(),false);
     await page.locator('#pi-alert-output').selectOption('plughw:CARD=Sample');await page.locator('#pi-alert-enabled').check();await page.locator('#pi-alert-form button').click();await page.waitForFunction(()=>!busy);
     assert.equal(settings.output,'plughw:CARD=Sample');assert.equal(settings.volume,2);assert.equal(settings.enabled,true);
     items=[{id:'b'.repeat(32),label:'Tea is ready',finished:true,notified:false,remaining_seconds:0,audible:true,occurrence:'1'}];
-    await page.locator('[data-page="timers"]').first().click();await page.locator('#pi-alert-banner:visible').waitFor();
+    await page.locator('#nav-pull').click();await page.locator('[data-page="timers"]').first().click();await page.locator('#pi-alert-banner:visible').waitFor();
     assert.match(await page.locator('#pi-alert-banner').textContent(),/Tea is ready/);
     const bounds=await page.locator('#pi-alert-banner').boundingBox();assert.ok(bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=1024&&bounds.y+bounds.height<=600);
     fs.mkdirSync('output/playwright',{recursive:true});await page.screenshot({path:'output/playwright/pi-alerts.png',animations:'disabled'});

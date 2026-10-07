@@ -34,7 +34,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await visibleField('#list-edit-text');
     await page.screenshot({path:'output/playwright/display-note-keyboard.png',animations:'disabled'});
     await page.locator('#list-edit-cancel').tap();await keyboard.waitFor({state:'hidden'});assert.equal(writes.length,1);
-    await page.locator('nav [data-page=day]').tap();await page.locator('#calendar-create').tap();
+    await page.locator('#nav-pull').tap();await page.locator('nav [data-page=day]').tap();await page.locator('#calendar-create').tap();
     await page.locator('#event-title').tap();await keyboard.waitFor({state:'visible'});
     for(const l of 'lunch')await key(l);
     assert.equal(await page.locator('#event-title').inputValue(),'Lunch');await visibleField('#event-title');
@@ -48,7 +48,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.locator('#calendar-event-fields').evaluate(el=>el.disabled=true);await keyboard.waitFor({state:'hidden'});
     await page.locator('#calendar-event-cancel').tap();assert.equal(writes.length,1,'Draft entry never creates an event');
     // A limitless field and private/literal field exercise the shared entry contract.
-    await page.locator('nav [data-page=lists]').tap();
+    await page.locator('#nav-pull').tap();await page.locator('nav [data-page=lists]').tap();
     await page.evaluate(()=>{
       const form=document.createElement('form');form.id='keyboard-fixture';
       form.innerHTML='<label>Local text<input id="limitless"></label><label>Private text<input id="private-text" type="password" inputmode="text"></label><label>Numeric control<input id="native-number" type="number"></label>';

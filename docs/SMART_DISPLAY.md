@@ -112,10 +112,12 @@ browser storage is available. They do not change another display's layout.
 
 ![Choosing a Home tile and its position; synthetic preview](images/display-home-picker.png)
 
-Swipe left for the next page or right for the previous page, following the sidebar
+Swipe left for the next page or right for the previous page, following the menu
 order from Home through Settings. Swipes stop at either end. Vertical scrolling,
 sliders, forms, media controls and the swipe keyboard keep their own gestures.
-The sidebar remains available for jumping directly to a page.
+The navigation menu starts hidden. Pull down from the top edge or tap the small
+Menu tab to reveal page icons; tap an icon to change pages, or swipe up to close
+the menu. Escape and the close button also dismiss it.
 
 ```mermaid
 flowchart LR

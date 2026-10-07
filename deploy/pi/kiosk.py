@@ -14,6 +14,8 @@ import subprocess
 import sys
 from urllib.parse import urlsplit
 
+KIOSK_FLAGS = ('--kiosk', '--disable-pinch', '--no-first-run', '--noerrdialogs')
+
 
 def validate_url(value):
     url = urlsplit(value)
@@ -105,7 +107,7 @@ def main():
     try:Screen().apply()
     except (OSError,subprocess.SubprocessError):pass
     os.environ.update(selected_audio_environment(Path.home(),os.getuid()))
-    os.execv(browser,[browser,'--kiosk','--no-first-run','--noerrdialogs',*dedicated_x11_flags(),*selected_audio_flags(Path.home()),f'--user-data-dir={profile}',url])
+    os.execv(browser,[browser,*KIOSK_FLAGS,*dedicated_x11_flags(),*selected_audio_flags(Path.home()),f'--user-data-dir={profile}',url])
 
 
 if __name__ == '__main__':

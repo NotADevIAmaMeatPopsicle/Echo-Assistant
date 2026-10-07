@@ -57,6 +57,7 @@
   <script src="/assets/display/member-google.js" defer></script>
   <link rel="stylesheet" href="/assets/display/settings.css">
   <script src="/assets/display/settings.js" defer></script>
+  <link rel="stylesheet" href="/assets/display/navigation-drawer.css">
   <link rel="preload" href="/assets/fonts/Manrope-Variable.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
@@ -79,8 +80,10 @@
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
   <symbol id="i-speaker" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="15" r="4"/><path d="M11 6h2"/></symbol>
 <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8"/></symbol><symbol id="i-send" viewBox="0 0 24 24"><path d="m4 12 16-8-5 16-3-7-8-1Zm8 1 8-9"/></symbol><symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 6h3c5 0 7 12 12 12h3m-4-4 4 4-4 4M3 18h3c2 0 4-3 6-6s4-6 6-6h3m-4-4 4 4-4 4"/></symbol><symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3"/></symbol></defs></svg>
-<aside class="rail" aria-label="Main navigation">
-  <a class="brand" href="#home" aria-label="Echo home"><img src="/assets/icon.svg" alt="" width="46" height="46"></a>
+<button id="nav-pull" class="nav-pull" type="button" aria-controls="navigation" aria-expanded="false" aria-label="Open navigation"><span>Menu</span><span aria-hidden="true">⌄</span></button>
+<div id="nav-backdrop" class="nav-backdrop" hidden></div>
+<aside class="rail" aria-label="Main navigation" aria-hidden="true" inert>
+  <div class="nav-drawer-head"><a class="brand" href="#home" aria-label="Echo home"><img src="/assets/icon.svg" alt="" width="38" height="38"></a><span>Go to</span><button id="nav-close" type="button" aria-label="Close navigation">×</button></div>
   <nav id="navigation">
     <button data-page="home" class="selected"><svg><use href="#i-home"/></svg><span>Home</span></button>
     <button data-page="rooms"><svg><use href="#i-light"/></svg><span>Rooms</span></button>
@@ -90,8 +93,9 @@
     <button data-page="lists"><svg><use href="#i-list"/></svg><span>Lists</span></button>
     <button data-page="routines"><svg><use href="#i-routine"/></svg><span>Routines</span></button>
     <button data-page="assistant"><img class="echo-nav-icon" src="/assets/icon.svg" alt=""><span>Echo</span></button>
+    <button data-page="settings" class="rail-settings"><svg><use href="#i-settings"/></svg><span>Settings</span></button>
   </nav>
-  <button data-page="settings" class="rail-settings"><svg><use href="#i-settings"/></svg><span>Settings</span></button>
+  <div class="nav-drawer-grip" aria-hidden="true"></div>
 </aside>
 <div class="workspace">
   <header><div><span class="eyebrow">ECHO / AT HOME</span><h1 id="page-title">Your day, a little easier.</h1></div><div class="header-right"><span id="connection" class="status-pill" role="status" hidden></span><button id="ambient-button" class="icon-button" aria-label="Show ambient clock"><svg><use href="#i-moon"/></svg></button></div></header>

@@ -16,7 +16,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
     });
     await page.goto(base+'/display');
     const refreshPage=async()=>{await page.waitForFunction(()=>!polling);await page.evaluate(()=>refresh());};
-    await page.getByRole('button',{name:'Echo',exact:true}).click();
+    await page.locator('#nav-pull').click();await page.getByRole('button',{name:'Echo',exact:true}).click();
     await page.locator('#voice-start').click();await page.locator('#voice-cancel').click();
     // A delayed permission reply from a cancelled attempt must close its tracks,
     // even if the user has already opened a second request.
@@ -24,7 +24,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
     await page.evaluate(()=>window.micPromises[0]());
     await page.waitForFunction(()=>window.stoppedTracks===1);
     assert.match(await page.locator('#display-voice-status').innerText(),/Opening/);
-    await page.getByRole('button',{name:'Home',exact:true}).click();
+    await page.locator('#nav-pull').click();await page.getByRole('button',{name:'Home',exact:true}).click();
     await page.evaluate(()=>window.micPromises[1]());
     await page.waitForFunction(()=>window.stoppedTracks===2);
     await refreshPage();

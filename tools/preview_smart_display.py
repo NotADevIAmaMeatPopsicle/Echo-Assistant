@@ -178,6 +178,7 @@ class DisplayPreview(Preview):
                   '/assets/display/home.css':('display/home.css','text/css'),
                   '/assets/display/home.js':('display/home.js','text/javascript'),
                   '/assets/display/navigation.js':('display/navigation.js','text/javascript'),
+                  '/assets/display/navigation-drawer.css':('display/navigation-drawer.css','text/css'),
                   '/assets/display/keyboard.css':('display/keyboard.css','text/css'),
                   '/assets/display/keyboard.js':('display/keyboard.js','text/javascript'),
                   '/assets/display/swipe.js':('display/swipe.js','text/javascript'),

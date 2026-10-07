@@ -57,8 +57,8 @@ const fs=require('node:fs');
     await page.locator('#send-chat').tap();await keyboard.waitFor({state:'hidden'});
     assert.equal(messages.length,1);assert.equal(messages[0].text,'Weather');
     await input.tap();await input.press('x');assert.equal(await keyboard.isHidden(),true);assert.equal(await input.inputValue(),'x');
-    await input.tap();await page.locator('nav [data-page=home]').tap();assert.equal(await keyboard.isHidden(),true);
-    await page.locator('nav [data-page=assistant]').tap();await input.tap();
+    await input.tap();await page.locator('#nav-pull').tap();await page.locator('nav [data-page=home]').tap();assert.equal(await keyboard.isHidden(),true);
+    await page.locator('#nav-pull').tap();await page.locator('nav [data-page=assistant]').tap();await input.tap();
     await input.fill('a'.repeat(1200));await tap('b');assert.equal((await input.inputValue()).length,1200);
     // Failed dictionary loading keeps ordinary typing available on a fresh page.
     const fallback=await context.newPage();await fallback.route('**/keyboard-words.json',r=>r.abort());
