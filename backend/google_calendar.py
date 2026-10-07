@@ -166,6 +166,7 @@ class GoogleCalendars:
             self.require()
             return {'revision':self.config.revision,'client_id':self.config.client_id,'redirect_uri':self.config.redirect_uri,
                     'secret_saved':bool(self.config.client_secret.get_secret_value()),'enabled':self.enabled,
+                    'phone_ready':urlsplit(self.config.redirect_uri).scheme=='https',
                     'accounts':[{'id':a['id'],'label':a['label'],'calendar_count':len(a['calendars']),
                                  'write_access':a.get('write_access',False)} for a in self.accounts]}
 
@@ -196,13 +197,18 @@ class GoogleCalendars:
             if len(self.accounts)>=8 or len(self.flows)>=8:raise HTTPException(409,'Account or pending sign-in limit reached.')
             identifier=secrets.token_hex(16);state=secrets.token_urlsafe(32);verifier=secrets.token_urlsafe(48)
             challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b'=').decode()
-            self.flows[identifier]={'state':hashlib.sha256(state.encode()).hexdigest(),'verifier':verifier,'principal':principal,
-                'client':hashlib.sha256(client.encode()).hexdigest(),'label':label,'write_access':write_access is True,
-                'revision':self.config.revision,'expires':self.clock()+600,'status':'waiting'}
             query={'client_id':self.config.client_id,'redirect_uri':self.config.redirect_uri,'response_type':'code',
                    'scope':' '.join((*READ_SCOPES,WRITE_SCOPE) if write_access else READ_SCOPES),'state':state,'code_challenge':challenge,'code_challenge_method':'S256',
                    'access_type':'offline','prompt':'consent select_account'}
-            return {'id':identifier,'url':'https://accounts.google.com/o/oauth2/v2/auth?'+urlencode(query),'expires_at':self.clock()+600}
+            url='https://accounts.google.com/o/oauth2/v2/auth?'+urlencode(query)
+            self.flows[identifier]={'state':hashlib.sha256(state.encode()).hexdigest(),'verifier':verifier,'principal':principal,
+                'client':hashlib.sha256(client.encode()).hexdigest(),'label':label,'write_access':write_access is True,
+                'revision':self.config.revision,'expires':self.clock()+600,'status':'waiting'}
+            result={'id':identifier,'url':url,'expires_at':self.clock()+600}
+            if urlsplit(self.config.redirect_uri).scheme=='https':
+                from .google_qr import svg
+                result['qr_svg']=base64.b64encode(svg(url)).decode('ascii')
+            return result
 
     def flow(self,identifier,principal,client):
         self.prune();flow=self.flows.get(identifier)

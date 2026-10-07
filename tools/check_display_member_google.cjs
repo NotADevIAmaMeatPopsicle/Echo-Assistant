@@ -25,7 +25,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
         return route.fulfill({json:body});
       }
       if(path.endsWith('/flows')&&method==='POST'){
-        started.push(request.postDataJSON());return route.fulfill({json:{id:'1'.repeat(32),url:'https://accounts.google.com/o/oauth2/v2/auth?state=synthetic&scope=readonly',expires_at:expires}});
+        started.push(request.postDataJSON());return route.fulfill({json:{id:'1'.repeat(32),url:'https://accounts.google.com/o/oauth2/v2/auth?state=synthetic&scope=readonly',expires_at:expires,qr_svg:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64')}});
       }
       if(path.includes('/flows/')&&path.endsWith('/finish')){connected=true;revision++;return route.fulfill({json:{id:account,label:'Alice private connection',connected:true}});}
       if(path.includes('/flows/')&&method==='GET')return route.fulfill({json:{id:'1'.repeat(32),status:'approved',expires_at:expires}});
@@ -45,10 +45,13 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.locator('#member-google-label').fill('My private connection');
     await page.locator('#member-google-begin').tap();
     await page.locator('#member-google-signin[href]').waitFor();
+    assert.equal(await page.locator('#member-google-phone').isVisible(),true);
+    assert.match(await page.locator('#member-google-phone-image').getAttribute('src'),/^data:image\/svg\+xml;base64,/);
     assert.equal(started.length,1);assert.deepEqual(Object.keys(started[0]).sort(),['client','label']);
     assert.match(started[0].client,/^[a-f0-9]{64}$/);
     assert.ok((await page.locator('#member-google-signin').getAttribute('href')).startsWith('https://accounts.google.com/'));
     await page.locator('#member-google-finish').waitFor({state:'visible'});
+    assert.equal(await page.locator('#member-google-phone').isVisible(),false);
     await page.locator('#member-google-finish').tap();
     await page.locator('.member-google-calendar').filter({hasText:'Alice private calendar'}).waitFor();
     const checkbox=page.locator('#member-google-calendars input');

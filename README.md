@@ -221,6 +221,10 @@ Calendars connect through Home Assistant or the direct
 [Google Calendar connection](docs/GOOGLE_CALENDAR.md). The owner selects which
 calendars to share and separately permits event creation. Google connections
 default to read-only; optional editing requires an additional OAuth grant.
+Connect from the Deck's Home & calendars settings or the browser Settings
+link. A Personal account can instead connect its own private, read-only Google
+calendars; see [Personal Google calendars](docs/PERSONAL_GOOGLE.md). The Deck
+offers a phone QR when Echo has a phone-reachable HTTPS callback.
 The touch form supports timed and
 all-day events. Describe an event by voice or text on the smart display, review
 the model's editable draft, and choose **Create event** to save it. Repeat options

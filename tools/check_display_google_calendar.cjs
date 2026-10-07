@@ -20,7 +20,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
       return route.fulfill({json:state});
     }
     if(url.pathname==='/v1/calendar/google/flows'){
-      writes.push('begin');return route.fulfill({json:{id:'b'.repeat(32),url:'https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=synthetic',expires_at:Date.now()/1000+600}});
+      writes.push('begin');return route.fulfill({json:{id:'b'.repeat(32),url:'https://accounts.google.com/o/oauth2/v2/auth?client_id=example&state=synthetic',expires_at:Date.now()/1000+600,qr_svg:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64')}});
     }
     if(url.pathname.startsWith('/v1/calendar/google/flows/')){
       if(url.pathname.endsWith('/finish')){writes.push('finish');state.accounts=[{id:'c'.repeat(32),label:'Sample account',calendar_count:0}];return route.fulfill({json:{id:'c'.repeat(32),connected:true}});}
@@ -33,14 +33,17 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     }
     return route.continue();
   });
-  await page.goto(base+'/display#settings');await page.locator('#google-load').click();
+  await page.goto(base+'/display#settings');await page.locator('#settings-tab-home').click();await page.locator('#google-load').click();
   await page.waitForFunction(()=>data.health?.display_demo);assert.equal(await page.locator('#google-client-secret').inputValue(),'');
   await page.locator('#google-begin').click();assert.equal(writes.includes('begin'),false,'Preview must not start real OAuth');
   await page.evaluate(()=>{data.health.display_demo=false;});await page.locator('#google-begin').click();
   await page.waitForFunction(()=>!document.getElementById('google-flow').hidden);
   assert.equal(new URL(await page.locator('#google-signin').getAttribute('href')).origin,'https://accounts.google.com');
+  assert.equal(await page.locator('#google-phone').isVisible(),true);
+  assert.match(await page.locator('#google-phone-image').getAttribute('src'),/^data:image\/svg\+xml;base64,/);
   assert.equal(await page.locator('#google-finish').isVisible(),false);
   approved=true;await page.locator('#google-finish').waitFor({state:'visible',timeout:6000});
+  assert.equal(await page.locator('#google-phone').isVisible(),false);
   await page.locator('#google-finish').click();await page.waitForFunction(()=>document.getElementById('google-accounts').textContent.includes('2 calendars'));
   assert.deepEqual(writes,['begin','finish','sync']);
   assert.ok(!(await page.content()).includes('refresh_token'));

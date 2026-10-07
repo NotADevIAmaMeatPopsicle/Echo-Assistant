@@ -66,6 +66,21 @@ class GoogleTests(unittest.TestCase):
         with self.assertRaises(HTTPException):self.google.callback(query['state'][0],'replayed-code','')
         self.assertEqual(len(self.calls),1)
 
+    def test_phone_qr_is_local_and_only_for_https_callback(self):
+        flow=self.google.begin('Sample account','owner-session','1'*64)
+        self.assertIn('qr_svg',flow)
+        image=base64.b64decode(flow['qr_svg'],validate=True)
+        self.assertIn(b'<svg',image)
+        self.assertNotIn(b'<script',image)
+        state=parse_qs(urlsplit(flow['url']).query)['state'][0]
+        self.assertNotIn(state,repr(self.google.flows))
+
+        local=GoogleCalendars(None,None,self.transport,lambda:self.now)
+        local.configure(GoogleConfig(revision=0,client_id=configuration().client_id,
+            client_secret='synthetic-client-secret',redirect_uri='http://127.0.0.1:8768'+CALLBACK))
+        self.assertFalse(local.settings()['phone_ready'])
+        self.assertNotIn('qr_svg',local.begin('Local account','owner-session','1'*64))
+
     def test_finish_requires_original_owner_session_and_is_one_use(self):
         flow=self.approve()
         with self.assertRaises(HTTPException):self.google.finish(flow['id'],'different-session','1'*64)

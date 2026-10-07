@@ -133,6 +133,13 @@ compatibility certification. Third-party geometry tools retain their own license
 their versions are pinned in `enclosure/crescent-v1/source/requirements.txt`.
 
 
+## Google Calendar phone handoff
+
+The optional QR image for Google Calendar sign-in is generated locally with
+python-qrcode 8.2 (BSD license), installed from the pinned host requirements.
+No third-party QR service receives the authorization link. Source and license:
+https://github.com/lincolnloop/python-qrcode .
+
 ## Optional synchronized music
 
 Music Assistant server 2.10.4 is an external Apache-2.0 application; its container

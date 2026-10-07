@@ -16,7 +16,9 @@ rehearsal remain unverified; development uses synthetic provider responses only.
    [the Google setup guide](GOOGLE_CALENDAR.md). This defines only the OAuth
    application; it does not link the owner's Google account to a person.
 2. Sign in to the intended Echo personal account on a permitted screen. Select
-   **My Google calendars** beside the personal-session control.
+   **My Google calendars** beside the Deck's personal-session control, or open
+   **Settings → Connect Google Calendar** in the browser and unlock the intended
+   Personal account there.
 3. Enter a connection label and select **Connect my account**. Follow **Open
    Google sign-in**, choose your own Google account and approve read access.
 4. Return to the same Echo tab and select **Finish connecting** while that same
@@ -31,6 +33,13 @@ pending sign-in. Start again from the intended account. A person can remove
 calendars from their selection or disconnect their own connection. Disconnecting
 removes its private source selection and stored grant from Echo, without deleting
 Google events or changing household grants.
+
+On the Deck, an HTTPS callback configuration also displays a locally generated
+QR for the same Google sign-in URL. Scan it with a phone that can reach Echo's
+callback hostname, approve access there, then finish on the original Deck tab.
+The QR contains a short-lived authorization URL, not a Google password or token.
+It does not appear for a localhost/HTTP callback and is not Google's separate
+TV/device-code flow.
 
 The shared screen and Echo host remain trusted: anyone using an unlocked
 personal session can see its selected agenda and manage its private connection.

@@ -74,6 +74,7 @@ class PrivateFixture(WriteFixture):
 class MemberGoogleTests(PrivateFixture, unittest.TestCase):
     def test_read_only_consent_uses_owner_client_and_separate_callback_state(self):
         flow = self.service.begin(self.principal, 'Private account', 'a' * 64)
+        self.assertIn('qr_svg', flow)
         query = parse_qs(urlsplit(flow['url']).query)
         self.assertEqual(set(query['scope'][0].split()), set(READ_SCOPES))
         self.assertEqual(query['client_id'][0], self.google.config.client_id)

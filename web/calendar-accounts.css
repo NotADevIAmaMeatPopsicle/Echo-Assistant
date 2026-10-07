@@ -1,0 +1,20 @@
+.calendar-account-main{display:block;max-width:850px;margin:0 auto;padding:35px 20px 70px}
+.calendar-account-main>.section-heading h1{font-size:clamp(28px,4vw,42px);margin:6px 0}
+.calendar-account-main>.section-description{margin:0 0 22px;max-width:65ch}
+.calendar-account-main>.card{margin:18px 0;padding:24px}
+.calendar-account-main [hidden]{display:none!important}
+.calendar-account-main form{display:grid;gap:13px;margin:18px 0}
+.calendar-account-main label{display:grid;gap:7px;max-width:620px}
+.calendar-account-main input,.calendar-account-main select{width:100%;box-sizing:border-box}
+.calendar-account-main form button{justify-self:start}
+.calendar-account-main .section-heading{align-items:start}
+.calendar-account-main details{border:1px solid var(--line);border-radius:14px;padding:14px;margin:15px 0}
+.calendar-account-main summary{cursor:pointer;font-weight:700}
+.calendar-account-row{border-top:1px solid var(--line);padding:14px 0}
+.calendar-account-row strong,.calendar-account-row small{display:block;overflow-wrap:anywhere}
+.calendar-account-row small{color:var(--muted);margin:5px 0 10px}
+.calendar-account-main .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.calendar-account-main .actions a{display:inline-flex;align-items:center}
+.calendar-private-choice{display:flex!important;flex-direction:row;align-items:start;gap:10px;padding:8px 0}
+.calendar-private-choice input{width:20px;flex:none;margin-top:2px}
+@media(max-width:560px){.calendar-account-main{padding:20px 12px 50px}.calendar-account-main>.card{padding:18px}.calendar-account-main .section-heading{display:block}}

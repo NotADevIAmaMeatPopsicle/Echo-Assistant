@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 from threading import RLock
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException
 
@@ -179,7 +180,9 @@ class MemberGoogle:
                          for account in provider.accounts for calendar in account['calendars']]
             result = {'enabled': provider.enabled, 'configured': bool(self.household.config.client_id and
                       self.household.config.client_secret.get_secret_value() and self.household.config.redirect_uri),
-                      'needs_reconnect': not compatible, 'read_only': True, 'revision': selection['revision'],
+                      'needs_reconnect': not compatible, 'read_only': True,
+                      'phone_ready': urlsplit(self.household.config.redirect_uri).scheme == 'https',
+                      'revision': selection['revision'],
                       'accounts': [{'id': account['id'], 'label': account['label'], 'calendar_count': len(account['calendars'])}
                                    for account in provider.accounts], 'calendars': calendars}
             self.check(principal, before)

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Echo · Google calendars</title>
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/theme.css">
+  <link rel="stylesheet" href="/assets/calendar-accounts.css">
+  <script src="/assets/theme.js"></script><script src="/assets/calendar-accounts.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/" aria-label="Echo home"><span class="brand-mark">e</span> echo<span class="brand-caption">YOUR SPACE. YOUR ASSISTANT.</span></a><nav aria-label="Main"><a href="/display#calendar">Calendar</a><a href="/settings">Settings</a></nav></header>
+  <main class="calendar-account-main">
+    <div class="section-heading"><div><span class="eyebrow">YOUR TIME, YOUR CHOICE</span><h1>Connect Google Calendar</h1></div></div>
+    <p class="section-description">Sign in through Google. Echo never asks for your Google password. A connection selects no calendars automatically.</p>
+    <p id="calendar-account-status" class="notice" role="status">Checking this Echo session…</p>
+    <section id="calendar-account-login" class="card" hidden>
+      <h2>Start with your Personal profile</h2><p>Private calendars stay in your account, not the household. Your session lasts 15 minutes on this browser.</p>
+      <form id="calendar-account-login-form"><label>Echo Personal account<select id="calendar-account-member" required></select></label><label>Eight-digit Echo passcode<input id="calendar-account-passcode" type="password" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" autocomplete="off" required></label><button type="submit">Unlock my space</button></form>
+      <p id="calendar-account-no-members" class="hint" hidden>Create a Personal account and passcode on the Deck under Settings → Personal accounts first.</p>
+    </section>
+    <section id="calendar-account-private" class="card" hidden>
+      <div class="section-heading"><div><span class="eyebrow">JUST FOR YOU</span><h2 id="calendar-account-person">Your private calendars</h2></div><button id="calendar-account-lock" class="secondary" type="button">Lock profile</button></div>
+      <p class="hint">Read-only. These connections and selections are not shared with other Echo profiles or household displays.</p>
+      <div id="calendar-private-accounts"></div>
+      <form id="calendar-private-connect"><label>Connection label<input id="calendar-private-label" maxlength="60" value="My Google calendar" required></label><button type="submit">Connect my Google account</button></form>
+      <form id="calendar-private-selection"><h3>Show in my agenda</h3><div id="calendar-private-choices"></div><button type="submit">Save my calendar selection</button></form>
+    </section>
+    <section id="calendar-account-owner" class="card" hidden>
+      <h2>Owner setup & household connections</h2>
+      <p class="hint">Set up Echo’s Google OAuth application once. Household connections are separate from Personal accounts; connecting does not share a calendar. Sharing requires a later, explicit selection on the Deck.</p>
+      <details id="calendar-owner-setup"><summary>Google OAuth setup</summary>
+        <form id="calendar-owner-config"><label>Web OAuth client ID<input id="calendar-owner-id" maxlength="240" autocomplete="off" required></label><label>Client secret<input id="calendar-owner-secret" type="password" autocomplete="new-password" placeholder="Leave blank to keep saved"></label><label>Authorized callback URI<input id="calendar-owner-redirect" type="url" maxlength="500" required></label><button type="submit">Save Google setup</button></form>
+        <p class="hint">Enable the Google Calendar API and register this exact callback in Google Cloud. For phone QR sign-in, use an HTTPS callback your phone can reach.</p>
+      </details>
+      <div id="calendar-owner-accounts"></div>
+      <form id="calendar-owner-connect"><label>Connection label<input id="calendar-owner-label" maxlength="60" value="Household Google calendar" required></label><button type="submit">Connect for household setup</button></form>
+      <p class="hint">After connecting, open Deck Settings → Home & calendars → Calendars & cameras to choose anything to share.</p>
+    </section>
+    <section id="calendar-account-flow" class="card" hidden>
+      <h2>Continue with Google</h2><p id="calendar-flow-status" role="status"></p>
+      <div class="actions"><a id="calendar-flow-open" class="secondary" target="_blank" rel="noopener noreferrer">Open Google sign-in</a><button id="calendar-flow-finish" type="button" hidden>Finish connecting</button><button id="calendar-flow-cancel" class="quiet" type="button">Cancel</button></div>
+      <p class="hint">Keep this Echo tab open. Return here after approving Google’s read-only Calendar access.</p>
+    </section>
+  </main>
+</body>
+</html>

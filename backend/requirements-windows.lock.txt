@@ -15,6 +15,7 @@ numpy==2.4.6
 pycparser==3.0
 pydantic==2.13.3
 pydantic_core==2.46.3
+qrcode==8.2
 pyserial==3.5
 requests==2.34.2
 soxr==1.0.0

@@ -22,6 +22,7 @@ The existing Home Assistant calendar writer remains independent.
 2. Create an OAuth client with application type **Web application**. Do not use
    an Android, TV, browser-extension or service-account credential.
 3. Open the owner **Display → Settings → Manage Google calendars → Google OAuth
+   setup**, or browser **Settings → Connect Google Calendar → Google OAuth
    setup**. Its suggested callback is the current Echo origin followed by
    `/v1/calendar/google/callback`. Register that exact URI in the Google client,
    including its scheme and port. Use HTTPS for a remote/private hostname, or
@@ -36,6 +37,10 @@ The callback must be reachable **in the browser doing Google sign-in**. A URL
 using `127.0.0.1` points to that browser's own device. For remote use, the browser
 must already be allowed through Echo's private HTTPS gateway. Connecting Google
 does not expose Echo or Hermes publicly or grant other tailnet members access.
+The Deck can show a locally generated QR for phone sign-in when the configured
+callback uses HTTPS. The phone must be able to reach that callback hostname.
+This QR opens the same short-lived Google authorization URL; it is not Google's
+separate TV/device-code flow. Keep the initiating Echo tab open and finish there.
 Use a redirect domain permitted by your Google project; production OAuth apps
 can have additional verification requirements. Keep HTTP/proxy access logs from
 recording callback query strings, which contain short-lived authorization codes.
@@ -63,9 +68,11 @@ create connections.
 
 **Refresh calendar list** discovers new or renamed calendars. It does not share
 new ones automatically. Calendar IDs sent to displays are local opaque identifiers,
-not Google email/calendar IDs. This initial connector is household-owned; separate
-private Google sign-in for each Echo personal account remains open. Shared Google
-calendars can already be granted read-only to personal accounts.
+not Google email/calendar IDs. This connector is household-owned. For a separate
+read-only connection in an Echo Personal account, use **My Google calendars** on
+the Deck or **Connect Google Calendar** in browser Settings after unlocking that
+Personal account. See [Private Google calendars](PERSONAL_GOOGLE.md). Shared
+Google calendars can also be granted read-only to personal accounts.
 
 **Disconnect** removes Echo's stored grant and calendar inventory. In-flight reads
 recheck connection and sharing before returning events. Existing sharing selections
