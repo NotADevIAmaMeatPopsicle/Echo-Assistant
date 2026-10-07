@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     page.on('pageerror',error=>errors.push(error.message));
     await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
     const alice='a'.repeat(32),bob='b'.repeat(32),account='c'.repeat(32),entity='calendar.google_'+'d'.repeat(32)+'_'+'e'.repeat(24);
-    let currentMember=alice,personal=true,connected=false,inventory=false,revision=0,selected=[],started=[],cancelled=0,late=null,delay=false;
+    let currentMember=alice,personal=true,connected=false,inventory=false,revision=0,selected=[],started=[],cancelled=0,late=null,delay=false,missingPreviewRoute=true;
     const expires=Date.now()/1000+900;
     const session=()=>({role:'display',receiver_id:'f'.repeat(32),profile_revision:1,
       profile:{mode:personal?'guest':'household',personal,name:currentMember===alice?'Alice':'Bob',conversation:true,home_voice:false,home_devices:{},calendars:[],cameras:[],presence_sensors:[],members:[]},
@@ -21,6 +21,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     await page.route('**/v1/member/calendar/google**',async route=>{
       const request=route.request(),url=new URL(request.url()),path=url.pathname,method=request.method();
       if(path.endsWith('/google')&&method==='GET'){
+        if(missingPreviewRoute)return route.fulfill({status:404,json:{detail:'No demo route'}});
         const body=settings();if(delay){delay=false;late=()=>route.fulfill({json:body});return;}
         return route.fulfill({json:body});
       }
@@ -37,6 +38,11 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
     });
     await page.goto(base+'/display#day');
     await page.locator('#member-google-button').waitFor({state:'visible'});
+    await page.locator('#member-google-button').tap();
+    await page.getByText('This is a preview. Google sign-in is available only on your live Echo host.',{exact:true}).waitFor();
+    assert.equal(await page.locator('#member-google-begin').isDisabled(),true);
+    await page.locator('#member-google-close').tap();
+    missingPreviewRoute=false;
     await page.locator('#member-google-button').tap();
     await page.locator('#member-google-begin:not(:disabled)').waitFor();
     // The product preview still refuses real sign-in; this test alone enables

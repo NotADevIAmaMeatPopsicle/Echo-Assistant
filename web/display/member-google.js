@@ -34,14 +34,23 @@
     $('member-google-content').innerHTML=`<div id="member-google-accounts">${state.accounts.map(account=>`<article class="member-google-account"><h3>${esc(account.label)}</h3><p class="tiny soft">${Number(account.calendar_count)} calendars found · private read-only connection</p><div class="row"><button type="button" class="pill" data-private-sync="${esc(account.id)}">Refresh calendar list</button><button type="button" class="pill" data-private-disconnect="${esc(account.id)}">Disconnect</button></div></article>`).join('')}</div><form id="member-google-connect"><label>Connection label<input id="member-google-label" maxlength="60" value="My Google calendar" autocomplete="off" required></label><button class="pill primary" id="member-google-begin">Connect my account</button></form><div id="member-google-flow" hidden><h3>Continue with Google</h3><p id="member-google-flow-status" class="soft"></p><div class="row"><a id="member-google-signin" class="pill primary" target="_blank" rel="noopener noreferrer">Open Google sign-in</a><button type="button" class="pill primary" id="member-google-finish" hidden>Finish connecting</button><button type="button" class="pill" id="member-google-cancel">Cancel sign-in</button></div><div id="member-google-phone" class="google-phone" hidden><img id="member-google-phone-image" alt="Scan with your phone to open Google sign-in"><p class="tiny soft">Use a phone that can reach this Echo host’s HTTPS address. Return here to finish. This QR expires in ten minutes.</p></div></div><form id="member-google-selection"><h3>Show in my personal agenda</h3><div id="member-google-calendars">${state.calendars.map(calendar=>`<label class="member-google-calendar"><input type="checkbox" value="${esc(calendar.entity_id)}" ${calendar.selected?'checked':''}><span>${esc(calendar.name)}<small>${esc(calendar.account_label)} · ${esc(calendar.timezone)}</small></span></label>`).join('')||'<p class="soft">No private calendars found yet. Connect an account, then refresh its calendar list.</p>'}</div><button class="pill primary" id="member-google-save">Save my selection</button></form><p class="tiny soft">Explicitly shared household calendars stay under your existing access settings. This connection adds no editing or invitation permission. Lock your personal session when finished.</p>`;
     $('member-google-begin').disabled=!state.enabled||!state.configured||state.needs_reconnect;
     $('member-google-save').disabled=!state.calendars.length||state.needs_reconnect;
-    status(!state.enabled?'Google connections are disabled on this host.':!state.configured?'The owner must configure Google OAuth in the owner workspace first.':state.needs_reconnect?'The owner changed Google setup. Disconnect the old private connection, then connect again.':'Select only the private calendars you want in your agenda.');
+    status(data.health?.display_demo?'This is a preview. Google sign-in is available only on your live Echo host.':!state.enabled?'Google connections are disabled on this host.':!state.configured?'The owner must configure Google OAuth in the owner workspace first.':state.needs_reconnect?'The owner changed Google setup. Disconnect the old private connection, then connect again.':'Select only the private calendars you want in your agenda.');
     $('member-google-connect').onsubmit=begin;
     $('member-google-selection').onsubmit=select;
     $('member-google-cancel').onclick=cancel;
     $('member-google-finish').onclick=finish;
     $('member-google-accounts').onclick=accountAction;
   }
-  async function load(version=epoch){const result=await request('',undefined,undefined,version);if(current(version)){state=result;render();}}
+  async function load(version=epoch){
+    let result;
+    try{result=await request('',undefined,undefined,version);}
+    catch(error){
+      if(!data.health?.display_demo||error.status!==404)throw error;
+      // An already-running preview may predate the synthetic settings route.
+      result={enabled:false,configured:false,needs_reconnect:false,read_only:true,revision:0,accounts:[],calendars:[]};
+    }
+    if(current(version)){state=result;render();}
+  }
   async function open(){
     const active=stamp();if(!active)return;
     reset();identity=active;const version=epoch;dialog.showModal();status('Loading your private connections…');

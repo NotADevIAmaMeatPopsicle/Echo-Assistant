@@ -17,6 +17,10 @@ class PreviewMembers:
         if isinstance(principal,PersonalPrincipal):
             if path=='/v1/member/preferences':return self.store.preferences(principal)
             if path=='/v1/memory':return {'items':self.store.memory(principal).snapshot(),'scope':'personal'}
+            if path=='/v1/member/calendar/google':
+                return {'enabled':False,'configured':False,'needs_reconnect':False,
+                        'phone_ready':False,'read_only':True,'revision':0,
+                        'accounts':[],'calendars':[]}
         return None
 
     def mutate(self,method,path,body):
