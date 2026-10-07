@@ -58,6 +58,8 @@
   <link rel="stylesheet" href="/assets/display/settings.css">
   <script src="/assets/display/settings.js" defer></script>
   <link rel="stylesheet" href="/assets/display/navigation-drawer.css">
+  <link rel="stylesheet" href="/assets/theme.css">
+  <script src="/assets/theme.js"></script>
   <link rel="preload" href="/assets/fonts/Manrope-Variable.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
@@ -193,6 +195,13 @@
     </section>
     <section id="page-settings" class="page" hidden>
       <div class="two-columns">
+        <article class="card" id="settings-theme">
+          <span class="eyebrow">APPEARANCE</span><h2>Choose a look</h2>
+          <p class="soft">Pick a theme for this screen. You can change it any time.</p>
+          <div class="theme-picker" data-theme-picker></div>
+          <p class="tiny soft">Fan-inspired colors and shapes only; no film or game artwork is included.</p>
+          <p class="tiny soft" id="theme-status" role="status">Saved on this browser, not in your Echo account.</p>
+        </article>
         <article class="card" id="settings-appearance">
           <span class="eyebrow">THIS SCREEN</span><h2>Clock & home screen</h2>
           <label class="check-label"><input type="checkbox" id="clock24">24-hour clock</label>

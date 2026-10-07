@@ -217,7 +217,7 @@ $('chat-form').addEventListener('submit', async event => {
 $('message').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {event.preventDefault(); $('chat-form').requestSubmit();} });
 $('chat-lookup').addEventListener('change', refreshStatus);
 $('clear-chat').addEventListener('click', async () => { try {await api('/v1/chat','DELETE'); $('messages').replaceChildren(); showError(''); await refreshChatActivity();} catch(error) {showError(error.message);} });
-$('settings-panel').addEventListener('input', () => { dirty = true; $('save-status').textContent = 'You have unsaved changes.'; });
+$('settings-panel').addEventListener('input', event => { if (event.target.closest('.browser-settings-nav')) return; dirty = true; $('save-status').textContent = 'You have unsaved changes.'; });
 $('provider').addEventListener('change', () => { $('api-key').value = ''; $('clear-key').checked = false; $('model').value = ''; $('model-options').replaceChildren(); $('provider-result').textContent = ''; providerFields(); });
 $('tts-rate').addEventListener('input', rateLabel);
 $('tts-engine').addEventListener('change', () => {voiceFields(); $('voice-result').textContent = '';});

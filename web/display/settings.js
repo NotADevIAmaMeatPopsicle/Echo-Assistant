@@ -3,17 +3,20 @@
 (()=>{
   const host=$('page-settings'),main=document.querySelector('main');
   const sections=[
-    {id:'display',label:'Display',icon:'sun',title:'Make the screen yours.',description:'Home tiles, clocks, photos and when the display rests.',anchors:['#clock24','#screen-form','#use-album']},
-    {id:'voice',label:'Voice',icon:'mic',title:'Microphone, voice & alerts.',description:'Choose what Echo hears and where replies and alarms play.',anchors:['#pi-voice-form','#pi-alert-form']},
-    {id:'music',label:'Music',icon:'music',title:'Your music, your speakers.',description:'Spotify, shared playback, and radio presets.',anchors:['#pi-audio-form','#group-local-form','#group-music-form','#radio-presets']},
-    {id:'calling',label:'Calls & camera',icon:'chat',title:'A little closer.',description:'Video calls, room announcements and camera motion wake.',anchors:['#calling-configure','#announcement-listen','#audio-room-form','#deck-camera-presence']},
-    {id:'home',label:'Home',icon:'home',title:'Connect your home.',description:'Google Calendar and the calendars, cameras and sensors shared with Echo.',anchors:['#google-calendar-card','#source-load']},
-    {id:'access',label:'Access',icon:'check',title:'Choose who can use Echo.',description:'Pair displays, manage personal accounts and set device permissions.',anchors:['#pairing-form','#members-card','#mini-access-card']},
-    {id:'system',label:'System',icon:'settings',title:'Your Echo workspace.',description:'Connection status, assistant models and advanced configuration.',anchors:['#settings-overview','#settings-workspace']}
+    {id:'display',label:'Display',icon:'sun',title:'Display & appearance',description:'Theme, home screen, clocks, photos and sleep behavior.',anchors:['#settings-theme','#clock24','#screen-form','#use-album']},
+    {id:'voice',label:'Voice',icon:'mic',title:'Voice & sound',description:'Microphone, replies, speaker levels and alerts.',anchors:['#pi-voice-form','#pi-alert-form']},
+    {id:'music',label:'Music',icon:'music',title:'Music & speakers',description:'Local audio, Spotify, groups and radio.',anchors:['#pi-audio-form','#group-local-form','#group-music-form','#radio-presets']},
+    {id:'calling',label:'Calls & camera',icon:'chat',title:'Calls & camera',description:'Calling, announcements, room audio and camera wake.',anchors:['#calling-configure','#announcement-listen','#audio-room-form','#deck-camera-presence']},
+    {id:'home',label:'Home',icon:'home',title:'Home & calendars',description:'Shared calendars, cameras and connected home sources.',anchors:['#google-calendar-card','#source-load']},
+    {id:'access',label:'People & access',icon:'check',title:'People & access',description:'Profiles, pairing, personal accounts and permissions.',anchors:['#pairing-form','#members-card','#mini-access-card']},
+    {id:'system',label:'System',icon:'settings',title:'System & assistant',description:'Connection status, models, memory and advanced setup.',anchors:['#settings-overview','#settings-workspace']}
   ];
   const bar=document.createElement('div');bar.className='settings-nav';bar.dataset.noPageSwipe='';
+  const intro=document.createElement('div');intro.className='settings-nav-intro';intro.innerHTML='<span class="eyebrow">ECHO SETTINGS</span><h2>Make it yours.</h2><p>Choose an area, then adjust only what you need.</p>';
+  const search=document.createElement('input');search.type='search';search.className='settings-search';search.placeholder='Find a setting…';search.setAttribute('aria-label','Find a setting');search.autocomplete='off';
+  const results=document.createElement('div');results.className='settings-search-results';results.hidden=true;
   const tabs=document.createElement('div');tabs.className='settings-tabs';tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','Settings sections');
-  bar.append(tabs);host.prepend(bar);
+  bar.append(intro,search,results,tabs);host.prepend(bar);
   const empty=document.createElement('p');empty.className='soft settings-empty';empty.textContent='Checking the settings available on this display…';empty.hidden=true;
   host.append(empty);
   let selected='display';
@@ -43,6 +46,27 @@
     for(const wrapper of host.querySelectorAll(':scope > .two-columns'))if(!wrapper.children.length)wrapper.remove();
   }
   remaining();
+  search.addEventListener('input',()=>{
+    results.replaceChildren();const query=search.value.trim().toLocaleLowerCase();results.hidden=!query;tabs.hidden=!!query;
+    if(!query)return;
+    let count=0;
+    for(const section of sections){
+      if(section.tab.hidden)continue;
+      for(const card of section.grid.children){
+        if(card.hidden||getComputedStyle(card).display==='none')continue;
+        const title=card.querySelector('h2,h3')?.textContent?.trim()||section.label;
+        const searchable=[title,section.label,...[...card.querySelectorAll('label')].map(label=>label.textContent)].join(' ').toLocaleLowerCase();
+        if(!searchable.includes(query))continue;
+        const button=document.createElement('button');button.type='button';button.className='settings-search-result';
+        button.textContent=`${section.label} · ${title}`;
+        button.onclick=()=>{search.value='';results.hidden=true;tabs.hidden=false;select(section.id,{scroll:true});requestAnimationFrame(()=>card.scrollIntoView({block:'start'}));};
+        results.append(button);if(++count===8)break;
+      }
+      if(count===8)break;
+    }
+    if(!count){const note=document.createElement('p');note.textContent='No settings found. Try a different word.';results.append(note);}
+  });
+  search.addEventListener('keydown',event=>{if(event.key==='Escape'){search.value='';search.dispatchEvent(new Event('input'));search.blur();}});
   for(const selector of ['#pi-voice-form','#audio-room-form','#pairing-form','#group-music-form','#source-form','#calling-config-form'])host.querySelector(selector)?.closest('.card').classList.add('settings-wide');
   const available=section=>[...section.grid.children].some(card=>!card.hidden&&getComputedStyle(card).display!=='none');
   function select(id,{scroll=false,focus=false}={}){

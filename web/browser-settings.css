@@ -1,0 +1,23 @@
+.settings-workspace-view main{display:block;max-width:1240px;padding-top:35px}
+.settings-workspace-view .presence{display:none}
+.settings-workspace-view .workspace{width:100%}
+#settings-panel{max-width:1120px;width:100%;margin:0 auto}
+#settings-panel>.section-heading{padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:21px}
+.browser-settings-layout{display:grid;grid-template-columns:224px minmax(0,1fr);gap:25px;align-items:start}
+.browser-settings-nav{position:sticky;top:16px;padding:18px 12px;border:1px solid var(--line);border-radius:18px;background:#11232c}
+.browser-settings-intro{padding:4px 8px 14px}.browser-settings-intro h3{margin:8px 0 5px;font-size:19px}.browser-settings-intro p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.browser-settings-nav input[type=search]{min-height:45px;width:100%;margin:0 0 12px;padding:10px 11px}
+.browser-settings-tabs{display:flex;flex-direction:column;gap:4px}
+.browser-settings-tab,.browser-settings-result{min-height:53px;width:100%;padding:10px 11px;border:1px solid transparent;border-radius:11px;text-align:left;background:transparent;color:var(--text);cursor:pointer}
+.browser-settings-tab strong,.browser-settings-tab small{display:block}.browser-settings-tab strong{font-size:13px}.browser-settings-tab small{font-size:10px;color:var(--muted);margin-top:3px}
+.browser-settings-tab:hover,.browser-settings-result:hover{background:#ffffff0c}
+.browser-settings-tab[aria-selected=true]{border-color:var(--line);box-shadow:inset 3px 0 0 var(--mint);background:#a0f5d511}
+.browser-settings-tab[aria-selected=true] strong{color:var(--mint)}
+.browser-settings-results{display:flex;flex-direction:column;gap:5px}.browser-settings-results p{font-size:12px;color:var(--muted);padding:5px 10px}.browser-settings-result{border-color:var(--line);font-size:12px}
+.browser-settings-content{min-width:0}.browser-settings-pane{scroll-margin-top:20px}.browser-settings-pane fieldset{margin:0;max-width:none}.browser-settings-pane legend{font-size:20px;letter-spacing:-.03em}.browser-settings-pane legend>span{display:none}
+.browser-settings-pane .section-description{max-width:65ch;font-size:13px;line-height:1.55}.browser-settings-pane label{max-width:720px}.browser-settings-pane .two-col{max-width:760px}
+#settings-panel .save-row{position:sticky;bottom:0;z-index:4;margin:22px -31px -29px;padding:14px 31px;background:#11191ff5;border-top:1px solid var(--line);border-radius:0 0 22px 22px;backdrop-filter:blur(12px)}
+#browser-theme-settings .theme-picker{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+@media(max-width:800px){.browser-settings-layout{grid-template-columns:1fr;gap:15px}.browser-settings-nav{position:relative;top:auto}.browser-settings-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.browser-settings-tab{min-height:48px}#settings-panel .save-row{margin:20px -20px -20px;padding:12px 20px}}
+@media(max-height:950px) and (min-width:801px){.browser-settings-intro p{display:none}.browser-settings-tab{min-height:48px}}
+@media(max-width:480px){.settings-workspace-view main{padding-top:12px}.browser-settings-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.browser-settings-tab small,.browser-settings-intro p{display:none}.browser-settings-tab{min-height:43px;padding:7px 8px}.browser-settings-tab strong{font-size:11px}.browser-settings-intro{padding-bottom:9px}}

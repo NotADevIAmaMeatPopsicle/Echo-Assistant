@@ -120,7 +120,9 @@ class Preview(BaseHTTPRequestHandler):
             html = (WEB/'index.html').read_text(encoding='utf-8')
             banner = '<div style="text-align:center;padding:7px;background:#152a2c;color:#a0f5d5;font:10px Segoe UI,sans-serif;letter-spacing:2px">PRODUCT PREVIEW · SAMPLE DATA</div>'
             return self.reply(200, html.replace('<body>', '<body>'+banner).encode(), 'text/html; charset=utf-8')
-        if path in {'/assets/app.js', '/assets/style.css', '/assets/icon.svg'}:
+        if path in {'/assets/app.js', '/assets/style.css', '/assets/icon.svg',
+                    '/assets/theme.css', '/assets/theme.js',
+                    '/assets/browser-settings.css', '/assets/browser-settings.js'}:
             file = WEB/path.rsplit('/', 1)[-1]
             return self.reply(200, file.read_bytes(), mimetypes.guess_type(file)[0] or 'application/octet-stream')
         self.reply(404, b'{"detail":"No preview fixture for this route"}')

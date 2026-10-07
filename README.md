@@ -141,9 +141,14 @@ state; Stop and mute remain accessible.
 
 ![Echo status, reply settings, microphone control, and a sample conversation on the Pi layout](docs/images/display-echo.png)
 
-The display uses locally served Manrope, vector icons, a smooth ring with a soft
-glow, and a dark blue palette. Its kiosk uses the active panel bounds without
-unnecessary browser scaling. The [design guide](docs/DISPLAY_DESIGN.md) covers
+The display uses locally served Manrope, vector icons, and a smooth ring with a soft
+glow. The default dark palette and four alternative themes are available under
+Settings → Appearance on both the Deck and browser workspace. Theme choice is
+saved locally in each browser and applies immediately; assistant settings still
+require Save. The Totoro, Super Mario World, and Fruit Ninja-inspired themes use
+original CSS motifs rather than licensed artwork. Settings are grouped by category
+and searchable. The kiosk uses the active panel bounds without unnecessary browser
+scaling. The [design guide](docs/DISPLAY_DESIGN.md) covers
 native sizing, touch spacing, reduced motion, and remaining physical checks.
 
 ### Music and home control

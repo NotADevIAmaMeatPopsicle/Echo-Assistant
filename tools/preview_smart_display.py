@@ -157,7 +157,9 @@ class DisplayPreview(Preview):
             return self.reply(200,(WEB/'display/video-player.html').read_bytes(),'text/html; charset=utf-8')
         if path in {'/v1/display/cameras/camera.porch_demo/stream','/v1/display/cameras/camera.porch_demo/snapshot'}:
             return self.camera_sample(path.endswith('/stream'))
-        assets = {'/assets/display/polish.css':('display/polish.css','text/css'),
+        assets = {'/assets/theme.css':('theme.css','text/css'),
+                  '/assets/theme.js':('theme.js','text/javascript'),
+                  '/assets/display/polish.css':('display/polish.css','text/css'),
                   '/assets/display/video-provider.js':('display/video-provider.js','text/javascript'),
                   '/assets/display/video-provider.css':('display/video-provider.css','text/css'),
                   '/assets/display/video-player.js':('display/video-player.js','text/javascript'),

@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 
 ROOT=Path(__file__).resolve().parents[1]
-CHECKS=('smart_display_ui','display_connection','display_conversation','display_voice_ui','display_navigation',
+CHECKS=('smart_display_ui','display_connection','display_conversation','display_voice_ui','display_navigation','display_themes',
         'display_daily','display_calendar_changes','display_calendar_series','display_group_music','display_music','display_cameras','display_announcements',
         'display_intercom','pi_spotify_ui','display_alerts_ui','pi_voice_ui','display_keyboard','display_form_keyboard','display_profiles','display_home','display_screen','display_presence')
 

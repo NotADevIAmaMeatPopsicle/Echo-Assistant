@@ -178,7 +178,7 @@ live-account acceptance are tracked separately in [the build queue](BUILD_QUEUE.
 | Notifications & room audio | Persisted household notes; room-targeted announcements and delivery receipts | [Room receivers](ROOM_AUDIO.md) are opt-in, respect quiet hours and expire queued messages after five minutes. Answered two-way intercom includes a round adapter; new round firmware installation and physical audio acceptance remain pending. |
 | Routines | Review and run saved routines | Existing device grants and action checks apply |
 | Echo | Existing conversation, web research, memory and cited sources; explicit home-control opt-in; server-side Stop | Push-to-talk records up to eight seconds and returns speech to this display; native Pi wake is opt-in; audio hardware acceptance remains open |
-| Settings | Display preferences, encrypted shared photo album, camera/calendar selection, radio presets, display pairing and revocation | Only the owner can change sources, upload/remove shared photos, manage radios or pair displays |
+| Settings | Searchable categories; local theme selection; display preferences, encrypted shared photo album, camera/calendar selection, radio presets, display pairing and revocation | Theme choice is local to each browser. Only the owner can change sources, upload/remove shared photos, manage radios or pair displays |
 
 ![Recurring reminders and notification inbox, using synthetic data](images/display-planner.png)
 
