@@ -231,6 +231,7 @@ def run_session(args, lifecycle, model, recovery, music):
             for line in lines:group.receive(line);calendar.receive(line);access_profile.observe(line)
             access_profile.configure(port.write)
             group.profile_allowed=not access_profile.guest and access_profile.state['available']
+            calendar_capable=calendar.supported
             if access_profile.guest:calendar.supported=False
             if any(re.search(r'\bintercom=1\b',line) for line in lines):port.write(b'CALL_RESET\n')
             duplex = any(re.search(r'\bduplex=1\b', line) for line in lines if line.startswith('STATUS '))
@@ -273,6 +274,9 @@ def run_session(args, lifecycle, model, recovery, music):
                     access_profile.observe(line)
                     group.receive(line)
                     calendar.receive(line)
+                    if line.startswith('STATUS '):
+                        calendar_capable=calendar.supported
+                        calendar.supported=calendar_capable and not access_profile.guest
                     calls.receive(line)
                     if phase == 'activation': activation.receive(line)
                     members_ui.receive(line)
@@ -350,7 +354,6 @@ def run_session(args, lifecycle, model, recovery, music):
                             else:music.command(action)
                 if access_profile.refresh():
                     members_ui.changed()
-                    calendar_capable=calendar.supported
                     if pending:pending.cancel();pending=None
                     calendar.clear();alarms.retry();calls.close()
                     if speaker.active and phase!='music':speaker.stop()

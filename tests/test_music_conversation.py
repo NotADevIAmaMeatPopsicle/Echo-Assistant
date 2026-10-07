@@ -32,6 +32,15 @@ class MusicConversationTests(unittest.TestCase):
             token='x'*40; (root/'local/api-token').write_text(token)
             api=stack.enter_context(TestClient(create_app(token,runtime_root=root,
                 settings_store=SettingsStore()),base_url='http://localhost'))
+            session_requests=[]
+            def api_transport(request):
+                self.assertEqual(request.url.host,'127.0.0.1')
+                self.assertEqual(request.url.port,8768)
+                session_requests.append(request.url.path)
+                return api.request(request.method,request.url.raw_path.decode('ascii'),
+                    headers=dict(request.headers),content=request.content)
+            def voice_client(**kwargs):
+                return httpx.Client(**kwargs,transport=httpx.MockTransport(api_transport))
             owner=stack.enter_context(Lifecycle(root))
             release=Event(); calls=[]; states=[]; requests=[]; started=time.monotonic()
             music=Mock(status='playing',title='Synthetic',artist='Fixture')
@@ -119,6 +128,7 @@ class MusicConversationTests(unittest.TestCase):
                 states.append(dict(status)); return original_write(status)
             alarms=Mock(is_announcement=False); alarms.receive.return_value=False; alarms.take.return_value=None
             replacements={
+                'httpx':SimpleNamespace(**{**vars(httpx),'Client':voice_client}),
                 'ROOT':root,'MAC':'020000000001','load_wifi':Mock(return_value={ 'enabled':True }),
                 'WifiTransport':Mock(return_value=port),'Recognition':Mock(return_value=recognition),
                 'EchoCleaner':Mock(),'Speaker':Speaker,'HomeDisplay':Mock(),'Alarms':Mock(return_value=alarms),
@@ -143,6 +153,7 @@ class MusicConversationTests(unittest.TestCase):
             with redirect_stdout(io.StringIO()):
                 voice.run_session(SimpleNamespace(usb=False,play_music=False),owner,None,{},music)
             self.assertTrue(port.checked); self.assertEqual(emitted,{'wake','command'})
+            self.assertIn('/v1/round/session',session_requests)
             self.assertTrue(any(s.get('spoken_replies')==1 for s in states))
             self.assertTrue(all(s.get('playback_errors')==0 for s in states))
             if calendar:
