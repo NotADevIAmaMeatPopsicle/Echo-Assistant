@@ -73,6 +73,13 @@ class PiListenerTests(unittest.TestCase):
             self.assertFalse(music.ducks);self.assertFalse(music.holds)
             with self.assertRaises(ValueError):validate({**config,'music_mode':'loud'})
 
+    def test_voice_output_accepts_full_range_without_changing_default(self):
+        with TemporaryDirectory() as directory:
+            config=Listener(lambda *args:None,Music(),directory).config
+            self.assertEqual(config['volume'],2)
+            self.assertEqual(validate({**config,'volume':100})['volume'],100)
+            with self.assertRaises(ValueError):validate({**config,'volume':101})
+
     def test_music_no_longer_blocks_wake_without_aec(self):
         with TemporaryDirectory() as directory:
             music=Music();music.snapshot=lambda:{'status':'playing'}

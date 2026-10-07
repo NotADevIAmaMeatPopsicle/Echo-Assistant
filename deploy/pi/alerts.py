@@ -30,7 +30,7 @@ def chime(volume):
             if 0 <= age < 1.5:
                 envelope = min(1., age/.035)*math.exp(-3.5*age)*min(1., (1.5-age)/.05)
                 value += envelope*(math.sin(2*math.pi*frequency*age)+.18*math.sin(4*math.pi*frequency*age))
-        samples.append(round(value*16000*max(0, min(30, volume))/100))
+        samples.append(round(value*16000*max(0, min(100, volume))/100))
     if sys.byteorder != 'little': samples.byteswap()
     stream = io.BytesIO()
     with wave.open(stream, 'wb') as wav:

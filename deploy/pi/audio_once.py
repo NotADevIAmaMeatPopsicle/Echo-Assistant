@@ -67,7 +67,7 @@ def main():
         return
     if not args.once or not args.capture_device or not (args.playback_device or args.text_only):
         raise SystemExit('Choose --once, --capture-device and --playback-device (or --text-only).')
-    if not 0<=args.volume<=30:raise SystemExit('Use a quiet playback level from 0 to 30 percent; default is 2.')
+    if not 0<=args.volume<=100:raise SystemExit('Use a playback level from 0 to 100 percent; default is 2.')
     if not request('/v1/display/voice',timeout=10)['available']:raise SystemExit('Local Whisper is not ready on the Echo host.')
     print('Listening for eight seconds. Ctrl+C cancels. No recording is saved.',flush=True)
     with subprocess.Popen(['arecord','-q','-D',args.capture_device,'-t','raw','-f','S16_LE','-r','16000','-c','1','-d','8'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL) as capture:

@@ -25,6 +25,7 @@ class VoiceTests(unittest.TestCase):
             with self.assertRaises(ValueError):capture_pcm(invalid)
         encoded=base64.b64encode(wave_bytes((1000).to_bytes(2,'little',signed=True)*10,48000)).decode()
         self.assertEqual(int.from_bytes(scaled_reply(encoded,2)[:2],'little',signed=True),20)
+        self.assertEqual(int.from_bytes(scaled_reply(encoded,100)[:2],'little',signed=True),1000)
 
     def pipeline(self):
         transcriber=Mock();transcriber.transcribe.return_value='A synthetic question'

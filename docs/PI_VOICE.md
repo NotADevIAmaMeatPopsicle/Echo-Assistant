@@ -24,7 +24,10 @@ listening. The Pi bridge uses the isolated interpreter when it is installed.
 On the Pi, open **Settings → Talk to this Pi**:
 
 1. Select the attached microphone and speaker by their ALSA names.
-2. Leave output at **2%** initially, and enable the local wake listener.
+2. Leave output at **2%** initially, and enable the local wake listener. Voice
+   output can be raised to 100% if needed; increase it gradually while checking
+   for distortion and microphone feedback. This setting does not change music,
+   alarm or call volume.
 3. Allow spoken home controls only if wanted; existing Home Assistant grants
    still apply. The manual Talk button uses the current message's home-control
    and spoken-reply checkboxes.

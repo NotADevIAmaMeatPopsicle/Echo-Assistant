@@ -63,7 +63,7 @@ def validate(value):
     if not isinstance(value['music_mode'],str) or value['music_mode'] not in {'pause','duck'}:raise ValueError('Choose pause or lower music during voice')
     for key in ('enabled','muted','echo_cancelled_input','allow_home'):
         if type(value[key]) is not bool: raise ValueError('Invalid Pi voice option')
-    if type(value['volume']) is not int or not 0 <= value['volume'] <= 30: raise ValueError('Choose 0–30% output volume')
+    if type(value['volume']) is not int or not 0 <= value['volume'] <= 100: raise ValueError('Choose 0–100% output volume')
     for key in ('input','output'):
         if not isinstance(value[key], str) or value[key] and not re.fullmatch(r'[A-Za-z0-9_.,:=+-]{1,120}', value[key]): raise ValueError('Choose named ALSA devices')
     if value['enabled'] and not (value['input'] and value['output']): raise ValueError('Choose the attached microphone and speaker')
