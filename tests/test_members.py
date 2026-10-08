@@ -19,10 +19,23 @@ class MemberTests(unittest.TestCase):
         self.assertEqual(page.status_code,200)
         self.assertIn('Create your Personal account',page.text)
         self.assertIn('Skip for now',page.text)
+        script=(Path(__file__).resolve().parents[1]/'web'/'welcome.js').read_text(encoding='utf-8')
+        self.assertIn("'X-Echo-Request':'1'",script)
         self.assertEqual(self.client.post('/v1/members',json={'name':'Alex'}).status_code,401)
         created=self.account()
         self.assertEqual(len(self.client.get('/v1/members',headers=self.owner).json()['items']),1)
         self.assertNotIn(created['passcode'],self.client.get('/v1/members',headers=self.owner).text)
+
+    def test_welcome_account_creation_with_browser_session(self):
+        ticket=self.client.post('/v1/ui/ticket',headers=self.owner).json()['ticket']
+        browser={'Origin':'http://testserver','X-Echo-Request':'1'}
+        self.assertEqual(self.client.post('/v1/ui/session',headers=browser,json={'ticket':ticket}).status_code,200)
+        self.assertEqual(self.client.get('/v1/members').json()['items'],[])
+        self.assertEqual(self.client.post('/v1/members',json={'name':'Griff'}).status_code,403)
+        created=self.client.post('/v1/members',headers=browser,json={'name':'Griff'})
+        self.assertEqual(created.status_code,200,created.text)
+        self.assertEqual(created.json()['name'],'Griff')
+        self.assertEqual(len(created.json()['passcode']),8)
 
     def account(self,name='Alex'):
         r=self.client.post('/v1/members',headers=self.owner,json={'name':name})

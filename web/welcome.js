@@ -5,7 +5,7 @@
   const sections=['account','google','devices','done'];
   let accountName='';
   async function api(path,method='GET',body){
-    const response=await fetch(path,{method,credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+    const response=await fetch(path,{method,credentials:'same-origin',headers:body?{'Content-Type':'application/json','X-Echo-Request':'1'}:{'X-Echo-Request':'1'},body:body?JSON.stringify(body):undefined});
     let data={};try{data=await response.json();}catch{}
     if(!response.ok)throw new Error(data.detail || (response.status===401?'Your owner session ended. Open Echo from its launcher again.':'Echo could not complete this step.'));
     return data;
