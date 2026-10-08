@@ -267,6 +267,9 @@ def create_app(token: str, home: HomeBridge | None = None, runtime_root: Path | 
     @app.get('/calendar-accounts')
     def calendar_accounts(): return FileResponse(web/'calendar-accounts.html')
 
+    @app.get('/welcome')
+    def welcome(): return FileResponse(web/'welcome.html')
+
     @app.get('/display')
     def smart_display(): return FileResponse(web/'display/index.html')
 

@@ -7,9 +7,11 @@ session**. Anyone physically using that screen can use the unlocked session.
 
 ## Set it up
 
-1. In the owner smart-display workspace, open **Settings → Personal accounts →
-   Manage accounts** and create an account. Save the eight-digit passcode shown
-   once. Echo stores a salted scrypt hash, not a recoverable passcode.
+1. On a new installation, open the owner browser portal to follow the **Welcome**
+   setup. Create the first Personal account and save its eight-digit passcode,
+   shown once. Existing owners can use **Settings → Setup guide**, or open the
+   owner smart-display workspace at **Settings → People & access → Manage
+   accounts**. Echo stores a salted scrypt hash, not a recoverable passcode.
 2. Use **Access** beside the account to choose its home devices and read-only
    calendar, camera and presence sources. Conversation is enabled by default;
    home voice commands require a separate opt-in. No home devices are granted

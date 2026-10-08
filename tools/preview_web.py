@@ -55,6 +55,7 @@ DATA = {
     '/v1/settings': dict(settings=SETTINGS, credentials={p: False for p in ['local', 'openai', 'anthropic', 'azure']}),
     '/v1/display/session': {'role': 'owner'},
     '/v1/members/available': {'items': [], 'session_minutes': 15, 'supported': True},
+    '/v1/members': {'items': [{'id': 'sample-person', 'name': 'Sample person', 'revision': 0}], 'limit': 16},
     '/v1/calendar/google': {'revision': 0, 'client_id': '', 'redirect_uri': '',
                             'secret_saved': False, 'enabled': False, 'accounts': []},
     '/v1/echo': dict(runtime='hermes', memory='explicit_facts', lookup='available',
@@ -122,6 +123,8 @@ class Preview(BaseHTTPRequestHandler):
             return self.reply(200, json.dumps(DATA[path]).encode())
         if path == '/calendar-accounts':
             return self.reply(200, (WEB/'calendar-accounts.html').read_bytes(), 'text/html; charset=utf-8')
+        if path == '/welcome':
+            return self.reply(200, (WEB/'welcome.html').read_bytes(), 'text/html; charset=utf-8')
         if path == '/display':
             # The Deck has its own synthetic preview server. Browsers retain
             # the requested #calendar fragment across this redirect.
@@ -137,7 +140,8 @@ class Preview(BaseHTTPRequestHandler):
         if path in {'/assets/app.js', '/assets/style.css', '/assets/icon.svg',
                     '/assets/theme.css', '/assets/theme.js',
                     '/assets/browser-settings.css', '/assets/browser-settings.js',
-                    '/assets/calendar-accounts.css', '/assets/calendar-accounts.js'}:
+                    '/assets/calendar-accounts.css', '/assets/calendar-accounts.js',
+                    '/assets/welcome.css', '/assets/welcome.js'}:
             file = WEB/path.rsplit('/', 1)[-1]
             return self.reply(200, file.read_bytes(), mimetypes.guess_type(file)[0] or 'application/octet-stream')
         self.reply(404, b'{"detail":"No preview fixture for this route"}')

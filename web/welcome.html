@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Echo · Welcome</title>
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/theme.css">
+  <link rel="stylesheet" href="/assets/welcome.css">
+  <script src="/assets/theme.js"></script><script src="/assets/welcome.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/" aria-label="Echo home"><span class="brand-mark">e</span> echo<span class="brand-caption">YOUR SPACE. YOUR ASSISTANT.</span></a><nav aria-label="Main"><a href="/settings">Settings</a></nav></header>
+  <main class="welcome-main">
+    <span class="eyebrow">WELCOME TO ECHO</span>
+    <h1>Let's make this yours.</h1>
+    <p class="section-description">Create your Personal space first. Calendar and device setup can wait until you are ready.</p>
+    <ol class="welcome-progress" aria-label="Setup progress">
+      <li id="welcome-progress-account">1. Your account</li>
+      <li id="welcome-progress-google">2. Google Calendar</li>
+      <li id="welcome-progress-devices">3. Your devices</li>
+      <li id="welcome-progress-done">4. Finish</li>
+    </ol>
+    <p id="welcome-status" class="notice" role="status">Checking your Echo session…</p>
+    <section id="welcome-account" class="card" hidden>
+      <span class="eyebrow">REQUIRED</span><h2>Create your Personal account</h2>
+      <p>This gives you separate saved facts, personality and conversations on screens you choose. It is an Echo account, not a Google account.</p>
+      <form id="welcome-account-form"><label for="welcome-name">What should Echo call you?</label><input id="welcome-name" name="name" maxlength="60" autocomplete="name" required placeholder="Your name"><div class="welcome-actions"><button type="submit">Create my account</button></div></form>
+      <div id="welcome-passcode" hidden>
+        <h3>Save your one-time passcode</h3><p>Use these eight digits to unlock your Personal space on an approved Deck, Mini or browser. Echo will not show this code again. Keep it private.</p>
+        <output id="welcome-code" aria-label="Your Echo passcode"></output>
+        <label class="check"><input id="welcome-code-saved" type="checkbox"> I have saved my passcode somewhere private</label>
+        <p class="hint">If you lose it, the owner can reset it in Deck Settings → People & access → Manage accounts.</p>
+        <div class="welcome-actions"><button id="welcome-account-next" type="button" disabled>Continue</button></div>
+      </div>
+    </section>
+    <section id="welcome-google" class="card" hidden>
+      <span class="eyebrow">OPTIONAL</span><h2>Bring in your Google calendars</h2>
+      <p>Echo uses a Google authorization page; it never asks for your Google password. The owner must configure this installation's OAuth app once. Then unlock your Echo Personal account on the calendar page and connect your Google account for read-only access.</p>
+      <p class="hint">Connecting an account does not select calendars automatically. Choose the calendars you want after sign-in. If you lost your Echo passcode, reset it under Settings → People & access → Manage accounts.</p>
+      <div class="welcome-actions"><a class="pill" href="/calendar-accounts" target="_blank" rel="noopener noreferrer">Open Calendar setup ↗</a><button id="welcome-google-next" type="button">Continue</button><button id="welcome-google-skip" class="secondary" type="button">Skip for now</button></div>
+    </section>
+    <section id="welcome-devices" class="card" hidden>
+      <span class="eyebrow">OPTIONAL</span><h2>Choose where you can sign in</h2>
+      <p>Assign your Personal account to an approved Deck or Mini under <strong>People & access</strong>. The account does not gain home devices, cameras or shared calendars automatically; choose those permissions deliberately.</p>
+      <div class="welcome-actions"><a class="pill" href="/display#settings" target="_blank" rel="noopener noreferrer">Open device access ↗</a><button id="welcome-devices-next" type="button">Continue</button><button id="welcome-devices-skip" class="secondary" type="button">Skip for now</button></div>
+    </section>
+    <section id="welcome-done" class="card" hidden>
+      <span class="eyebrow">ALL SET</span><h2>Your space is ready.</h2>
+      <p id="welcome-summary"></p><p>You can return to skipped steps from Settings → Setup guide. Your Personal account stays separate from the shared Household display.</p>
+      <div class="welcome-actions"><a class="pill" href="/">Go to Echo ↗</a><a class="pill" href="/settings">Explore settings ↗</a></div>
+    </section>
+  </main>
+</body>
+</html>

@@ -641,6 +641,16 @@ async function start() {
   try {
     if (ticket) await api('/v1/ui/session','POST',{ticket});
     state = await api('/v1/settings'); authenticated = true;
+    // The owner portal is the only place that can create the first Personal account.
+    // Fail open if account status is unavailable; do not mistake an API error for
+    // an empty roster or trap an existing owner in setup.
+    try {
+      const roster = await api('/v1/members');
+      if (!roster.items.length || localStorage.getItem('echo-welcome-pending') === '1') {
+        location.replace('/welcome');
+        return;
+      }
+    } catch { /* Keep the normal workspace available during an account outage. */ }
     $('locked').classList.add('hidden'); showError('');
     $('logout').classList.remove('hidden'); $(activePanel).classList.remove('hidden');
     if (settingsPage) {

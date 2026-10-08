@@ -14,6 +14,16 @@ class MemberTests(unittest.TestCase):
     save=fixtures.DisplayProfileTests.save
     profile=fixtures.DisplayProfileTests.profile
 
+    def test_welcome_page_uses_owner_only_account_creation(self):
+        page=self.client.get('/welcome')
+        self.assertEqual(page.status_code,200)
+        self.assertIn('Create your Personal account',page.text)
+        self.assertIn('Skip for now',page.text)
+        self.assertEqual(self.client.post('/v1/members',json={'name':'Alex'}).status_code,401)
+        created=self.account()
+        self.assertEqual(len(self.client.get('/v1/members',headers=self.owner).json()['items']),1)
+        self.assertNotIn(created['passcode'],self.client.get('/v1/members',headers=self.owner).text)
+
     def account(self,name='Alex'):
         r=self.client.post('/v1/members',headers=self.owner,json={'name':name})
         self.assertEqual(r.status_code,200,r.text)
