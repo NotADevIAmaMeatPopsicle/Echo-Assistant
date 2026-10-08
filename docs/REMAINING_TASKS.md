@@ -40,16 +40,19 @@ acceptance. Coordinator ownership includes integration and deployment.
 | ECHO-21 | Integrated package review | Depends on required tasks and explicit scope decisions; coordinator |
 | ECHO-22 | Personal Hermes instances | No personal accounts configured; per-person provider/tool choices and separate provisioning open; agent lane |
 | ECHO-23 | Host capacity and Docker recovery | Runtime recovered; permanent storage relocation remains open; coordinator |
-| ECHO-24 | First-visit portal onboarding | Welcome flow implemented in source; live deployment and first-owner acceptance open; coordinator |
+| ECHO-24 | First-visit portal onboarding | Software deployed; first-owner account, Google and device walkthrough acceptance open; coordinator |
 
 ECHO-24 starts when the owner opens the browser portal with no Personal accounts.
 Creating the first Echo account and saving its one-time passcode is required to
 finish; Google Calendar linking and Deck/Mini assignment are skippable. The flow
 uses existing owner-only account APIs and links to existing Google/device setup;
 it does not create a Google OAuth application, verify an external Google grant,
-or turn Google sign-in into Echo authentication. Acceptance requires a fresh
-owner session on the live host, passcode recovery guidance, skip/resume checks,
-and confirmation that existing owners are not trapped by an account-service error.
+or turn Google sign-in into Echo authentication. The live owner session now
+redirects to Welcome when the account roster is empty, and the API and agent
+remain healthy. Synthetic browser checks covered code display, skip paths,
+phone layout, resumption and account-service failure. First-owner acceptance
+still requires the person to create an account, save its real passcode, and
+decide whether to connect Google and assign a device.
 
 ## Integration contract
 
