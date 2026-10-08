@@ -55,6 +55,22 @@ class SettingsTests(unittest.TestCase):
             with self.assertRaises(SettingsUnavailable): SettingsStore(Path(folder))
             self.assertEqual(path.read_text(), 'bad')
 
+    def test_signed_in_chatgpt_settings_reload_without_an_api_key(self):
+        settings = EchoSettings(provider='chatgpt', agent_runtime='hermes', model='')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            store = SettingsStore(root, FakeProtector())
+            store.save(SettingsUpdate(settings=settings))
+            restored = SettingsStore(root, FakeProtector())
+            self.assertEqual(restored.snapshot()[0].provider, 'chatgpt')
+            self.assertEqual(restored.snapshot()[1], {})
+            with self.assertRaises(ValueError):
+                restored.save(SettingsUpdate(settings=settings, api_key='not-allowed'))
+        with self.assertRaises(ValueError):
+            EchoSettings(provider='chatgpt', agent_runtime='direct')
+        with self.assertRaises(ValueError):
+            EchoSettings(provider='chatgpt', agent_runtime='hermes', model='not-blank')
+
     def test_remote_endpoints_and_credentials_in_urls_rejected(self):
         for endpoint in ['https://example.com:443/v1','http://8.8.8.8:11434/v1', 'http://user:pass@localhost:11434/v1',
                          'http://localhost:11434/v1?key=secret', 'http://0.0.0.0:11434/v1', 'http://localhost/v1']:

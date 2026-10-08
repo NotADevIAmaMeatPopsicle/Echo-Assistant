@@ -23,7 +23,7 @@ PERSONALITY = (
 
 class EchoSettings(BaseModel):
     model_config = ConfigDict(extra='forbid', validate_default=True)
-    provider: Literal['disabled', 'local', 'openai', 'anthropic', 'azure'] = 'disabled'
+    provider: Literal['disabled', 'local', 'openai', 'anthropic', 'azure', 'chatgpt'] = 'disabled'
     agent_runtime: Literal['direct', 'hermes'] = 'direct'
     model: str = Field(default='', max_length=160, pattern=r'^[a-zA-Z0-9_./:@+\-]*$')
     local_url: str = 'http://127.0.0.1:11434/v1'
@@ -55,6 +55,8 @@ class EchoSettings(BaseModel):
     def azure_configured(self):
         if self.agent_runtime == 'hermes' and self.provider == 'disabled':
             raise ValueError('Choose a provider for Hermes, or use Direct for offline tools')
+        if self.provider == 'chatgpt' and (self.agent_runtime != 'hermes' or self.model):
+            raise ValueError('ChatGPT sign-in uses the Hermes-selected model; choose Hermes and leave Model blank')
         if self.provider == 'azure' and not self.azure_url:
             raise ValueError('Enter the Azure resource endpoint')
         return self
@@ -151,7 +153,7 @@ class SettingsStore:
             if update.clear_key: keys.pop(provider, None)
             if update.api_key is not None and update.api_key.get_secret_value().strip():
                 key = update.api_key.get_secret_value().strip()
-                if provider == 'disabled' or any(ord(c) < 33 or ord(c) > 126 for c in key):
+                if provider in {'disabled', 'chatgpt'} or any(ord(c) < 33 or ord(c) > 126 for c in key):
                     raise ValueError('Select a provider and supply a valid API key')
                 keys[provider] = key
             payload = {'settings': update.settings.model_dump(), 'credentials': None}

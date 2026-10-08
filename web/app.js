@@ -1,5 +1,8 @@
 'use strict';
 const $ = id => document.getElementById(id);
+const chatgptChoice = document.createElement('option');
+chatgptChoice.value = 'chatgpt'; chatgptChoice.textContent = 'ChatGPT sign-in · Hermes';
+$('provider').add(chatgptChoice, $('provider').querySelector('[value="azure"]'));
 const settingsPage = location.pathname === '/settings';
 const memoryPage = location.pathname === '/memory';
 const devicesPage = location.pathname === '/devices';
@@ -20,13 +23,19 @@ async function api(path, method = 'GET', body) {
 function lock() { authenticated = false; $('locked').classList.remove('hidden'); for (const id of ['chat-panel','settings-panel','memory-panel','devices-panel','routines-panel','tasks-panel','logout']) $(id).classList.add('hidden'); }
 function providerFields() {
   const p = $('provider').value;
+  const signedIn = p === 'chatgpt';
+  if (signedIn) { $('agent-runtime').value = 'hermes'; $('model').value = ''; }
+  $('agent-runtime').disabled = signedIn;
+  $('model').disabled = signedIn;
+  $('model').placeholder = signedIn ? 'Selected in Hermes' : 'Choose or enter a model ID';
   $('endpoint-field').classList.toggle('hidden', p !== 'local');
   $('azure-endpoint-field').classList.toggle('hidden', p !== 'azure');
   $('azure-deployment-note').classList.toggle('hidden', p !== 'azure');
-  $('key-fields').classList.toggle('hidden', p === 'disabled');
+  $('key-fields').classList.toggle('hidden', p === 'disabled' || signedIn);
   $('key-status').textContent = state?.credentials[p] ? 'Key saved' : p === 'local' ? 'Optional' : 'No key saved';
-  $('provider-note').textContent = p === 'disabled' ? 'Built-in clock, timers and configured home controls remain available.' : p === 'local' ? 'Conversation goes to your selected local server. No automatic cloud fallback.' : 'When selected, your messages, personality instructions, and recent conversation are sent to this provider. Microphone audio stays local. API usage may be billed by the provider.';
-  for (const id of ['load-models','test-provider']) $(id).disabled = p === 'disabled';
+  $('provider-note').textContent = signedIn ? 'Echo uses the model already selected in the private, signed-in Hermes agent. No API key is saved here; microphone audio stays local.' : p === 'disabled' ? 'Built-in clock, timers and configured home controls remain available.' : p === 'local' ? 'Conversation goes to your selected local server. No automatic cloud fallback.' : 'When selected, your messages, personality instructions, and recent conversation are sent to this provider. Microphone audio stays local. API usage may be billed by the provider.';
+  $('load-models').disabled = p === 'disabled' || signedIn;
+  $('test-provider').disabled = p === 'disabled';
 }
 function fillSettings(data) {
   state = data; const s = data.settings;
@@ -126,7 +135,7 @@ async function refreshStatus() {
       $('chat-lookup').title = echo.lookup === 'available' ? 'Request an answer with web sources' : 'Enable web lookup in Settings with Azure or OpenAI';
       $('chat-home-actions').disabled = health.deployment_mode === 'validation' || $('chat-lookup').checked;
       if ($('chat-home-actions').disabled) $('chat-home-actions').checked = false;
-      $('provider-label').textContent = echo.status === 'configured' ? `${echo.runtime === 'hermes' ? 'HERMES · ' : ''}${echo.provider.toUpperCase()} / ${echo.model}` : 'Choose a provider in Settings';
+      $('provider-label').textContent = echo.status === 'configured' ? echo.provider === 'chatgpt' ? 'HERMES · CHATGPT SIGN-IN' : `${echo.runtime === 'hermes' ? 'HERMES · ' : ''}${echo.provider.toUpperCase()} / ${echo.model}` : 'Choose a provider in Settings';
       $('privacy-note').textContent = echo.cloud ? 'Local speech. Cloud conversation selected.' : 'Local speech. Your choice of conversation.';
       const empty = $('messages').querySelector('.empty-chat p');
       if (empty && echo.status === 'configured') empty.textContent = 'Ask a question, untangle an idea, or follow a curiosity. Recent messages stay in memory for this session.';
@@ -148,7 +157,7 @@ function showSpeakerCheck(result) {
 }
 function showAgentSettings(result) {
   $('agent-apply-controls').classList.toggle('hidden', result.status === 'not_required');
-  const messages = {active:'Active. Hermes has your saved model configuration. Test connection checks that the provider responds.',
+  const messages = {active:state?.settings.provider === 'chatgpt' ? 'Active. Echo uses the signed-in Hermes agent; its model and OAuth remain managed there.' : 'Active. Hermes has your saved model configuration. Test connection checks that the provider responds.',
     pending:'Saved changes need to be applied to Echo before its next conversation.',
     queued:'Queued on Remote host. Usually starts within one minute. You can cancel before it starts.',
     applying:'Applying the saved model settings. Your display, microphone and music stay connected.',

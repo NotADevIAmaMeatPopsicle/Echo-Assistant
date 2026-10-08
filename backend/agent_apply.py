@@ -12,6 +12,7 @@ import re
 import sys
 import time
 from uuid import uuid4
+import httpx
 
 from .agent_runtime import HermesRuntime, configuration_fingerprint
 from .lifecycle import _acquire_lock, _release_lock
@@ -61,6 +62,18 @@ class AgentApply:
             self.store.protector.encrypt(json.dumps(connection).encode())).decode()}))
         temporary.replace(runtime.path)
 
+    def bind_signed_in_agent(self):
+        """Verify the private gateway credential without touching its OAuth configuration."""
+        connection = HermesRuntime(self.root, self.store.protector).connection()
+        try:
+            with httpx.Client(base_url=connection['url'], trust_env=False, timeout=4,
+                              headers={'Authorization':'Bearer '+connection['token']}) as client:
+                response = client.get('/v1/models')
+            if response.status_code != 200 or not isinstance(response.json().get('data'), list):
+                raise ValueError()
+        except (httpx.HTTPError, ValueError, TypeError, AttributeError):
+            raise ValueError('The signed-in Hermes gateway is unavailable; its OAuth settings were not changed') from None
+
     def status(self):
         settings, keys, _ = self.store.snapshot()
         if settings.agent_runtime != 'hermes': return {'status':'not_required', 'managed':False}
@@ -85,6 +98,12 @@ class AgentApply:
             if state['status'] in {'active', 'queued', 'applying'}: return state
             settings, keys, _ = self.store.snapshot()
             if settings.agent_runtime != 'hermes': raise ValueError('Choose Hermes before applying agent settings')
+            if settings.provider == 'chatgpt':
+                self.bind_signed_in_agent()
+                target = configuration_fingerprint(settings, keys)
+                self.set_configuration(target)
+                self.write({'id':uuid4().hex, 'state':'applied', 'created_at':time.time(), 'target':target})
+                return self.status()
             model_profile(settings, keys)
             HermesRuntime(self.root, self.store.protector).connection()
             self.write({'id':uuid4().hex, 'state':'queued', 'created_at':time.time(),
@@ -109,6 +128,9 @@ class AgentApply:
             settings, keys, _ = self.store.snapshot()
             if settings.agent_runtime != 'hermes' or job['target'] != configuration_fingerprint(settings, keys):
                 self.write({**job, 'state':'failed', 'reason':'Settings changed. Apply the saved selection again.'})
+                return {'pending':False}
+            if settings.provider == 'chatgpt':
+                self.write({**job, 'state':'failed', 'reason':'ChatGPT sign-in must be bound directly, not reconfigured by the host helper.'})
                 return {'pending':False}
             # From this point a restart may occur even if its acknowledgement
             # is lost. Never retain an old fingerprint as proof of a live config.

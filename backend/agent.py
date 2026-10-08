@@ -10,7 +10,7 @@ import httpx
 from .settings import SettingsStore
 from .memory import MemoryStore, MemoryUnavailable, memory_request, canonical
 from .lookup import cited_answer, lookup_request
-from .agent_runtime import HermesRuntime, RuntimeUnavailable
+from .agent_runtime import HermesRuntime, RuntimeUnavailable, configuration_fingerprint
 from .home_access import HomeAccessUnavailable
 from .routines import routine_request, RoutineUnavailable, RoutineConflict
 from .household_commands import parse as household_request, respond as household_respond
@@ -229,12 +229,15 @@ class EchoAgent:
     def status(self):
         settings, keys, _ = self.store.snapshot()
         ready = settings.provider != 'disabled' and bool(settings.model) and (settings.provider == 'local' or bool(keys.get(settings.provider)))
+        if settings.provider == 'chatgpt':
+            try: ready = self.runtime.connection().get('configuration') == configuration_fingerprint(settings, keys)
+            except RuntimeUnavailable: ready = False
         return {'name': 'Echo', 'status': 'configured' if ready else 'not_configured', 'provider': settings.provider,
                 'runtime': settings.agent_runtime, 'activity': self.runtime.activity(),
                 'model': settings.model, 'memory': 'explicit_facts' if settings.memory_enabled else 'session_only',
                 'memory_status':'unavailable' if self.memory.error else 'ready',
                 'lookup': 'available' if settings.web_lookup == 'auto' and settings.provider in {'openai','azure'} else 'disabled',
-                'cloud': settings.provider in {'openai', 'anthropic', 'azure'}}
+                'cloud': settings.provider in {'openai', 'anthropic', 'azure', 'chatgpt'}}
 
     def messages(self, session):
         with self.history_lock:
@@ -329,7 +332,7 @@ class EchoAgent:
             if remembered: arguments['memory']=remembered
             if lookup or lookup_request(text):arguments['lookup']=True
             model_messages = [{'role':m['role'],'content':m['content']} for m in messages]
-            if settings.agent_runtime == 'hermes' and not arguments.get('lookup'):
+            if settings.agent_runtime == 'hermes' and (settings.provider == 'chatgpt' or not arguments.get('lookup')):
                 if self.home_access: self.home_access.ensure_applied()
                 instructions = settings.personality + (
                     '\nYou are Echo. Use home_devices and home_state to read actual home devices and their current states. '

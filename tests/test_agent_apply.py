@@ -86,6 +86,17 @@ class AgentApplyTests(unittest.TestCase):
         self.assertFalse(self.worker().claim()['pending'])
         self.assertEqual(self.manager.status()['status'],'pending')
 
+    def test_signed_in_chatgpt_binds_existing_gateway_without_exporting_a_key(self):
+        self.store.save(SettingsUpdate(settings=EchoSettings(provider='chatgpt', agent_runtime='hermes')))
+        self.assertEqual(self.manager.status()['status'], 'pending')
+        with patch.object(self.manager, 'bind_signed_in_agent') as verified:
+            applied = self.manager.start()
+        verified.assert_called_once_with()
+        self.assertEqual(applied['status'], 'active')
+        self.assertFalse(self.manager.claim()['pending'])
+        self.assertEqual(self.runtime.connection()['configuration'],
+                         configuration_fingerprint(self.store.snapshot()[0], self.store.snapshot()[1]))
+
     def test_browser_status_and_queue_never_return_provider_keys(self):
         self.save('replacement')
         api=TestClient(create_app('a'*40,runtime_root=self.root,settings_store=self.store),base_url='http://127.0.0.1')

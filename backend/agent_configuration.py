@@ -1,6 +1,8 @@
 """Map Echo's saved provider to the pinned Hermes runtime's native API modes."""
 
 def model_profile(settings, keys):
+    if settings.provider == 'chatgpt':
+        raise ValueError('ChatGPT sign-in is managed by Hermes; do not replace it with an API-key profile')
     profiles = {
         'azure': ('azure-foundry', settings.azure_url, 'codex_responses', 'AZURE_FOUNDRY_API_KEY'),
         'openai': ('openai-api', 'https://api.openai.com/v1', 'codex_responses', 'OPENAI_API_KEY'),
